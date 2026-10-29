@@ -110,6 +110,13 @@ The split layout should return after Settings or a browser reload when its
 owner's workspace can be restored. Closing the split or either displayed tab
 must prevent it from reopening. Other accounts must not see the layout.
 
+Split view is an opt-in browser preference in My Account → Workspace. When
+disabled, the split controls and split presentation are hidden while every
+open tab and draft remains available. Enabling it permits an existing valid
+layout to reappear. The setting is local to the browser and shared by accounts
+using it; note and workspace contents remain account-scoped. If the preference
+cannot be saved locally, Settings must explain that the choice may reset.
+
 ### Account-session isolation (2026-10-29)
 
 - A change of account must not expose the previous account's note content,

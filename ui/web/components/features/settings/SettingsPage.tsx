@@ -22,6 +22,7 @@ import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSett
 import { AIIndexTab } from "@/components/features/settings/AIIndexTab"
 import { DeleteAccountPanel } from "@/components/features/settings/DeleteAccountPanel"
 import { WordPressSettingsPanel } from "@/components/features/settings/WordPressSettingsPanel"
+import { WorkspacePreferencesPanel } from "@/components/features/settings/WorkspacePreferencesPanel"
 import {
   clearSettingsReturnState,
   readSettingsReturnState,
@@ -44,7 +45,7 @@ const SETTINGS_TABS: SettingsTabDefinition[] = [
   {
     id: "account",
     label: "My Account",
-    description: "Email and account management.",
+    description: "Email, browser preferences, and account management.",
     icon: UserRound,
   },
   {
@@ -432,15 +433,18 @@ export function SettingsPage() {
                     </ActionSection>
                   ) : null}
                   {activeDefinition.id === "account" ? (
-                    <DeleteAccountPanel
-                      email={user.email}
-                      onConfirm={() => handleDeleteAccount(() => {
-                        clearSettingsReturnState()
-                        router.push("/")
-                      })}
-                      loading={deleteAccountLoading}
-                      onSignOut={signOutGuard.request}
-                    />
+                    <div className="space-y-6">
+                      <WorkspacePreferencesPanel />
+                      <DeleteAccountPanel
+                        email={user.email}
+                        onConfirm={() => handleDeleteAccount(() => {
+                          clearSettingsReturnState()
+                          router.push("/")
+                        })}
+                        loading={deleteAccountLoading}
+                        onSignOut={signOutGuard.request}
+                      />
+                    </div>
                   ) : null}
                 </div>
               </div>

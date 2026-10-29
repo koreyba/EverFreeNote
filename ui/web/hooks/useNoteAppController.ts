@@ -971,13 +971,13 @@ export function useNoteAppController() {
     handleSearchResultClickLegacy,
   ])
 
-  const handleAddTab = useCallback(async () => {
+  const handleAddTab = useCallback(async (shouldContinue?: () => boolean) => {
     if (!workspaceHydrated || !canAddTab || addingTabRef.current) return null
     const started = getSessionSnapshot?.()
     if (!isCurrentSession(started)) return null
     addingTabRef.current = true
     try {
-      if (!(await flushAndCaptureActiveTab()) || !isCurrentSession(started)) return null
+      if (!(await flushAndCaptureActiveTab()) || !isCurrentSession(started) || (shouldContinue && !shouldContinue())) return null
       const tabId = addTab()
       // On mobile, an empty tab must return to the note list so the user can
       // choose which note fills the new active slot. Desktop keeps its editor

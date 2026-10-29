@@ -5,6 +5,7 @@ import { NotesShell } from '@ui/web/components/features/notes/NotesShell'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
+import { SPLIT_VIEW_ENABLED_KEY, SplitViewPreferenceProvider } from '@ui/web/providers/SplitViewPreferenceProvider'
 
 const user = { id: 'delete-user', email: 'delete@example.invalid' } as User
 const notes = [
@@ -13,7 +14,7 @@ const notes = [
 ]
 
 function TestApp() {
-  return <NotesShell controller={useNoteAppController()} />
+  return <SplitViewPreferenceProvider><NotesShell controller={useNoteAppController()} /></SplitViewPreferenceProvider>
 }
 
 function openActiveSplitEditor() {
@@ -40,6 +41,7 @@ describe('Deleting while an editor save is pending', { retries: 0 }, () => {
     cy.clearLocalStorage()
     cy.window().then(win => {
       win.sessionStorage.clear()
+      win.localStorage.setItem(SPLIT_VIEW_ENABLED_KEY, 'true')
       Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
     })
     cy.then(() => webOfflineStorageAdapter.clearAll())

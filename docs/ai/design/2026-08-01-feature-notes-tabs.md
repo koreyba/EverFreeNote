@@ -307,6 +307,15 @@ stored layout does not reappear when returning from Settings. No additional
 note content is stored. If browser storage is unavailable, this memory cannot
 survive a full reload or document termination.
 
+The Split View preference is a browser-level, default-off localStorage flag,
+following other local display preferences. Its provider sits outside the
+account and route boundaries, retaining an unsaved choice for this document
+when storage is unavailable. Settings reports a failed persistence attempt.
+The shell hides the split button and presentation while the flag is off, but
+retains the existing paired tab IDs, the active editor and its draft. Another
+browser tab's storage event applies the same gate; an in-flight split opening
+rechecks the flag after the editor flush before it can create a new tab.
+
 Reading scroll notifications remain debounced, but each visible reader also
 keeps its latest position in memory. The controller captures these positions
 before any tab transition; split exit and resize capture them as well. A

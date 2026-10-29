@@ -10,6 +10,7 @@ import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { WorkspaceMemoryProvider } from '@ui/web/providers/WorkspaceMemoryProvider'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
+import { SPLIT_VIEW_ENABLED_KEY, SplitViewPreferenceProvider } from '@ui/web/providers/SplitViewPreferenceProvider'
 
 const userA = { id: 'layout-owner-a', email: 'layout-a@example.invalid' } as User
 const userB = { id: 'layout-owner-b', email: 'layout-b@example.invalid' } as User
@@ -28,6 +29,7 @@ function TestApp({ client }: { client: SupabaseClient }) {
   }), [])
   return (
     <WorkspaceMemoryProvider>
+      <SplitViewPreferenceProvider>
       <button data-cy="switch-owner-a" style={{ display: 'none' }} onClick={() => setUser(userA)}>A</button>
       <button data-cy="switch-owner-b" style={{ display: 'none' }} onClick={() => setUser(userB)}>B</button>
       <SupabaseTestProvider supabase={client} user={user}>
@@ -37,6 +39,7 @@ function TestApp({ client }: { client: SupabaseClient }) {
           </SearchParamsContext.Provider>
         </AppRouterContext.Provider>
       </SupabaseTestProvider>
+      </SplitViewPreferenceProvider>
     </WorkspaceMemoryProvider>
   )
 }
@@ -76,7 +79,10 @@ describe('Restoring a split workspace', { retries: 0 }, () => {
       req.reply({ body: single ? selected ?? null : results, headers: { 'content-range': '0-1/2', 'access-control-expose-headers': 'content-range' } })
     })
     cy.clearLocalStorage()
-    cy.window().then(win => win.sessionStorage.clear())
+    cy.window().then(win => {
+      win.sessionStorage.clear()
+      win.localStorage.setItem(SPLIT_VIEW_ENABLED_KEY, 'true')
+    })
     cy.then(() => webOfflineStorageAdapter.clearAll())
     cy.mount(<TestApp client={client} />, { wrapWithSupabase: false })
   })

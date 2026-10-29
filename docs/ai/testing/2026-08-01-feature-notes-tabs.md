@@ -356,3 +356,20 @@ one end-to-end scenario: actual reload, Settings→Close, mobile reload and
 desktop return, then explicit split close and another reload. A screenshot and
 the browser test are retained with the local QA evidence. These checks do not
 prove recovery after a reload when browser storage itself is unavailable.
+
+### Split view preference (2026-10-29)
+
+The focused browser component suite covers the default-off state, enabling and
+disabling via Settings, retained tabs and drafts, restoration, A→B→A with a
+shared browser preference, mobile and narrow desktop, storage failure, another
+browser tab disabling the flag during live editing, and cancellation during a
+pending editor flush. Existing desktop split, deletion, hydration and mobile
+component suites are run with the preference explicitly enabled where needed.
+The combined Allure component run passed 85/85 tests; the focused unit run
+passed 175/175, including five Settings tests covering persistence and
+read/write/storage-event failures. These
+checks use synthetic notes and mocked network responses. A separate Electron
+test against a production static export and an intercepted synthetic backend
+passed an actual reload after enabling split, then disabling and reloading
+again before re-enabling the retained layout. It does not validate Stage or a
+real Supabase backend.

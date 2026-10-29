@@ -113,3 +113,6 @@ These are engineering estimates only; autosave/editor lifecycle and native navig
   IDs in the existing owner-stamped workspace snapshot. Validate the pairing
   after hydration and cover account changes, unavailable storage, explicit
   close, mobile sizing, and tabs dropped by the storage budget.
+- Add a browser-local, default-off Split View setting to My Account →
+  Workspace. Hide split when disabled without closing tabs, and verify failed
+  storage, account switches, responsive layout, pending saves and reload.

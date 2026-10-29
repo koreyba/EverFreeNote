@@ -6,6 +6,7 @@ import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
 import { addWorkspaceTab, createNoteWorkspaceState, openNoteInWorkspace, serializeNoteWorkspaceState } from '@core/services/noteWorkspaceTabs'
+import { SPLIT_VIEW_ENABLED_KEY, SplitViewPreferenceProvider } from '@ui/web/providers/SplitViewPreferenceProvider'
 
 const user = { id: 'workspace-user', email: 'workspace@example.invalid' } as User
 const notes = [
@@ -19,7 +20,7 @@ function DelayedSession({ client }: { client: SupabaseClient }) {
   return <>
     <button onClick={() => setLoading(false)}>Resolve empty cached user</button>
     <button onClick={() => { setCurrentUser(user); setLoading(false) }}>Resolve authenticated user</button>
-    <SupabaseTestProvider supabase={client} user={currentUser} loading={loading}><App /></SupabaseTestProvider>
+    <SplitViewPreferenceProvider><SupabaseTestProvider supabase={client} user={currentUser} loading={loading}><App /></SupabaseTestProvider></SplitViewPreferenceProvider>
   </>
 }
 
@@ -78,6 +79,7 @@ describe('Restoring workspace after asynchronous authentication', { retries: 0 }
     const persisted = serializeNoteWorkspaceState({ ...workspace, split: { leftTabId: 'first-tab', rightTabId: 'second-tab', focusedTabId: 'second-tab' } })
     cy.window().then(win => {
       win.sessionStorage.clear()
+      win.localStorage.setItem(SPLIT_VIEW_ENABLED_KEY, 'true')
       win.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, persisted)
     })
     cy.then(() => webOfflineStorageAdapter.clearAll())

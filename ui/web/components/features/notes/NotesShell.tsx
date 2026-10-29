@@ -38,6 +38,7 @@ import { consumeActiveSettingsNoteReturnPath, readActiveSettingsNoteReturnPath }
 import { getTabLabel, NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
 import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
 import { SplitEmptyPane, SplitNotePreview } from "@/components/features/notes/SplitNotePreview"
+import { useSplitViewPreference } from "@ui/web/providers/SplitViewPreferenceProvider"
 import { DeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
 import { Button } from "@/components/ui/button"
 import { SignOutGuardDialog } from "@/components/features/auth/SignOutGuardDialog"
@@ -61,6 +62,7 @@ type NotesShellProps = {
 const MIN_SPLIT_WORKSPACE_WIDTH = 680
 
 export function NotesShell({ controller }: NotesShellProps) {
+  const { enabled: splitEnabled, isEnabled: isSplitEnabled } = useSplitViewPreference()
 
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -204,6 +206,12 @@ export function NotesShell({ controller }: NotesShellProps) {
     return () => registerWorkspaceViewCapture?.(null)
   }, [captureViewScrolls, registerWorkspaceViewCapture])
 
+  const wasSplitEnabled = React.useRef(splitEnabled)
+  React.useLayoutEffect(() => {
+    if (wasSplitEnabled.current && !splitEnabled) captureViewScrolls()
+    wasSplitEnabled.current = splitEnabled
+  }, [captureViewScrolls, splitEnabled])
+
   React.useEffect(() => {
     const workspace = workspaceRef.current
     if (!workspace) return
@@ -225,7 +233,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   // editor. Resolve its identity only after the workspace state has committed.
   React.useEffect(() => {
     if (!pendingSplit) return
-    if (!workspaceHydrated || !isCurrentSession(pendingSplit.session)) {
+    if (!splitEnabled || !workspaceHydrated || !isCurrentSession(pendingSplit.session)) {
       setPendingSplit(null)
       return
     }
@@ -236,11 +244,12 @@ export function NotesShell({ controller }: NotesShellProps) {
     if (!tabs.some((tab) => tab.id === pendingSplit.rightTabId)) return
     setSplit?.({ leftTabId: pendingSplit.leftTabId, rightTabId: pendingSplit.rightTabId, focusedTabId: pendingSplit.rightTabId })
     setPendingSplit(null)
-  }, [isCurrentSession, pendingSplit, setSplit, tabs, workspaceHydrated])
+  }, [isCurrentSession, pendingSplit, setSplit, splitEnabled, tabs, workspaceHydrated])
 
   // Selecting a third tab replaces the last active pane; selecting either
   // visible tab just transfers focus. Closing a pane returns to one view.
   React.useEffect(() => {
+    if (!splitEnabled) return
     setSplit?.((current) => {
       if (!current) return current
       if (!tabs.some((tab) => tab.id === current.leftTabId) || !tabs.some((tab) => tab.id === current.rightTabId)) return null
@@ -251,7 +260,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         ? { ...current, leftTabId: activeTabId, focusedTabId: activeTabId }
         : { ...current, rightTabId: activeTabId, focusedTabId: activeTabId }
     })
-  }, [activeTabId, setSplit, tabs])
+  }, [activeTabId, setSplit, splitEnabled, tabs])
 
   React.useEffect(() => {
     if (paneFocusTargetRef.current !== activeTabId) return
@@ -265,6 +274,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [activateTab])
 
   const handleToggleSplit = React.useCallback(async () => {
+    if (!splitEnabled || !isSplitEnabled()) return
     if (split) {
       captureViewScrolls()
       setSplit?.(null)
@@ -281,13 +291,13 @@ export function NotesShell({ controller }: NotesShellProps) {
     splitOpeningRef.current = true
     setSplitOpening(true)
     try {
-      const rightTabId = await addTab()
-      if (rightTabId && isCurrentSession(started)) setPendingSplit({ leftTabId: activeTabId, rightTabId, session: started })
+      const rightTabId = await addTab(isSplitEnabled)
+      if (rightTabId && isSplitEnabled() && isCurrentSession(started)) setPendingSplit({ leftTabId: activeTabId, rightTabId, session: started })
     } finally {
       splitOpeningRef.current = false
       setSplitOpening(false)
     }
-  }, [activeTabId, addTab, captureViewScrolls, getSessionSnapshot, isCurrentSession, pendingSplit, setSplit, split, tabs])
+  }, [activeTabId, addTab, captureViewScrolls, getSessionSnapshot, isCurrentSession, isSplitEnabled, pendingSplit, setSplit, split, splitEnabled, tabs])
 
   const checkTagCoverageRef = React.useRef(checkTagCoverage)
   React.useEffect(() => { checkTagCoverageRef.current = checkTagCoverage }, [checkTagCoverage])
@@ -424,7 +434,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
   // Derive the next pair during the same render as a tab switch, so the
   // editor never disappears while the reconciliation effect catches up.
-  let displayedSplit = split
+  let displayedSplit = splitEnabled ? split : null
   if (displayedSplit && (!tabs.some((tab) => tab.id === displayedSplit!.leftTabId) || !tabs.some((tab) => tab.id === displayedSplit!.rightTabId))) {
     displayedSplit = null
   } else if (displayedSplit && activeTabId !== displayedSplit.leftTabId && activeTabId !== displayedSplit.rightTabId) {
@@ -549,8 +559,8 @@ export function NotesShell({ controller }: NotesShellProps) {
                 onAddTab={() => void addTab?.()}
                 onActivateTab={(tabId) => void activateTab?.(tabId)}
                 onCloseTab={(tabId) => void closeTab?.(tabId)}
-                onToggleSplit={() => void handleToggleSplit()}
-                splitView={Boolean(split)}
+                onToggleSplit={splitEnabled ? () => void handleToggleSplit() : undefined}
+                splitView={Boolean(splitEnabled && split)}
                 splitDisabled={splitOpening || Boolean(pendingSplit) || (!split && (!workspaceHydrated || (!canAddTab && tabs.length < 2)))}
               />
               {displayedSplit && !showBothPanes && !isMobile && (

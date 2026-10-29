@@ -146,6 +146,14 @@ state across same-document routes and account switches, including a close
 that could not be written to sessionStorage. Memory is discarded with its
 owner and cannot provide durability after a reload when storage is blocked.
 
+`SplitViewPreferenceProvider` reads and writes the browser-level opt-in flag
+and listens for localStorage changes in other tabs. It remains mounted across
+Settings and account changes. `NotesShell` gates the split control and both
+pane presentation without closing tabs or remounting the active editor; its
+pending creation passes a flag check to the asynchronous add-tab boundary.
+Failed preference reads or writes are surfaced in the Settings workspace
+panel, and no database migration is required.
+
 ## Account-session isolation follow-up (2026-10-29)
 
 `SupabaseProvider` advances an identity epoch synchronously with auth events;

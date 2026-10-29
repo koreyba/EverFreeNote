@@ -7,6 +7,7 @@ import { QueryProvider } from "@/components/providers/QueryProvider"
 import { NativeShellProvider } from "@ui/shell/runtime/NativeShellProvider"
 import { AccountSessionBoundary, SupabaseProvider } from "@ui/web/providers/SupabaseProvider"
 import { WorkspaceMemoryProvider } from "@ui/web/providers/WorkspaceMemoryProvider"
+import { SplitViewPreferenceProvider } from "@ui/web/providers/SplitViewPreferenceProvider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -33,22 +34,24 @@ export default function RootLayout({
         <ErrorBoundary>
           <SupabaseProvider>
             <WorkspaceMemoryProvider>
-              <NativeShellProvider>
-                <AccountSessionBoundary>
-                  <QueryProvider>
-                    <ThemeProvider
-                      attribute="class"
-                      defaultTheme="light"
-                      enableSystem={false}
-                      storageKey="everfreenote-theme"
-                      disableTransitionOnChange={true}
-                    >
-                      {children}
-                      <Toaster />
-                    </ThemeProvider>
-                  </QueryProvider>
-                </AccountSessionBoundary>
-              </NativeShellProvider>
+              <SplitViewPreferenceProvider>
+                <NativeShellProvider>
+                  <AccountSessionBoundary>
+                    <QueryProvider>
+                      <ThemeProvider
+                        attribute="class"
+                        defaultTheme="light"
+                        enableSystem={false}
+                        storageKey="everfreenote-theme"
+                        disableTransitionOnChange={true}
+                      >
+                        {children}
+                        <Toaster />
+                      </ThemeProvider>
+                    </QueryProvider>
+                  </AccountSessionBoundary>
+                </NativeShellProvider>
+              </SplitViewPreferenceProvider>
             </WorkspaceMemoryProvider>
           </SupabaseProvider>
         </ErrorBoundary>
