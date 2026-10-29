@@ -1,0 +1,1 @@
+{"id":"9004e85b85bd40f8b685e8e8bc6b184b","fullName":"everfreenote:ui/web/tests/unit/components/noteCard.test.tsx#NoteCard ignores markup-looking text inside attributes and preserves inline words","name":"ignores markup-looking text inside attributes and preserves inline words","status":"passed","testResultsByEnv":{"default":"84be82335011ca1260c45b0821c64663"}}

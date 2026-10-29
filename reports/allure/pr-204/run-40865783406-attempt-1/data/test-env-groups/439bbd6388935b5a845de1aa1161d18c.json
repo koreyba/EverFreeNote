@@ -1,0 +1,1 @@
+{"id":"439bbd6388935b5a845de1aa1161d18c","fullName":"everfreenote:cypress/component/features/notes/DeletePendingSave.cy.tsx#Deleting while an editor save is pending waits for a manual save even when the draft is unchanged","name":"waits for a manual save even when the draft is unchanged","status":"passed","testResultsByEnv":{"default":"1f3988cf82e4f30a30883d65e4496253"}}

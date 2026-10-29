@@ -1,0 +1,1 @@
+{"id":"1fd3eefbe27d39c580a469a7994fe006","fullName":"everfreenote:ui/shell/tests/unit/nativeProject.test.ts#needsRegeneration keeps a project whose id cannot be read, rather than discarding blindly","name":"keeps a project whose id cannot be read, rather than discarding blindly","status":"passed","testResultsByEnv":{"default":"2902dab7918d4223f95af4b5890d8f3d"}}

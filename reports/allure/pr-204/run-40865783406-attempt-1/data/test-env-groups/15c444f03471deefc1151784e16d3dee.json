@@ -1,0 +1,1 @@
+{"id":"15c444f03471deefc1151784e16d3dee","fullName":"everfreenote:ui/web/tests/unit/lib/noteFind.test.ts#findInNote keeps Unicode case folding distinct from multi-character and Turkish variants","name":"keeps Unicode case folding distinct from multi-character and Turkish variants","status":"passed","testResultsByEnv":{"default":"3d7b60db961692ade01a5b40e39e9dc0"}}
