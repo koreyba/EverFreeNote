@@ -85,10 +85,37 @@ describe('Cache privacy subset', { retries: 0 }, () => {
     })
   })
 
-  afterEach(() => cy.window().then(win => {
-    Reflect.deleteProperty(win.navigator, 'onLine')
-    win.dispatchEvent(new win.Event('online'))
-  }))
+  afterEach(() => {
+    // Dispose the previous account's sync manager before restoring connectivity;
+    // otherwise its pending work can leak into the next test's intercepts.
+    cy.mount(<></>)
+    cy.window().then(win => {
+      Reflect.deleteProperty(win.navigator, 'onLine')
+      win.dispatchEvent(new win.Event('online'))
+    })
+  })
+
+  it('enforces server-side ownership for authenticated users in the local fixture', () => {
+    const id = crypto.randomUUID()
+    cy.then(async () => {
+      const created = await owner.from('notes').insert({ id, user_id: userA.id, title: 'A server note', description: 'A only', tags: [] })
+      expect(created.error).to.equal(null)
+      const read = await other.from('notes').select('id').eq('id', id)
+      expect(read.error).to.equal(null)
+      expect(read.data).to.deep.equal([])
+      const update = await other.from('notes').update({ title: 'B overwrite' }).eq('id', id).select('id')
+      expect(update.error).to.equal(null)
+      expect(update.data).to.deep.equal([])
+      const deletion = await other.from('notes').delete().eq('id', id).select('id')
+      expect(deletion.error).to.equal(null)
+      expect(deletion.data).to.deep.equal([])
+      const forged = await other.from('notes').insert({ id: crypto.randomUUID(), user_id: userA.id, title: 'B forged note', tags: [] })
+      expect(forged.error).not.to.equal(null)
+      const original = await owner.from('notes').select('title,description').eq('id', id).single()
+      expect(original.error).to.equal(null)
+      expect(original.data).to.deep.equal({ title: 'A server note', description: 'A only' })
+    })
+  })
 
   it('hides an ownerless draft from B but restores it to A when its original operation proves ownership', () => {
     const id = crypto.randomUUID()
@@ -523,6 +550,45 @@ describe('Cache privacy subset', { retries: 0 }, () => {
       if (row.error) throw row.error
       expect(row.data).to.include({ id, user_id: userA.id, title: 'Recover after outage', description: 'Queued body' })
       expect(attempts).to.be.at.least(2)
+    })
+  })
+
+  function seedLifecycleDraft() {
+    const id = crypto.randomUUID()
+    cy.then(async () => {
+      const result = await other.from('notes').insert({ id, user_id: userB.id, title: 'Lifecycle server', description: 'Before', tags: ['old'] })
+      if (result.error) throw result.error
+      await webOfflineStorageAdapter.saveNote({ id, user_id: userB.id, title: 'Lifecycle draft', description: 'Offline edit', tags: ['old'], status: 'pending', updatedAt: '2026-10-01T00:00:00.000Z' })
+      await webOfflineStorageAdapter.upsertQueueItem({ id: 'lifecycle-write', noteId: id, operation: 'update', payload: { user_id: userB.id, title: 'Lifecycle draft', description: 'Offline edit', tags: ['old'] }, clientUpdatedAt: '2026-10-01T00:00:00.000Z', status: 'pending' })
+    })
+    cy.intercept({ method: 'PATCH', pathname: '/rest/v1/notes' }).as('lifecyclePatch')
+    cy.mount(<SupabaseTestProvider supabase={other} user={userB}><App /></SupabaseTestProvider>)
+    cy.get('[data-testid="device-sync-status"]').should('contain.text', 'Device: Offline').and('contain.text', '1 waiting')
+    return id
+  }
+
+  it('demonstrates that restoring online while the old app is mounted starts its queued sync', () => {
+    const id = seedLifecycleDraft()
+    cy.window().then(win => { Reflect.deleteProperty(win.navigator, 'onLine'); win.dispatchEvent(new win.Event('online')) })
+    cy.wait('@lifecyclePatch').then(({ request, response }) => {
+      expect(new URL(request.url).searchParams.get('id')).to.equal(`eq.${id}`)
+      expect(request.body).to.include({ title: 'Lifecycle draft', description: 'Offline edit' })
+      expect(response?.statusCode).to.equal(200)
+    })
+    cy.then(() => waitForQueue(statuses => statuses.length === 0))
+  })
+
+  it('does not start queued sync when connectivity is restored after app teardown', () => {
+    const id = seedLifecycleDraft()
+    cy.mount(<></>)
+    cy.window().then(win => { Reflect.deleteProperty(win.navigator, 'onLine'); win.dispatchEvent(new win.Event('online')) })
+    cy.window().then(win => new Promise(resolve => win.setTimeout(resolve, 500)))
+    cy.get('@lifecyclePatch.all').should('have.length', 0)
+    cy.then(async () => {
+      expect((await webOfflineStorageAdapter.getQueue()).some(item => item.id === 'lifecycle-write')).to.equal(true)
+      const row = await other.from('notes').select('title,description').eq('id', id).single()
+      if (row.error) throw row.error
+      expect(row.data).to.deep.equal({ title: 'Lifecycle server', description: 'Before' })
     })
   })
 

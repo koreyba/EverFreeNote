@@ -85,10 +85,10 @@ describe('Sidebar Component', () => {
     cy.contains(/^Delete \(\d+\)$/).should('not.exist')
   })
 
-  it('shows unknown total when not provided', () => {
+  it('shows only the known displayed count when the total is unavailable', () => {
     cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} notesDisplayed={5} notesTotal={undefined} />))
 
-    cy.contains('5 of unknown notes').should('be.visible')
+    cy.contains('5 notes shown').should('be.visible')
   })
 
   it('opens search panel when trigger is clicked', () => {
@@ -181,37 +181,37 @@ describe('Sidebar Component', () => {
       cy.get('[title="Sync status"]').should('have.class', 'bg-muted-foreground')
     })
 
-    it('shows waiting changes with count when pendingCount > 0', () => {
+    it('shows waiting changes for the current account', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={3} failedCount={0} />))
 
-      cy.get('[title="3 waiting"]').should('exist')
-      cy.get('[title="3 waiting"]').should('have.class', 'bg-muted-foreground')
+      cy.get('[title="This account on this device: 3 waiting"]').should('exist')
+      cy.get('[title="This account on this device: 3 waiting"]').should('have.class', 'bg-muted-foreground')
     })
 
-    it('shows sync failed status with count when failedCount > 0', () => {
+    it('shows failed changes for the current account', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={0} failedCount={2} />))
 
-      cy.get('[title="2 failed"]').should('exist')
-      cy.get('[title="2 failed"]').should('have.class', 'bg-destructive')
+      cy.get('[title="This account on this device: 2 failed"]').should('exist')
+      cy.get('[title="This account on this device: 2 failed"]').should('have.class', 'bg-destructive')
     })
 
     it('shows offline mode when isOffline is true', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline pendingCount={0} failedCount={0} />))
 
-      cy.get('[title="Offline"]').should('exist')
-      cy.get('[title="Offline"]').should('have.class', 'bg-amber-500')
+      cy.get('[title="Device: Offline"]').should('exist')
+      cy.get('[title="Device: Offline"]').should('have.class', 'bg-amber-500')
     })
 
     it('reports offline, failed, and waiting changes together', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline pendingCount={5} failedCount={3} />))
 
-      cy.get('[title="Offline · 3 failed · 5 waiting"]').should('exist')
+      cy.get('[title="Device: Offline · This account on this device: 3 failed · 5 waiting"]').should('exist')
     })
 
     it('reports failed and waiting changes together', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={5} failedCount={2} />))
 
-      cy.get('[title="2 failed · 5 waiting"]').should('exist')
+      cy.get('[title="This account on this device: 2 failed · 5 waiting"]').should('exist')
     })
   })
 })

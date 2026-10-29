@@ -41,21 +41,15 @@ permissions:
 jobs:
   component-tests:
     runs-on: ubuntu-latest
-    environment: Stage
     outputs:
       has_allure_results: ${{ steps.component-allure-check.outputs.has_allure_results }}
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
-      NEXT_PUBLIC_ENABLE_TEST_AUTH: ${{ vars.NEXT_PUBLIC_ENABLE_TEST_AUTH }}
-      NEXT_PUBLIC_TEST_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_EMAIL }}
-      NEXT_PUBLIC_TEST_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_TEST_AUTH_PASSWORD }}
-      NEXT_PUBLIC_SKIP_AUTH_EMAIL: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_EMAIL }}
-      NEXT_PUBLIC_SKIP_AUTH_PASSWORD: ${{ secrets.NEXT_PUBLIC_SKIP_AUTH_PASSWORD }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Verify isolated fixture runner
+        run: python3 -m unittest scripts/test_run_component_ci_isolated.py
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -82,7 +76,11 @@ jobs:
           if [ "${COVERAGE_ENABLED}" = "true" ]; then
             coverage_args+=(--env codeCoverage=true)
           fi
-          npm run test:component:ci -- "${coverage_args[@]}" --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | tee cypress/results/component-tests.log
+          # Mask commands must reach the GitHub runner but not the uploaded raw log.
+          python3 scripts/run-component-ci-isolated.py -- npm run test:component:ci -- "${coverage_args[@]}" --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | awk '
+            { print; fflush() }
+            index($0, "::add-mask::") != 1 { print >> "cypress/results/component-tests.log"; fflush("cypress/results/component-tests.log") }
+          '
           exit ${PIPESTATUS[0]}
 
       - name: Render Cypress coverage report

@@ -62,13 +62,37 @@ describe('OfflineQueueService', () => {
       },
     ]
 
+    const existing: MutationQueueItem = {
+      id: 'existing', noteId: 'another-note', operation: 'update',
+      payload: { user_id: 'owner-a', title: 'keep me' },
+      clientUpdatedAt: '2023-01-01T09:00:00Z', status: 'failed',
+    }
+    const stored = [existing]
+    mockStorage.appendQueueItems = cy.stub().callsFake(async (entries: MutationQueueItem[]) => {
+      stored.push(...entries)
+    })
+
     await service.enqueueMany(inputs)
 
-    expect(mockStorage.upsertQueue).to.have.been.calledOnce
-    const callArgs = (mockStorage.upsertQueue as unknown as sinon.SinonStub).firstCall.args[0]
-    expect(callArgs).to.have.length(2)
-    expect(callArgs[0].noteId).to.equal('note-1')
-    expect(callArgs[1].noteId).to.equal('note-2')
+    expect(mockStorage.appendQueueItems).to.have.been.calledOnce
+    expect(mockStorage.upsertQueue).not.to.have.been.called
+    expect(stored).to.have.length(3)
+    expect(stored[0]).to.deep.equal(existing)
+    expect(stored.slice(1).map(item => item.noteId)).to.deep.equal(['note-1', 'note-2'])
+    expect(stored.slice(1).map(item => item.status)).to.deep.equal(['pending', 'pending'])
+  })
+
+  it('uses individual upserts without replacing the queue on older adapters', async () => {
+    const input = [
+      { noteId: 'note-1', operation: 'delete' as const, payload: { user_id: 'owner-a' }, clientUpdatedAt: '2023-01-01T10:00:00Z' },
+      { noteId: 'note-2', operation: 'delete' as const, payload: { user_id: 'owner-a' }, clientUpdatedAt: '2023-01-01T10:01:00Z' },
+    ]
+    await service.enqueueMany(input)
+    expect(mockStorage.upsertQueue).not.to.have.been.called
+    expect(mockStorage.upsertQueueItem).to.have.been.calledTwice
+    const calls = (mockStorage.upsertQueueItem as unknown as sinon.SinonStub).getCalls()
+    expect(calls.map(call => call.args[0].noteId)).to.deep.equal(['note-1', 'note-2'])
+    expect(calls.map(call => call.args[0].payload.user_id)).to.deep.equal(['owner-a', 'owner-a'])
   })
 
   it('should get queue', async () => {

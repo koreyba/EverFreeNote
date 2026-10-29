@@ -24,8 +24,12 @@ To run tests with intent and produce agent-readable reports:
   ```
 - **Component Tests (Cypress)**:
   ```bash
-  npx allure agent --goal "Validate Component tests" -- npm run test:component
+  npx allure agent --goal "Validate Component tests" -- python3 scripts/run-component-ci-isolated.py -- npm run test:component:ci
   ```
+
+  The component suite includes real authentication and row-level-security checks. This command starts a disposable local Supabase instance with the notes schema and RLS policies, supplies its synthetic credentials only to the test process, then stops its own instance and deletes its temporary data. Docker must be available. It never uses Stage. Set `COMPONENT_FIXTURE_API_PORT` if the default `63421` is occupied. For a focused run, replace the npm command with `npx cypress run --component --browser electron --spec path/to/spec.cy.tsx`; keep the fixture wrapper for specs that exercise authentication.
+
+  When a local preview must remain responsive, set `COMPONENT_FIXTURE_MONITOR_URL` to its loopback HTTP URL. Two consecutive failed checks stop this test process and its disposable fixture.
 
 ### Inspecting Existing Results
 To analyze existing `allure-results` (local or downloaded CI artifacts) without re-running tests:

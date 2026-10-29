@@ -34,14 +34,16 @@ describe('compactQueue', () => {
     expect(result[0].payload).to.deep.equal({ title: 'A' })
   })
 
-  it('should compact create + delete to noop', () => {
+  it('keeps an owned delete after create and updates in case the create reached the server', () => {
     const items = [
-      createItem('1', 'create', '2023-01-01T10:00:00Z'),
+      createItem('1', 'create', '2023-01-01T10:00:00Z', { user_id: 'owner-a' }),
       createItem('2', 'update', '2023-01-01T10:05:00Z'),
       createItem('3', 'delete', '2023-01-01T10:10:00Z'),
     ]
     const result = compactQueue(items)
-    expect(result).to.have.length(0)
+    expect(result).to.have.length(1)
+    expect(result[0]).to.include({ id: '3', noteId: 'note-1', operation: 'delete', status: 'pending', clientUpdatedAt: '2023-01-01T10:10:00Z' })
+    expect(result[0].payload).to.deep.equal({ user_id: 'owner-a' })
   })
 
   it('should compact create + updates to single create with final payload', () => {
@@ -104,11 +106,10 @@ describe('compactQueue', () => {
 
     const result = compactQueue(items)
     
-    // Note 1: create + delete -> noop
-    // Note 2: create -> create
-    expect(result).to.have.length(1)
-    expect(result[0].noteId).to.equal('note-2')
-    expect(result[0].operation).to.equal('create')
+    // A possibly successful create still needs a delete; the other note is unaffected.
+    expect(result).to.have.length(2)
+    expect(result.find(item => item.noteId === 'note-1')).to.include({ id: '3', operation: 'delete' })
+    expect(result.find(item => item.noteId === 'note-2')).to.include({ id: '2', operation: 'create' })
   })
 
   it('should sort result by clientUpdatedAt', () => {

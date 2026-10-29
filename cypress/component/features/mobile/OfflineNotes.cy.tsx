@@ -103,7 +103,7 @@ describe('Refresh reconciles persisted cache before reopening notes', { retries:
     updatedAt: '2026-09-22T10:00:00Z', status: 'synced', ...extra,
   })
 
-  it('renders IndexedDB notes during a stalled initial fetch, then removes remote deletions on a list swipe', () => {
+  it('retains and warns about server-missing local copies after a list swipe', () => {
     cy.viewport(390, 844)
     cy.stub(Capacitor, 'isNativePlatform').returns(true)
     cy.stub(Capacitor, 'getPlatform').returns('android')
@@ -142,18 +142,21 @@ describe('Refresh reconciles persisted cache before reopening notes', { retries:
       .trigger('touchend', { touches: [] })
     cy.wrap(null).should(() => expect(listRequests).to.equal(2))
     cy.wrap(null).should(() => expect(existenceRequests).to.equal(1))
-    cy.contains('[data-testid="note-card"]', 'Deleted one').should('not.exist')
-    cy.contains('[data-testid="note-card"]', 'Deleted two').should('not.exist')
+    cy.contains('[data-testid="note-card"]', 'Deleted one').should('be.visible')
+    cy.contains('[data-testid="note-card"]', 'Deleted two').should('be.visible')
     cy.contains('[data-testid="note-card"]', 'Older cached note').should('be.visible')
     cy.contains('[data-testid="note-card"]', 'My offline draft').should('be.visible')
+    cy.get('[data-testid="device-sync-status"]').should('contain.text', 'A local note is unavailable on the server')
     cy.then(() => expect(existenceRequests).to.equal(1))
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(notes => {
-      expect(notes.map(note => note.id).sort()).to.deep.equal(['My offline draft', 'Older cached note'])
+      expect(notes.map(note => note.id).sort()).to.deep.equal(['Deleted one', 'Deleted two', 'My offline draft', 'Older cached note'])
+      expect(notes.every(note => note.user_id === user.id)).to.equal(true)
+      expect(notes.find(note => note.id === 'My offline draft')?.status).to.equal('pending')
     })
     mountApp()
     cy.contains('[data-testid="note-card"]', 'Older cached note').should('be.visible')
-    cy.contains('[data-testid="note-card"]', 'Deleted one').should('not.exist')
-    cy.contains('[data-testid="note-card"]', 'Deleted two').should('not.exist')
+    cy.contains('[data-testid="note-card"]', 'Deleted one').should('be.visible')
+    cy.contains('[data-testid="note-card"]', 'Deleted two').should('be.visible')
   })
 
   it('checks the persisted revision and queued edits atomically before removing confirmed deletions', () => {
@@ -174,14 +177,15 @@ describe('Refresh reconciles persisted cache before reopening notes', { retries:
 })
 
 
-describe('Remote deletion after a real local save', { retries: 0 }, () => {
-  function verifyDeletionAfterCreate(initiallyOnline: boolean) {
+describe('Server-missing notes after a real local save', { retries: 0 }, () => {
+  function verifyLocalCopyAfterCreate(initiallyOnline: boolean) {
     cy.viewport(390, 844)
     cy.stub(Capacitor, 'isNativePlatform').returns(true)
     cy.stub(Capacitor, 'getPlatform').returns('android')
     let online = initiallyOnline
     const remote = new Map<string, Record<string, unknown>>()
     let localId: string
+    let existenceRequests = 0
     const client = createClient('https://created-refresh.invalid', 'test-public-key', {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     })
@@ -199,6 +203,7 @@ describe('Remote deletion after a real local save', { retries: 0 }, () => {
         req.reply({ body: remote.get(id) })
       } else {
         const rows = [...remote.values()]
+        if (url.searchParams.get('select') === 'id') existenceRequests++
         req.reply({ body: url.searchParams.get('select') === 'id' ? rows.map(row => ({ id: row.id })) : rows,
           headers: { 'content-range': `0-0/${rows.length}`, 'access-control-expose-headers': 'content-range' } })
       }
@@ -227,22 +232,43 @@ describe('Remote deletion after a real local save', { retries: 0 }, () => {
       expect(notes).to.have.length(1)
       expect(notes[0].status).to.equal('synced')
     })
-    cy.then(() => remote.delete(localId))
+    cy.then(() => { remote.delete(localId); existenceRequests = 0 })
     cy.get('[data-cy="pull-to-refresh"]').filter(':visible')
       .trigger('touchstart', { touches: [{ clientX: 80, clientY: 200 }] })
       .trigger('touchmove', { touches: [{ clientX: 80, clientY: 350 }] })
       .trigger('touchend', { touches: [] })
-    cy.contains('[data-testid="note-card"]', 'Created here, deleted elsewhere').should('not.exist')
-    cy.then(() => webOfflineStorageAdapter.loadNotes()).should('have.length', 0)
+    cy.wrap(null).should(() => expect(existenceRequests).to.be.greaterThan(0))
+    cy.contains('[data-testid="note-card"]', 'Created here, deleted elsewhere').should('be.visible')
+    cy.get('[data-testid="device-sync-status"]').should('contain.text', 'A local note is unavailable on the server')
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(notes => {
+      expect(notes).to.have.length(1)
+      expect(notes[0]).to.include({ id: localId, user_id: user.id, title: 'Created here, deleted elsewhere', status: 'synced' })
+      expect(notes[0].description).to.contain('Saved content')
+    })
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should('have.length', 0)
     mountApp()
-    cy.contains('[data-testid="note-card"]', 'Created here, deleted elsewhere').should('not.exist')
+    // The workspace restores the open editor rather than the mobile list.
+    cy.get('[placeholder="Note title"]').should('have.value', 'Created here, deleted elsewhere')
+    cy.get('.tiptap').should('contain.text', 'Saved content')
+    cy.then(() => dispatchAppBack())
+    cy.contains('[data-testid="note-card"] button', 'Created here, deleted elsewhere').should('be.visible').click()
+    cy.contains('Saved content').should('be.visible')
+    cy.then(() => {
+      expect(remote.size, 'the missing server note was not silently recreated').to.equal(0)
+      return webOfflineStorageAdapter.loadNotes()
+    }).should(notes => {
+      expect(notes).to.have.length(1)
+      expect(notes[0]).to.include({ id: localId, user_id: user.id, status: 'synced' })
+      expect(notes[0].description).to.contain('Saved content')
+    })
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should('have.length', 0)
   }
 
-  it('removes an online-created saved note when its editor tab remains open', () => {
-    verifyDeletionAfterCreate(true)
+  it('retains an online-created saved note when its editor tab remains open', () => {
+    verifyLocalCopyAfterCreate(true)
   })
 
-  it('removes an offline-created note after synchronization when its editor tab remains open', () => {
-    verifyDeletionAfterCreate(false)
+  it('retains an offline-created note after synchronization when its editor tab remains open', () => {
+    verifyLocalCopyAfterCreate(false)
   })
 })
