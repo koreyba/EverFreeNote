@@ -83,6 +83,10 @@ export const EditorMenuBar = ({
   React.useLayoutEffect(() => () => cancelPendingFocus(), [compact, cancelPendingFocus])
   const [fontMenuOpen, setFontMenuOpen] = React.useState(false)
   const [sizeMenuOpen, setSizeMenuOpen] = React.useState(false)
+  // A delayed tooltip must not become the topmost dismissable layer over an
+  // open select, where it would consume the Escape meant for that select.
+  const [fontTooltipOpen, setFontTooltipOpen] = React.useState(false)
+  const [sizeTooltipOpen, setSizeTooltipOpen] = React.useState(false)
   const [colorMenuOpen, setColorMenuOpen] = React.useState(false)
   const [pickerSeed, setPickerSeed] = React.useState("#000000")
   const [imageMenuOpen, setImageMenuOpen] = React.useState(false)
@@ -332,7 +336,7 @@ export const EditorMenuBar = ({
         <Select
           open={compact ? fontMenuOpen : undefined}
           onOpenChange={next => {
-            if (next) { cancelPendingFocus(); fontAppliedRef.current = false }
+            if (next) { cancelPendingFocus(); fontAppliedRef.current = false; setFontTooltipOpen(false) }
             setFontMenuOpen(next)
           }}
           onValueChange={value => {
@@ -341,7 +345,7 @@ export const EditorMenuBar = ({
           }}
           value={editor.getAttributes("textStyle").fontFamily || fontFamilies[0]}
         >
-          <Tooltip>
+          <Tooltip open={fontTooltipOpen && !fontMenuOpen} onOpenChange={next => setFontTooltipOpen(next && !fontMenuOpen)}>
             <TooltipTrigger asChild>
               <SelectTrigger
                 ref={fontButtonRef}
@@ -349,7 +353,7 @@ export const EditorMenuBar = ({
                 className={cn("text-xs h-8", compact ? "w-12 gap-1 px-2" : "w-[120px]")}
                 aria-label="Font family"
                 onPointerDown={compact ? event => event.preventDefault() : undefined}
-                onClick={event => { cancelPendingFocus(); if (compact) { event.preventDefault(); fontAppliedRef.current = false; setFontMenuOpen(true) } }}
+                onClick={event => { cancelPendingFocus(); if (compact) { event.preventDefault(); fontAppliedRef.current = false; setFontTooltipOpen(false); setFontMenuOpen(true) } }}
               >
                 {compact ? <span className="text-sm" aria-hidden="true">Aa</span> : <SelectValue placeholder="Font Family" />}
               </SelectTrigger>
@@ -367,7 +371,7 @@ export const EditorMenuBar = ({
         <Select
           open={compact ? sizeMenuOpen : undefined}
           onOpenChange={next => {
-            if (next) { cancelPendingFocus(); sizeAppliedRef.current = false }
+            if (next) { cancelPendingFocus(); sizeAppliedRef.current = false; setSizeTooltipOpen(false) }
             setSizeMenuOpen(next)
           }}
           onValueChange={value => {
@@ -376,13 +380,13 @@ export const EditorMenuBar = ({
           }}
           value={editor.getAttributes("textStyle").fontSize?.replace("pt", "") || fontSizes[2]}
         >
-          <Tooltip>
+          <Tooltip open={sizeTooltipOpen && !sizeMenuOpen} onOpenChange={next => setSizeTooltipOpen(next && !sizeMenuOpen)}>
             <TooltipTrigger asChild>
               <SelectTrigger
                 ref={sizeButtonRef}
                 data-cy="font-size-button" className="w-[70px] text-xs h-8" aria-label="Font size"
                 onPointerDown={compact ? event => event.preventDefault() : undefined}
-                onClick={event => { cancelPendingFocus(); if (compact) { event.preventDefault(); sizeAppliedRef.current = false; setSizeMenuOpen(true) } }}
+                onClick={event => { cancelPendingFocus(); if (compact) { event.preventDefault(); sizeAppliedRef.current = false; setSizeTooltipOpen(false); setSizeMenuOpen(true) } }}
               >
                 <SelectValue placeholder="Font Size" />
               </SelectTrigger>

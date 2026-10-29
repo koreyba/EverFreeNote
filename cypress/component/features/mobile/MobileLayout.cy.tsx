@@ -1032,7 +1032,9 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('[role="listbox"]').should('not.exist')
     cy.get('[aria-label="Font family"]').click({ scrollBehavior: false })
     cy.get('[role="option"]').contains(/^Serif$/).closest('[role="option"]').should('have.attr', 'data-state', 'checked')
-    cy.get('[role="listbox"]').type('{esc}')
+    cy.press(Cypress.Keyboard.Keys.ESC)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[aria-label="Font family"]').should('be.focused')
   })
 
   it('waits for a click and suppresses dropdown opening after a touch drag', () => {
@@ -1675,6 +1677,69 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap').should('be.focused')
     cy.press('x')
     cy.get('.tiptap p').first().find('span[style*="font-size: 14pt"]').should('have.text', 'x')
+  })
+
+  it('dismisses the font size menu when Escape follows a delayed tooltip', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    cy.get('[data-cy="font-size-button"]').scrollIntoView()
+      .trigger('pointermove', { eventConstructor: 'PointerEvent', pointerType: 'mouse' })
+      .click({ scrollBehavior: false })
+    cy.get('[role="listbox"]').should('be.visible')
+    // Allow the toolbar tooltip delay to elapse before dismissing the menu.
+    cy.tick(250)
+    cy.press(Cypress.Keyboard.Keys.ESC)
+    cy.tick(1)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[data-cy="font-size-button"]').should('be.focused')
+  })
+
+  it('dismisses the font family menu when Escape follows a delayed tooltip', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    cy.get('[data-cy="font-family-button"]').scrollIntoView()
+      .trigger('pointermove', { eventConstructor: 'PointerEvent', pointerType: 'mouse' })
+      .click({ scrollBehavior: false })
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.tick(250)
+    cy.press(Cypress.Keyboard.Keys.ESC)
+    cy.tick(1)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[data-cy="font-family-button"]').should('be.focused')
+  })
+
+  it('dismisses the desktop font size menu after a hover with one Escape', () => {
+    cy.viewport(1440, 900)
+    mountLongEditor()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    cy.get('[data-cy="font-size-button"]')
+      .trigger('pointermove', { eventConstructor: 'PointerEvent', pointerType: 'mouse' })
+      .click()
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.tick(250)
+    cy.press(Cypress.Keyboard.Keys.ESC)
+    cy.tick(1)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[data-cy="font-size-button"]').should('be.focused')
+  })
+
+  it('exposes the font size tooltip to keyboard users and dismisses its menu', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    cy.get('[data-cy="font-family-button"]').scrollIntoView().focus()
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.get('[data-cy="font-size-button"]').should('be.focused').should(($trigger) => {
+      const tooltipId = $trigger.attr('aria-describedby')
+      expect(tooltipId, 'keyboard focus describes the control').to.be.a('string').and.not.empty
+      expect($trigger[0].ownerDocument.getElementById(tooltipId ?? '')?.textContent).to.equal('Font size')
+    })
+    cy.press(Cypress.Keyboard.Keys.ENTER)
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.press(Cypress.Keyboard.Keys.ESC)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[data-cy="font-size-button"]').should('be.focused')
   })
 
   it('returns focus to the font size trigger when dismissed without a choice', () => {
