@@ -1,0 +1,1 @@
+{"id":"da9139d6d6d4d52e4ac2b86f252629e4","fullName":"everfreenote:ui/web/tests/unit/hooks/useGuardedSignOut.test.tsx#guarded sign out does not sign out the next account when identity changes during preparation","name":"does not sign out the next account when identity changes during preparation","status":"passed","testResultsByEnv":{"default":"3ba76975d983ab4a83d079035e776d80"}}

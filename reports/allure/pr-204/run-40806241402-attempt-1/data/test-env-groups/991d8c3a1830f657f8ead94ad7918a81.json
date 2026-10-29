@@ -1,0 +1,1 @@
+{"id":"991d8c3a1830f657f8ead94ad7918a81","fullName":"everfreenote:cypress/component/features/notes/SignOutDraftSafety.cy.tsx#Safe sign out with local drafts signs out normally with no unsaved notes while online","name":"signs out normally with no unsaved notes while online","status":"passed","testResultsByEnv":{"default":"bef18e5ce7f3961b7e54d68fe45b145a"}}

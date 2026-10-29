@@ -1,0 +1,1 @@
+{"id":"988411b9c3adae86b4dbc29f225da4d6","fullName":"everfreenote:core/tests/unit/note-clipboard-additional-branches.test.ts#core/services/noteClipboard additional edge cases htmlToPlainText returns empty text for empty input","name":"returns empty text for empty input","status":"passed","testResultsByEnv":{"default":"687b73c2706f5f3870bd724bd38cf846"}}
