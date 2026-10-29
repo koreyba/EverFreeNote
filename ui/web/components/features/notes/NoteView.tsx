@@ -57,7 +57,7 @@ export const NoteView = React.memo(function NoteView({
 
   // Мемоизация санитаризованного контента для предотвращения повторной обработки
   const sanitizedContent = React.useMemo(
-    () => SanitizationService.sanitize(bodyHtml),
+    () => SanitizationService.sanitizeForReading(bodyHtml),
     [bodyHtml]
   )
 

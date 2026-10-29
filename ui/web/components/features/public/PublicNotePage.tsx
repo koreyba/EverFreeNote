@@ -19,7 +19,7 @@ export function PublicNotePage({ note }: PublicNotePageProps) {
       day: "numeric",
     })
     : "Unknown"
-  const sanitizedContent = SanitizationService.sanitize(note.description ?? "")
+  const sanitizedContent = SanitizationService.sanitizeForReading(note.description ?? "")
 
   return (
     <main className="min-h-[100dvh] bg-background text-foreground">

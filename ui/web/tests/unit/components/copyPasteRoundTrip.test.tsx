@@ -41,6 +41,20 @@ describe('self-copy round-trip (jsdom / DOMParser path)', () => {
     expect(result.html).toContain('<sup>2</sup>')
     expect(result.html).toContain('<sub>1</sub>')
     expect(result.html).toContain('data:image/png;base64,iVBORw0KGgo=')
+    expect(result.html).toContain('alt="p"')
+  })
+
+  it('preserves a decorative image and an explicitly described image through copy and paste', () => {
+    const source = '<p><img src="data:image/png;base64,iVBORw0KGgo=" alt=""><img src="https://example.com/photo.png" alt="A forest in spring"></p>'
+    const payload = NoteClipboardService.buildPayload(source)
+    const result = SmartPasteService.resolvePaste({ html: payload.html, text: payload.text, types: ['text/html', 'text/plain'] })
+    const document = new DOMParser().parseFromString(result.html, 'text/html')
+    const images = document.querySelectorAll('img')
+
+    expect(images).toHaveLength(2)
+    expect(images[0].getAttribute('alt')).toBe('')
+    expect(images[1].getAttribute('alt')).toBe('A forest in spring')
+    expect(images[0].getAttribute('src')).toBe('data:image/png;base64,iVBORw0KGgo=')
   })
 
   it('preserves alignment, font-size and color through resolvePaste', () => {

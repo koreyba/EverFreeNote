@@ -57,3 +57,7 @@ Specifically, we want to address:
 - Keep a note with twelve tags visually compact; expose every tag and all existing operations through an accessible disclosure.
 - Make editing and reading look like the same document, with flat action chrome and a continuous editable canvas.
 - Preserve saving, autosave, tab selection/session restoration, find, mobile keyboard and safe-area behavior.
+
+## Image accessibility follow-up
+- Expose the note body as a named multiline textbox and allow descriptions to be edited for any image using touch or keyboard.
+- Preserve existing content and image attributes; identify images with no description in the interface without silently rewriting them. Mark an image decorative only by an explicit user choice.

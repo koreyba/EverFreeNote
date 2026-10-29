@@ -21,7 +21,7 @@ export function SplitNotePreview({
   const title = useDraft ? tab.draft.title : tab.note?.title ?? ""
   const body = useDraft ? tab.draft.description : tab.note?.description ?? tab.note?.content ?? ""
   const tags = useDraft ? parseTagString(tab.draft.tags) : tab.note?.tags ?? []
-  const content = React.useMemo(() => SanitizationService.sanitize(body), [body])
+  const content = React.useMemo(() => SanitizationService.sanitizeForReading(body), [body])
   const contentRef = React.useRef<HTMLDivElement | null>(null)
   const initialScrollTop = React.useRef(tab.view.scrollTop)
   const scrollNotify = useDebouncedSessionCallback(onViewSessionChange, 250, "flush")

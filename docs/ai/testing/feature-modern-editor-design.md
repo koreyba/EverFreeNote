@@ -83,3 +83,8 @@ Covered states: light/dark editing and reading; 1280px desktop, 390px phone and 
 Read-only app smoke: local demo preview at `http://127.0.0.1:3104` against the local 54321 backend, opening the existing long-title/12-tag note in reading and editing at 390px and 320px. No demo-note content was changed. Real Android/iOS keyboard and IME behavior and exact integrated-head CI remain separate checks.
 
 Screenshots are attached to the Cypress report and stored under `cypress/screenshots/NoteDocumentDesign.cy.tsx/` (document-mobile, document-reader-mobile, document-desktop, document-reader-desktop and document-mobile-320-full-title variants). Generated reports/screenshots and local dependency links are not committed.
+
+## Image accessibility follow-up
+Component coverage checks editor semantics, unchanged content on cancel, multiple images, stale-position protection, device/URL/HTML clipboard insertion, descriptions, explicit decorative choice and reopen. Unit coverage checks reading views and clipboard preservation. Separate Chrome keyboard and accessibility-tree checks use isolated synthetic content at narrow/mobile/desktop sizes; they do not prove physical-device, screen-reader, native bitmap clipboard or backend persistence behavior.
+
+Local results: 13 final styled dialog component tests, 61 targeted web unit tests, 35 existing core sanitizer tests, full type-check and ESLint passed. A broader earlier component run passed 104 tests; the final dialog-only rerun supersedes its dialog coverage after safe-area adjustments. Screenshots and detailed evidence are kept outside the repository.

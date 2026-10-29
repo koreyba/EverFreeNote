@@ -14,6 +14,7 @@ import { EditorToolbarMenu } from "./EditorToolbarMenu"
 import { cn } from "@ui/web/lib/utils"
 import { useToolbarDrag } from "@ui/web/hooks/useToolbarDrag"
 import { toast } from "sonner"
+import { getImageDescriptionTarget, ImageDescriptionDialog, type ImageDescriptionTarget } from "./ImageDescriptionDialog"
 
 export type HistoryState = {
   canUndo: boolean
@@ -52,7 +53,9 @@ export const EditorMenuBar = ({
   const [fontMenuOpen, setFontMenuOpen] = React.useState(false)
   const [sizeMenuOpen, setSizeMenuOpen] = React.useState(false)
   const [imageMenuOpen, setImageMenuOpen] = React.useState(false)
+  const [imageDescriptionTarget, setImageDescriptionTarget] = React.useState<ImageDescriptionTarget | null>(null)
   const imageInputRef = React.useRef<HTMLInputElement>(null)
+  const imageButtonRef = React.useRef<HTMLButtonElement>(null)
   const imageCommandAppliedRef = React.useRef(false)
 
   // Tiptap 3 does not rerender useEditor on transactions by default. Subscribe
@@ -79,6 +82,18 @@ export const EditorMenuBar = ({
       imageCommandAppliedRef.current = true
       editor.chain().focus().setImage({ src: url }).run()
     }
+  }
+
+  const describeImage = () => {
+    const target = getImageDescriptionTarget(editor)
+    if (!target) {
+      setImageMenuOpen(false)
+      toast.info("No images in this note", { description: "Insert an image first." })
+      return
+    }
+    imageCommandAppliedRef.current = true
+    setImageMenuOpen(false)
+    setImageDescriptionTarget(target)
   }
 
   const addImageFromFile = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -345,10 +360,11 @@ export const EditorMenuBar = ({
             <TooltipTrigger asChild>
               <PopoverTrigger asChild>
                 <Button
+                  ref={imageButtonRef}
                   type="button"
                   data-cy="image-button"
                   variant={editor.isActive("image") ? "secondary" : "ghost"}
-                  aria-label="Insert image"
+                  aria-label="Image options"
                   onMouseDown={event => event.preventDefault()}
                   className="h-8 w-8 p-0 rounded-lg active:scale-90 hover:bg-muted transition-all duration-100 ease-out shrink-0"
                 >
@@ -356,7 +372,7 @@ export const EditorMenuBar = ({
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
-            <TooltipContent>Insert image</TooltipContent>
+            <TooltipContent>Image options</TooltipContent>
           </Tooltip>
           <input ref={imageInputRef} data-cy="image-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden" onChange={addImageFromFile} />
           <PopoverContent side={compact ? "top" : "bottom"} align="start" className="w-52 p-1" onCloseAutoFocus={event => {
@@ -371,8 +387,19 @@ export const EditorMenuBar = ({
             <Button type="button" variant="ghost" className="h-11 w-full justify-start" onClick={addImage}>
               Insert from URL
             </Button>
+            <Button type="button" variant="ghost" className="h-11 w-full justify-start" onClick={describeImage}>
+              Image description
+            </Button>
           </PopoverContent>
         </Popover>
+        {imageDescriptionTarget && (
+          <ImageDescriptionDialog
+            editor={editor}
+            target={imageDescriptionTarget}
+            onClose={() => setImageDescriptionTarget(null)}
+            onReturnFocus={() => imageButtonRef.current?.focus()}
+          />
+        )}
 
         {!compact && (<>
           {/* Alignment */}

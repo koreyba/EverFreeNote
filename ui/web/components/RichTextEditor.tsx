@@ -182,6 +182,9 @@ const RichTextEditor = React.forwardRef<RichTextEditorHandle, RichTextEditorProp
     const editorProps = React.useMemo(() => ({
       attributes: {
         spellcheck: spellcheckEnabled ? "true" : "false",
+        role: "textbox",
+        "aria-label": "Note content",
+        "aria-multiline": "true",
       },
       handlePaste,
       handleDOMEvents: {

@@ -15,6 +15,7 @@ import Heading from "@tiptap/extension-heading"
 import type { Extensions } from "@tiptap/react"
 import { FontSize } from "@/extensions/FontSize"
 import { ChunkFocusExtension } from "@/extensions/ChunkFocus"
+import { ImageAccessibility } from "./ImageAccessibility"
 
 /**
  * Shared TipTap extension configuration used by RichTextEditor.
@@ -44,6 +45,7 @@ export const editorExtensions: Extensions = [
     inline: true,
     allowBase64: true,
   }),
+  ImageAccessibility,
   TextStyle,
   Color,
   FontFamily,

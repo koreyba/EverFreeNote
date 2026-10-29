@@ -44,6 +44,21 @@ const SELF_COPY_ALLOWED_ATTR = [
   'data-pm-slice',
 ]
 
+function sanitizationConfig(profile: SanitizationProfile) {
+  const isEditorSelfCopy = profile === 'editor-self-copy'
+  return {
+    ALLOWED_TAGS: isEditorSelfCopy ? SELF_COPY_ALLOWED_TAGS : DEFAULT_ALLOWED_TAGS,
+    ALLOWED_ATTR: isEditorSelfCopy
+      ? SELF_COPY_ALLOWED_ATTR
+      : [...DEFAULT_ALLOWED_ATTR, ...DEFAULT_ALLOWED_DATA_ATTR],
+    ALLOW_DATA_ATTR: false,
+    FORBID_TAGS: isEditorSelfCopy
+      ? ['script', 'iframe', 'object', 'embed', 'form', 'button']
+      : ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
+    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+  }
+}
+
 export class SanitizationService {
   /**
    * Sanitizes HTML content to prevent XSS attacks.
@@ -51,20 +66,18 @@ export class SanitizationService {
    * Removes <script>, <iframe>, and other dangerous tags.
    */
   static sanitize(html: string, options: SanitizeOptions = {}): string {
-    const profile = options.profile ?? 'default'
-    const isEditorSelfCopy = profile === 'editor-self-copy'
+    return DOMPurify.sanitize(html, sanitizationConfig(options.profile ?? 'default'))
+  }
 
-    return DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: isEditorSelfCopy ? SELF_COPY_ALLOWED_TAGS : DEFAULT_ALLOWED_TAGS,
-      ALLOWED_ATTR: isEditorSelfCopy
-        ? SELF_COPY_ALLOWED_ATTR
-        : [...DEFAULT_ALLOWED_ATTR, ...DEFAULT_ALLOWED_DATA_ATTR],
-      ALLOW_DATA_ATTR: false,
-      FORBID_TAGS: isEditorSelfCopy
-        ? ['script', 'iframe', 'object', 'embed', 'form', 'button']
-        : ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
-      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
+  /** Names old undescribed images for display without changing stored or copied HTML. */
+  static sanitizeForReading(html: string): string {
+    const fragment = DOMPurify.sanitize(html, { ...sanitizationConfig('default'), RETURN_DOM_FRAGMENT: true })
+    fragment.querySelectorAll('img:not([alt])').forEach((image) => {
+      image.setAttribute('alt', 'Image without description')
     })
+    const container = fragment.ownerDocument.createElement('div')
+    container.appendChild(fragment)
+    return container.innerHTML
   }
 
   /**

@@ -58,3 +58,6 @@ Implemented:
 - Title selectors in existing tests now target the field independently of the input/textarea element type. The old horizontal-tag-scroll scenario now verifies the replacement disclosure workflow. The image scrolling fixture uses 667px height because the compact document already fits its image at 844px.
 
 No changes to persistence schemas, backend requests, EditorMenuBar or EditorToolbarButton. No production deployment or native device verification in this change.
+
+## Image accessibility follow-up
+RichTextEditor exposes named multiline textbox semantics. Image options use the existing Tiptap image attributes to update descriptions; the dialog tracks multiple image drafts and rejects stale document positions. A ProseMirror decoration and reading-only sanitization provide a temporary name for images without alt, preserving stored HTML, image sources and dimensions until an explicit edit.
