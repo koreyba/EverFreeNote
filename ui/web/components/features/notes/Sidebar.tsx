@@ -105,7 +105,7 @@ export function Sidebar({
     <aside
       ref={sidebarRef}
       className={cn(
-        "relative w-80 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full md:w-[var(--notes-sidebar-width)] md:flex-none md:sticky md:top-0 md:h-screen md:overflow-hidden",
+        "relative w-80 bg-sidebar-background border-r border-sidebar-border flex flex-col h-full md:w-[var(--notes-sidebar-width)] md:flex-none md:sticky md:top-0 md:overflow-hidden",
         className
       )}
       style={{ "--notes-sidebar-width": `${resizer.width}px` } as React.CSSProperties}
