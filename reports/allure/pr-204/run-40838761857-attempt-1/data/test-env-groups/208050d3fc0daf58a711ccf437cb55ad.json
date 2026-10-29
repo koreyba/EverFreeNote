@@ -1,0 +1,1 @@
+{"id":"208050d3fc0daf58a711ccf437cb55ad","fullName":"everfreenote:ui/web/tests/unit/components/searchResultsPanel.test.tsx#SearchResultsPanel cleans resize listeners and cursor state on unmount","name":"cleans resize listeners and cursor state on unmount","status":"passed","testResultsByEnv":{"default":"c6f094ae9ad728baf862e0be0b6d6626"}}
