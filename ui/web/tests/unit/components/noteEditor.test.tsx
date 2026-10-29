@@ -158,6 +158,14 @@ describe('NoteEditor same-note autosave reconciliation', () => {
     return { ref, onAutoSave, ...rendered }
   }
 
+  it('describes the shared last-save timestamp as a device-wide local save', () => {
+    const savedAt = '2026-01-01T12:00:00.000Z'
+    renderEditor({ lastSavedAt: savedAt })
+
+    expect(screen.getByText(`Last local save (any note): ${new Date(savedAt).toLocaleTimeString()}`)).toBeTruthy()
+    expect(screen.queryByText(/^Saved at /)).toBeNull()
+  })
+
   it('preserves a dirty local title when the same note refreshes with stale data', async () => {
     const { rerender, ref, onAutoSave } = renderEditor()
 

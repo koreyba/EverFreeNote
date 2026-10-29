@@ -11,6 +11,7 @@ import { User } from "@supabase/supabase-js"
 import { useResizableNotesSidebar } from "@ui/web/hooks/useResizableNotesSidebar"
 import { cn } from "@ui/web/lib/utils"
 import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm"
+import { describeDeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
 
 interface SidebarProps {
   user: User
@@ -67,27 +68,10 @@ export function Sidebar({
     : false
 
   const syncStatus = React.useMemo(() => {
-    if (isOffline) {
-      return {
-        className: "bg-amber-500 animate-pulse",
-        label: "Offline mode",
-      }
-    }
-    if (failedCount > 0) {
-      return {
-        className: "bg-destructive",
-        label: `Sync failed: ${failedCount}`,
-      }
-    }
-    if (pendingCount > 0) {
-      return {
-        className: "bg-muted-foreground animate-pulse",
-        label: `Syncing: ${pendingCount}`,
-      }
-    }
+    const status = describeDeviceSyncStatus({ isOffline, failedCount, pendingCount })
     return {
-      className: "bg-emerald-500",
-      label: "Synchronized",
+      className: status.tone === "error" ? "bg-destructive" : status.tone === "offline" ? "bg-amber-500" : "bg-muted-foreground",
+      label: status.text,
     }
   }, [isOffline, failedCount, pendingCount])
 
@@ -138,13 +122,13 @@ export function Sidebar({
             <div className="relative">
               <BrandLogo className="h-8 w-8 shrink-0 transition-transform hover:scale-105" />
               {/* Sync Status Dot */}
-              <output 
+              <span
                 className={cn(
                   "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card",
                   syncStatus.className
                 )} 
                 title={syncStatus.label}
-                aria-label={syncStatus.label} 
+                aria-hidden="true"
               />
             </div>
             <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">EverFreeNote</h1>
@@ -172,7 +156,7 @@ export function Sidebar({
         <div className="flex items-center gap-2 md:block">
           <div className="flex min-w-0 flex-1 items-center gap-2 md:hidden">
             <h1 className="text-xl font-bold tracking-tight">Notes</h1>
-            <output className={cn("h-2.5 w-2.5 rounded-full", syncStatus.className)} title={syncStatus.label} aria-label={syncStatus.label} />
+            <span className={cn("h-2.5 w-2.5 rounded-full", syncStatus.className)} title={syncStatus.label} aria-hidden="true" />
           </div>
           {!selectionMode && hasVisibleNotes && onEnterSelectionMode && (
             <Button type="button" variant="ghost" onClick={onEnterSelectionMode} className="h-11 px-3 md:hidden">

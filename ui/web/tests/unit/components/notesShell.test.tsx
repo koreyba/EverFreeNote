@@ -335,6 +335,41 @@ describe('NotesShell', () => {
     }
   })
 
+  it('announces offline, queued, and failed changes while editing', () => {
+    renderShell(makeController({ selectedNote: note, isEditing: true, isOffline: true, pendingCount: 2, failedCount: 1 }))
+
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.getAttribute('role')).toBe('status')
+    expect(status.getAttribute('aria-live')).toBe('polite')
+    expect(status.textContent).toContain('Offline')
+    expect(status.textContent).toContain('2 waiting')
+    expect(status.textContent).toContain('1 failed')
+  })
+
+  it('describes queued changes as waiting in reading mode', () => {
+    renderShell(makeController({ selectedNote: note, pendingCount: 3 }))
+
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).toContain('3 waiting')
+    expect(status.textContent).not.toContain('Syncing')
+    expect(status.textContent).not.toContain('Synchronized')
+  })
+
+  it('keeps sync failure visible on the tag page', () => {
+    renderShell(makeController({ activeMainView: 'tags', failedCount: 2 }))
+
+    expect(screen.getByTestId('device-sync-status').textContent).toContain('2 failed')
+  })
+
+  it('does not claim synchronization when no queue issues have yet been reported', () => {
+    renderShell(makeController())
+
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).not.toContain('Synchronized')
+    expect(status.textContent).toContain('No waiting or failed changes reported')
+    expect(status.className).toContain('sr-only')
+  })
+
   it('renders the empty editor, registers the editor ref, and wires list actions', async () => {
     const controller = makeController()
     renderShell(controller)

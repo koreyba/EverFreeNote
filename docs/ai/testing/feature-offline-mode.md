@@ -34,3 +34,8 @@ description: Подход, сценарии и покрытие
 - CI: `npm run type-check`, `npm run eslint`, компонентные/интеграционные тесты, e2e (web) для ключевых сценариев.
 - Покрытие: core offline modules приоритетно; UI-хуки — smoke/интеграция.
 - Ручная проверка: баннер оффлайна, лейблы pending/failed, корректный overlay/перезапуск.
+
+## Статус синхронизации в web UI
+- `DeviceSyncStatus.cy.tsx`: изолированный браузер и IndexedDB, simulated offline и HTTP 503/retry; статус проверяется в мобильном редакторе, чтении и Tags, а также на desktop.
+- `notesShell.test.tsx` и `noteEditor.test.tsx`: live region, одновременные offline/failed/pending и подпись общего времени локальной записи.
+- Физическая мобильная сеть и фактическая работа screen reader в этих тестах не проверяются; Cypress проверяет видимость и ARIA-семантику.

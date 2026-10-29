@@ -174,47 +174,44 @@ describe('Sidebar Component', () => {
   })
 
   describe('Sync Status Indicator', () => {
-    it('shows synchronized status when online with no pending or failed', () => {
+    it('does not claim synchronization when no queue issue is reported', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={0} failedCount={0} />))
 
-      cy.get('[title="Synchronized"]').should('exist')
-      cy.get('[title="Synchronized"]').should('have.class', 'bg-emerald-500')
+      cy.get('[title="Sync status"]').should('exist')
+      cy.get('[title="Sync status"]').should('have.class', 'bg-muted-foreground')
     })
 
-    it('shows syncing status with count when pendingCount > 0', () => {
+    it('shows waiting changes with count when pendingCount > 0', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={3} failedCount={0} />))
 
-      cy.get('[title="Syncing: 3"]').should('exist')
-      cy.get('[title="Syncing: 3"]').should('have.class', 'animate-pulse')
+      cy.get('[title="3 waiting"]').should('exist')
+      cy.get('[title="3 waiting"]').should('have.class', 'bg-muted-foreground')
     })
 
     it('shows sync failed status with count when failedCount > 0', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={0} failedCount={2} />))
 
-      cy.get('[title="Sync failed: 2"]').should('exist')
-      cy.get('[title="Sync failed: 2"]').should('have.class', 'bg-destructive')
+      cy.get('[title="2 failed"]').should('exist')
+      cy.get('[title="2 failed"]').should('have.class', 'bg-destructive')
     })
 
     it('shows offline mode when isOffline is true', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline pendingCount={0} failedCount={0} />))
 
-      cy.get('[title="Offline mode"]').should('exist')
-      cy.get('[title="Offline mode"]').should('have.class', 'bg-amber-500')
+      cy.get('[title="Offline"]').should('exist')
+      cy.get('[title="Offline"]').should('have.class', 'bg-amber-500')
     })
 
-    it('prioritizes offline status over other statuses', () => {
+    it('reports offline, failed, and waiting changes together', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline pendingCount={5} failedCount={3} />))
 
-      cy.get('[title="Offline mode"]').should('exist')
-      cy.get('[title*="Syncing"]').should('not.exist')
-      cy.get('[title*="Sync failed"]').should('not.exist')
+      cy.get('[title="Offline · 3 failed · 5 waiting"]').should('exist')
     })
 
-    it('prioritizes failed status over pending status', () => {
+    it('reports failed and waiting changes together', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={5} failedCount={2} />))
 
-      cy.get('[title="Sync failed: 2"]').should('exist')
-      cy.get('[title*="Syncing"]').should('not.exist')
+      cy.get('[title="2 failed · 5 waiting"]').should('exist')
     })
   })
 })

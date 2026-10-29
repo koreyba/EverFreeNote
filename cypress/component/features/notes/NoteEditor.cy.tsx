@@ -98,12 +98,12 @@ describe('NoteEditor Component', () => {
     cy.get('[data-cy="note-save-button"]').should('not.be.disabled')
   })
 
-  it('shows last saved timestamp', () => {
+  it('labels the shared timestamp as the last local save for any note', () => {
     const lastSavedAt = new Date('2023-01-01T12:00:00').toISOString()
     const props = { ...getDefaultProps(), lastSavedAt }
     cy.mount(<NoteEditor {...props} />)
 
-    cy.contains(`Saved at ${new Date(lastSavedAt).toLocaleTimeString()}`).should('be.visible')
+    cy.contains(`Last local save (any note): ${new Date(lastSavedAt).toLocaleTimeString()}`).should('be.visible')
   })
 
   it('debounces autosave', () => {

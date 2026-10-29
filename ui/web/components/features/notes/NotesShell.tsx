@@ -38,6 +38,7 @@ import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigati
 import { getTabLabel, NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
 import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
 import { SplitEmptyPane, SplitNotePreview } from "@/components/features/notes/SplitNotePreview"
+import { DeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
 import { Button } from "@/components/ui/button"
 
 import { MobileWorkspace } from "@/components/features/navigation/MobileWorkspace"
@@ -413,6 +414,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
       {activeMainView === "tags" ? (
         <main className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
+          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} />
           <TagsPage
             notes={notes}
             onSelectTag={handleSelectTagFromTagsPage}
@@ -428,6 +430,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         </main>
       ) : (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} />
           <MobileNotesTabMenu
             tabs={tabs}
             activeTabId={activeTabId}
