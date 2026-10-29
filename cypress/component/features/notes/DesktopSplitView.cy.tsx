@@ -28,6 +28,27 @@ const openTwoNotes = () => {
   cy.get('[data-testid="split-pane-right"]').should('contain', 'Second note body')
 }
 
+const scrollDiagnostic = (reader: HTMLElement) => {
+  const doc = reader.ownerDocument
+  const view = doc.defaultView
+  const active = doc.activeElement
+  const pane = reader.closest('[data-testid^="split-pane-"]')
+  const style = view?.getComputedStyle(reader)
+  return JSON.stringify({
+    at: view?.performance.now(),
+    visibility: doc.visibilityState,
+    documentFocused: doc.hasFocus(),
+    activeTag: active?.tagName,
+    activeRole: active?.getAttribute('role'),
+    paneActive: pane?.getAttribute('data-active-pane'),
+    scrollTop: reader.scrollTop,
+    scrollHeight: reader.scrollHeight,
+    clientHeight: reader.clientHeight,
+    display: style?.display,
+    rendered: reader.getClientRects().length > 0,
+  })
+}
+
 describe('Desktop split view', { retries: 0 }, () => {
   let restoreNetwork: (() => void) | undefined
   let releasingWrites: boolean
@@ -292,7 +313,7 @@ describe('Desktop split view', { retries: 0 }, () => {
       activate.click()
     })
     cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
-      expect($reader[0].scrollTop, 'active reader restores the live preview position').to.be.greaterThan(500)
+      expect($reader[0].scrollTop, `active reader restores the live preview position; ${scrollDiagnostic($reader[0])}`).to.be.greaterThan(500)
     }).then(($reader) => {
       const reader = $reader[0]
       reader.scrollTop = 800
@@ -330,7 +351,7 @@ describe('Desktop split view', { retries: 0 }, () => {
       activate.click()
     })
     cy.get('[data-testid="split-pane-left"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
-      expect($reader[0].scrollTop, 'left reader restores the live preview position').to.be.greaterThan(500)
+      expect($reader[0].scrollTop, `left reader restores the live preview position; ${scrollDiagnostic($reader[0])}`).to.be.greaterThan(500)
     }).then(($reader) => {
       const reader = $reader[0]
       reader.scrollTop = 800
@@ -476,11 +497,16 @@ describe('Desktop split view', { retries: 0 }, () => {
       if (item.payload?.title !== 'First version' && item.payload?.title !== 'Latest version') return original(item)
       return holdQueueWrite(item.noteId, () => original(item), release => releases.push(release))
     })
-    cy.spy(webOfflineStorageAdapter, 'saveNote').as('saved')
+    const saved = cy.spy(webOfflineStorageAdapter, 'saveNote').as('saved')
+    const saveDiagnostic = () => JSON.stringify({
+      releases: releases.length,
+      queueWrites: observedQueueWrites,
+      saved: saved.getCalls().map(call => ({ noteId: call.args[0]?.id, title: call.args[0]?.title })),
+    })
 
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
     cy.tick(4000)
-    cy.wrap(null).should(() => expect(releases, `Observed synthetic queue writes: ${JSON.stringify(observedQueueWrites)}`).to.have.length(1))
+    cy.wrap(null).should(() => expect(releases, `Synthetic save state: ${saveDiagnostic()}`).to.have.length(1))
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second version')
     cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
     cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
@@ -488,7 +514,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Latest version')
     cy.then(() => releases[0]())
 
-    cy.wrap(null).should(() => expect(releases).to.have.length(2))
+    cy.wrap(null).should(() => expect(releases, `Synthetic save state: ${saveDiagnostic()}`).to.have.length(2))
     cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
     cy.then(() => releases[1]())
     cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')

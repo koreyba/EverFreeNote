@@ -24,6 +24,35 @@ function selectionFrom(doc: Document) {
   return selection
 }
 
+function fontMenuDiagnostic(doc: Document) {
+  const view = doc.defaultView
+  const active = doc.activeElement
+  const trigger = doc.querySelector('[data-cy="font-size-button"]')
+  const menus = Array.from(doc.querySelectorAll('[role="listbox"]'), menu => {
+    const style = view?.getComputedStyle(menu)
+    const bounds = menu.getBoundingClientRect()
+    return {
+      state: menu.getAttribute('data-state'),
+      ariaHidden: menu.getAttribute('aria-hidden'),
+      display: style?.display,
+      visibility: style?.visibility,
+      opacity: style?.opacity,
+      width: bounds.width,
+      height: bounds.height,
+    }
+  })
+  return JSON.stringify({
+    at: view?.performance.now(),
+    visibility: doc.visibilityState,
+    documentFocused: doc.hasFocus(),
+    activeTag: active?.tagName,
+    activeRole: active?.getAttribute('role'),
+    activeLabel: active?.getAttribute('aria-label'),
+    triggerExpanded: trigger?.getAttribute('aria-expanded'),
+    menus,
+  })
+}
+
 function colorReader(doc: Document) {
   const canvas = doc.createElement('canvas')
   canvas.width = canvas.height = 1
@@ -1637,7 +1666,10 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
     cy.get('[role="listbox"]').should('be.visible')
     cy.press(Cypress.Keyboard.Keys.ESC)
-    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('body').should(($body) => {
+      const doc = $body[0].ownerDocument
+      expect(Cypress.$(doc).find('[role="listbox"]').length, `font-size menu is removed; ${fontMenuDiagnostic(doc)}`).to.equal(0)
+    })
     cy.get('[data-cy="font-size-button"]').should('be.focused')
   })
 
