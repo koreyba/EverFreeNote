@@ -26,18 +26,25 @@ export type ReadNoteWorkspaceStateOptions = {
   userId?: string | null
   storage?: Storage | null
   idFactory?: NoteWorkspaceIdFactory
+  /** Allows callers to avoid overwriting an unreadable snapshot. */
+  onStorageFailure?: () => void
 }
 
 export function readNoteWorkspaceState({
   userId = null,
   storage = getSessionStorage(),
   idFactory,
+  onStorageFailure,
 }: ReadNoteWorkspaceStateOptions = {}): NoteWorkspaceState {
-  if (!storage) return hydrateNoteWorkspaceState(null, idFactory, userId)
+  if (!storage) {
+    onStorageFailure?.()
+    return hydrateNoteWorkspaceState(null, idFactory, userId)
+  }
 
   try {
     return hydrateNoteWorkspaceState(storage.getItem(NOTE_WORKSPACE_STORAGE_KEY), idFactory, userId)
   } catch {
+    onStorageFailure?.()
     return hydrateNoteWorkspaceState(null, idFactory, userId)
   }
 }

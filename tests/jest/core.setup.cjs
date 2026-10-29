@@ -1,4 +1,5 @@
 const SELF_CLOSING_TAGS = new Set(['br', 'hr', 'img', 'input'])
+const mockAttributeHooks = new Set()
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -32,7 +33,7 @@ function stripForbiddenBlocks(html, forbiddenTags) {
   return sanitized
 }
 
-function sanitizeAttributes(rawAttributes, config) {
+function sanitizeAttributes(rawAttributes, config, tagName) {
   const allowedAttrs = Array.isArray(config.ALLOWED_ATTR)
     ? new Set(config.ALLOWED_ATTR.map((attr) => String(attr).toLowerCase()))
     : null
@@ -43,7 +44,12 @@ function sanitizeAttributes(rawAttributes, config) {
   )
 
   const sanitized = []
-  for (const attribute of parseAttributes(rawAttributes)) {
+  const attributes = parseAttributes(rawAttributes)
+  const node = { localName: tagName, getAttribute: (name) => attributes.find((item) => item.name === name)?.value ?? null }
+  for (const attribute of attributes) {
+    const event = { attrName: attribute.name, attrValue: attribute.value.trim(), keepAttr: true }
+    for (const hook of mockAttributeHooks) hook(node, event, config)
+    if (!event.keepAttr) continue
     if (forbiddenAttrs.has(attribute.name) || attribute.name.startsWith('on')) {
       continue
     }
@@ -123,7 +129,7 @@ function sanitizeHtml(html, config = {}) {
 
   const stripped = stripForbiddenBlocks(html, forbiddenTags)
 
-  return stripped.replace(/<\/?([a-zA-Z0-9:-]+)([^>]*)>/g, (full, rawTagName, rawAttributes) => {
+  return stripped.replace(/<\/?([a-zA-Z0-9:-]+)((?:[^<>"']|"[^"]*"|'[^']*')*)>/g, (full, rawTagName, rawAttributes) => {
     const tagName = String(rawTagName).toLowerCase()
     const isClosing = full.startsWith('</')
     const isAllowed = !allowedTags || allowedTags.has(tagName)
@@ -136,7 +142,7 @@ function sanitizeHtml(html, config = {}) {
       return SELF_CLOSING_TAGS.has(tagName) ? '' : `</${tagName}>`
     }
 
-    const attributes = sanitizeAttributes(rawAttributes, config)
+    const attributes = sanitizeAttributes(rawAttributes, config, tagName)
     if (SELF_CLOSING_TAGS.has(tagName)) {
       return `<${tagName}${attributes} />`
     }
@@ -153,5 +159,7 @@ jest.mock('isomorphic-dompurify', () => ({
   __esModule: true,
   default: {
     sanitize: jest.fn((html, config) => sanitizeHtml(html, config)),
+    addHook: jest.fn((name, hook) => { if (name === 'uponSanitizeAttribute') mockAttributeHooks.add(hook) }),
+    removeHook: jest.fn((name, hook) => { if (name === 'uponSanitizeAttribute') mockAttributeHooks.delete(hook) }),
   },
 }))

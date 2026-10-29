@@ -3,6 +3,7 @@ import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 import { toast } from 'sonner'
 import { useMemo } from 'react'
+import { advanceNoteListRevision } from '@ui/web/lib/noteListRevision'
 
 import type { Tables } from '@/supabase/types'
 
@@ -16,7 +17,7 @@ import type { Tables } from '@/supabase/types'
 type Note = Tables<'notes'>
 
 type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string; id?: string; silent?: boolean }
-type UpdateNoteParams = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'description' | 'tags'>> & { silent?: boolean }
+type UpdateNoteParams = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'description' | 'tags'>> & { silent?: boolean; deferCacheRefresh?: boolean }
 type DeleteNoteParams = { id: string; silent?: boolean }
 
 type NotesPage = {
@@ -29,6 +30,21 @@ type NotesPage = {
 type NotesData = {
   pages: NotesPage[]
   pageParams: number[]
+}
+
+/** Update only the initiating user's paginated note lists after server confirmation. */
+function removeConfirmedNoteFromLists(queryClient: ReturnType<typeof useQueryClient>, userId: string, id: string) {
+  queryClient.setQueriesData<NotesData>({ queryKey: ['notes', userId] }, (data) => {
+    if (!data?.pages?.some((page) => page.notes?.some((note) => note.id === id))) return data
+    return {
+      ...data,
+      pages: data.pages.map((page) => ({
+        ...page,
+        notes: page.notes.filter((note) => note.id !== id),
+        totalCount: Math.max(0, page.totalCount - 1),
+      })),
+    }
+  })
 }
 
 /**
@@ -149,6 +165,8 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
 
     // Optimistic update
     onMutate: async (updatedNote) => {
+      // A batch reconciles the whole collection once, including on failure.
+      if (updatedNote.deferCacheRefresh) return
       await queryClient.cancelQueries({ queryKey: ['notes'] })
       const previousNotes = queryClient.getQueryData<NotesData>(['notes'])
 
@@ -185,8 +203,10 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
     },
 
     onSuccess: (_data, params) => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] })
-      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+      if (!params.deferCacheRefresh) {
+        queryClient.invalidateQueries({ queryKey: ['notes'] })
+        queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+      }
       if (!params.silent) callbacks.onSuccess?.()
     },
   })
@@ -199,7 +219,7 @@ type DeleteNoteCallbacks = MutationCallbacks & {
 
 export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCallbacks) {
   const queryClient = useQueryClient()
-  const { supabase } = useSupabase()
+  const { supabase, user } = useSupabase()
   const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useMutation({
@@ -224,19 +244,29 @@ export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCall
         return { ...old, pages: newPages }
       })
 
-      return { previousNotes }
+      return { previousNotes, userId: user?.id }
     },
 
-    onError: (err, _vars, context) => {
+    onError: (err, vars, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes)
       }
-      callbacks.onError?.(err)
+      if (!vars.silent) callbacks.onError?.(err)
     },
 
-    onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] })
-      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+    onSuccess: async (_data, vars, context) => {
+      if (context?.userId) {
+        advanceNoteListRevision(queryClient, context.userId)
+        // A GET started before DELETE can otherwise restore an old list after success.
+        await queryClient.cancelQueries({ queryKey: ['notes', context.userId] })
+        removeConfirmedNoteFromLists(queryClient, context.userId, vars.id)
+      }
+      void queryClient.invalidateQueries({ queryKey: ['notes'] }, { throwOnError: true }).catch((error) => {
+        console.warn('Failed to refresh notes after deletion:', error)
+      })
+      void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] }).catch((error) => {
+        console.warn('Failed to refresh tags after deletion:', error)
+      })
       if (!vars?.silent && !callbacks.silent) {
         callbacks.onSuccess?.()
       }

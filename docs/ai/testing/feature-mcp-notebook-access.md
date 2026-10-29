@@ -34,7 +34,7 @@ description: Unit, protocol-level and component coverage for the MCP server, OAu
 - [x] `getNote`: user-scoped lookup, null, errors
 - [x] `createNote`: insert payload with `user_id`, errors
 - [x] `updateNote`: partial patch, description mapping, zero rows → null, empty patch → read, errors
-- [x] Helpers: `escapeIlikeValue`, `toNoteRecord` normalisation of nullable columns
+- [x] Helpers: `escapeSearchValue`, `toNoteRecord` normalisation of nullable columns; local PostgREST coverage verifies literal `%`, `_`, `*`, quotes, backslashes and filter/regex syntax.
 
 ### `core/tests/unit/core-mcp-notebookServer.test.ts` (protocol-level)
 - [x] Server info, instructions, four tools with annotations and output schemas
@@ -92,6 +92,8 @@ npx jest --config jest.config.cjs --selectProjects unit-web --testPathPatterns '
 ```
 
 Results (2026-09-10): unit-core 68/68 passed (4 suites); unit-web 26/26 passed (3 suites) plus the existing `authCallbackPage` suite still green; `npm run type-check` projects (root, core, core tests, web tests) clean; `eslint --max-warnings=0` clean on all touched files; `deno check` clean.
+
+Follow-up (2026-10-28): protocol and sanitizer unit tests cover superscript/subscript preservation on create and read-update, alongside script, handler and unsafe URL removal (52/52 focused tests).
 
 Known gaps:
 - The Edge Function handler itself (`index.ts`) has no automated test beyond `deno check` and the smoke run; its logic is intentionally thin and delegates to tested helpers.

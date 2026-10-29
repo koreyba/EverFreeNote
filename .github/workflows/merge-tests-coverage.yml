@@ -66,6 +66,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify isolated fixture runner
+        run: python3 -m unittest scripts/test_run_component_ci_isolated.py
+
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -82,7 +85,7 @@ jobs:
       - name: Run Cypress component coverage
         id: run-cypress-coverage
         continue-on-error: true
-        run: npm run test:component:coverage
+        run: python3 scripts/run-component-ci-isolated.py -- npm run test:component:coverage
 
       - name: Render Cypress component report
         if: always()

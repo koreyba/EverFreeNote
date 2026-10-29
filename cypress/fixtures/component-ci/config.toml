@@ -1,0 +1,45 @@
+# Disposable local Supabase instance for component tests; placeholders are filled by the runner.
+project_id = "__PROJECT_ID__"
+
+[api]
+enabled = true
+port = __API_PORT__
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = __DB_PORT__
+shadow_port = __SHADOW_PORT__
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[realtime]
+enabled = false
+
+[studio]
+enabled = false
+
+[inbucket]
+enabled = false
+
+[storage]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+enable_signup = true
+minimum_password_length = 6
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false

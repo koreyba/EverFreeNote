@@ -9,6 +9,7 @@ import { webStorageAdapter } from '@ui/web/adapters/storage'
 import { resolveOAuthAdapter, resolveOAuthRedirectUri } from '@ui/web/adapters/oauth'
 import { featureFlags } from '@ui/web/featureFlags'
 import { clearNoteWorkspaceState } from '@ui/web/lib/noteWorkspaceStorage'
+import { useWorkspaceMemory } from '@ui/web/providers/WorkspaceMemoryProvider'
 
 const testAuthEmail = process.env.NEXT_PUBLIC_TEST_AUTH_EMAIL ?? ''
 const testAuthPassword = process.env.NEXT_PUBLIC_TEST_AUTH_PASSWORD ?? ''
@@ -32,8 +33,9 @@ const runtimeNoteAuthConfig: NoteAuthConfig = {
 }
 
 export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
-    const { supabase, user: providerUser, loading: providerLoading } = useSupabase()
+    const { supabase, user: providerUser, loading: providerLoading, getSessionSnapshot } = useSupabase()
     const queryClient = useQueryClient()
+    const workspaceMemory = useWorkspaceMemory()
 
     // -- State --
     const [user, setUser] = useState<User | null>(providerUser)
@@ -151,18 +153,37 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
     }
 
     const handleSignOut = async (callback?: () => void) => {
+        const started = getSessionSnapshot?.()
+        const ownsCleanup = () => {
+            if (!started || !getSessionSnapshot) return true
+            const current = getSessionSnapshot()
+            // The expected SIGNED_OUT event changes A to null once. A newer
+            // account or a second session must never be cleared by this call.
+            return (current.epoch === started.epoch && current.userId === started.userId)
+                || (current.epoch === started.epoch + 1 && current.userId === null)
+        }
+        if (started && started.userId !== (user?.id ?? null)) return
         try {
-            await authService.signOut()
-            await webStorageAdapter.removeItem('testUser')
+            const { error } = await authService.signOut()
+            if (error) throw error
+            if (!ownsCleanup()) return
+            try {
+                await webStorageAdapter.removeItem('testUser')
+            } catch (error) {
+                console.error('Error clearing legacy test session:', error)
+            }
+            if (!ownsCleanup()) return
             // Workspace tabs cache the notes they show, in storage that
             // outlives the session. Drop them here so nothing is left behind
             // for the next account signing in on this browser tab.
             clearNoteWorkspaceState()
+            if (user?.id) workspaceMemory.discardOwner(user.id, started?.epoch)
             setUser(null)
             queryClient.removeQueries({ queryKey: ['notes'] })
             if (typeof callback === 'function') callback()
         } catch (error) {
             console.error('Error signing out:', error)
+            toast.error('Could not sign out. Please try again.')
         }
     }
 

@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useNoteBulkActions } from '@ui/web/hooks/useNoteBulkActions'
@@ -23,9 +23,11 @@ type BulkActionParams = Parameters<typeof useNoteBulkActions>[0]
 const makeParams = (overrides: Partial<BulkActionParams> = {}) => {
   const queryClient = new QueryClient()
   const params: BulkActionParams = {
+    userId: 'user-1',
     selectedNoteIds: new Set<string>(),
     isOffline: false,
-    enqueueBatchAndDrainIfOnline: jest.fn().mockResolvedValue(undefined),
+    enqueueBatchAndDrainIfOnline: jest.fn(async (_items, applyLocal) => { await applyLocal?.() }),
+    offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } } as never,
     offlineCache: { saveNote: jest.fn().mockResolvedValue(undefined), deleteNote: jest.fn().mockResolvedValue(undefined) },
     setOfflineOverlay: jest.fn(),
     setPendingCount: jest.fn(),
@@ -60,6 +62,19 @@ describe('useNoteBulkActions', () => {
     expect(invalidate).not.toHaveBeenCalled()
   })
 
+  it('does not send any online deletes when preparation fails', async () => {
+    const beforeDelete = jest.fn().mockRejectedValue(new Error('Save failed'))
+    const { params, queryClient } = makeParams({ beforeDelete })
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useNoteBulkActions(params))
+
+    await expect(result.current.deleteNotesByIds(['one', 'two'])).rejects.toThrow('Save failed')
+    expect(beforeDelete).toHaveBeenCalledWith(['one', 'two'])
+    expect(params.deleteNoteMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(params.onNotesDeleted).not.toHaveBeenCalled()
+    expect(invalidate).not.toHaveBeenCalled()
+  })
+
   it('deletes online ids independently and invalidates note and AI caches', async () => {
     const mutateAsync = jest.fn().mockResolvedValue(undefined)
     const { params, queryClient } = makeParams({
@@ -78,8 +93,8 @@ describe('useNoteBulkActions', () => {
     expect(mutateAsync).toHaveBeenNthCalledWith(1, { id: 'one', silent: true })
     expect(mutateAsync).toHaveBeenNthCalledWith(2, { id: 'two', silent: true })
     expect(toast.success).toHaveBeenCalledWith('Deleted 2 notes')
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['notes'] })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiSearch'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['notes'] }, { throwOnError: true })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['aiSearch'] }, { throwOnError: true })
     expect(params.onNotesDeleted).toHaveBeenCalledWith(['one', 'two'])
   })
 
@@ -95,6 +110,7 @@ describe('useNoteBulkActions', () => {
       total: 2,
       failed: 1,
       queuedOffline: false,
+      failedIds: ['bad'],
     })
     expect(toast.error).toHaveBeenCalledWith('Failed to delete 1 notes')
     expect(invalidate).toHaveBeenCalledTimes(2)
@@ -103,11 +119,35 @@ describe('useNoteBulkActions', () => {
     expect(params.offlineCache.deleteNote).not.toHaveBeenCalledWith('bad')
   })
 
+  it('retains only server failures for selection when local cleanup also fails', async () => {
+    const plan = { ownerId: 'user-1', snapshots: new Map() }
+    const localDeletion = {
+      prepare: jest.fn().mockResolvedValue(plan),
+      complete: jest.fn(async (id: string) => id !== 'local-failed'),
+    }
+    const mutateAsync = jest.fn(async ({ id }: { id: string }) => {
+      if (id === 'server-failed') throw new Error('Server failed')
+      return id
+    })
+    const retainSelection = jest.fn()
+    const { params } = makeParams({
+      selectedNoteIds: new Set(['local-failed', 'server-failed', 'cleaned']),
+      deleteNoteMutation: { mutateAsync }, localDeletion, retainSelection,
+    })
+    const { result } = renderHook(() => useNoteBulkActions(params))
+    await act(async () => { await result.current.deleteSelectedNotes() })
+    expect(retainSelection).toHaveBeenCalledWith(['server-failed'])
+    expect(params.onNotesDeleted).toHaveBeenCalledWith(['cleaned'])
+    expect(toast.error).toHaveBeenCalledWith('Failed to delete 1 notes')
+    expect(toast.error).toHaveBeenCalledWith('1 deletion was accepted by the server; local cleanup needs checking.')
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
   it('queues offline deletions, persists optimistic tombstones, and updates overlay state', async () => {
     const setOfflineOverlay = jest.fn()
     const setPendingCount = jest.fn()
     const saveNote = jest.fn().mockResolvedValue(undefined)
-    const enqueue = jest.fn().mockResolvedValue(undefined)
+    const enqueue = jest.fn(async (_items, applyLocal) => { await applyLocal?.() })
     const { params } = makeParams({
       isOffline: true,
       enqueueBatchAndDrainIfOnline: enqueue,
@@ -124,9 +164,9 @@ describe('useNoteBulkActions', () => {
     })
 
     expect(enqueue).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ noteId: 'one', operation: 'delete', payload: {} }),
-      expect.objectContaining({ noteId: 'two', operation: 'delete', payload: {} }),
-    ]))
+      expect.objectContaining({ noteId: 'one', operation: 'delete', payload: { user_id: 'user-1' } }),
+      expect.objectContaining({ noteId: 'two', operation: 'delete', payload: { user_id: 'user-1' } }),
+    ]), expect.any(Function))
     expect(saveNote).toHaveBeenCalledTimes(2)
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'one', deleted: true, status: 'pending' }))
     expect(setOfflineOverlay).toHaveBeenCalledWith(expect.any(Function))
@@ -148,6 +188,24 @@ describe('useNoteBulkActions', () => {
     expect(params.setBulkDeleting).toHaveBeenNthCalledWith(1, true)
     expect(params.setBulkDeleting).toHaveBeenLastCalledWith(false)
     expect(params.exitSelectionMode).toHaveBeenCalledTimes(1)
+  })
+
+  it('completes deletion and selection cleanup when a background refresh rejects', async () => {
+    const { params, queryClient } = makeParams({ selectedNoteIds: new Set(['one']) })
+    const error = new Error('refresh unavailable')
+    jest.spyOn(queryClient, 'invalidateQueries').mockRejectedValue(error)
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const { result } = renderHook(() => useNoteBulkActions(params))
+      await act(async () => { await expect(result.current.deleteSelectedNotes()).resolves.toBeUndefined() })
+      expect(params.onNotesDeleted).toHaveBeenCalledWith(['one'])
+      expect(params.exitSelectionMode).toHaveBeenCalled()
+      expect(params.setBulkDeleting).toHaveBeenLastCalledWith(false)
+      await waitFor(() => expect(warn).toHaveBeenCalledWith('Failed to refresh notes after deletion:', error))
+      expect(toast.error).not.toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+    }
   })
 
   it('does nothing when selection mode has no selected ids', async () => {

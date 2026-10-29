@@ -45,7 +45,7 @@ export function MoreActionsMenu({
     <>
       <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen} modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" className="h-11 w-11 md:h-9 md:w-9" data-cy="note-more-button" aria-label="More actions">
+          <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl shadow-none md:h-9 md:w-9" data-cy="note-more-button" aria-label="More actions">
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>

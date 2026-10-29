@@ -103,7 +103,7 @@ The consent page surfaces Supabase error messages verbatim in a message card and
 ## Performance Considerations
 
 - Two Supabase round-trips per tool call (token check + query). `auth.getUser` could later be replaced by local JWT verification against the project's JWKS to save one call.
-- `list_notes` is capped at 100 rows and uses `notes_user_id_idx` / `notes_updated_at_idx`; the ILIKE filter on `description` is a sequential scan within the user's rows, acceptable for personal notebooks.
+- `list_notes` is capped at 100 rows and uses `notes_user_id_idx` / `notes_updated_at_idx`; literal case-insensitive substring matching on `description` scans the user's rows, acceptable for personal notebooks. PostgREST's regex operator is used with all regex metacharacters escaped, including `*`, which PostgREST treats as a wildcard in ILIKE filters.
 - Metadata responses carry `Cache-Control: public, max-age=300`.
 
 ## Security Notes
@@ -112,5 +112,5 @@ The consent page surfaces Supabase error messages verbatim in a message card and
 - `WWW-Authenticate` values are quoted and stripped of quotes/newlines; tokens are never echoed.
 - CORS allows any origin (the endpoint is meant for server-side AI hosts) but exposes only MCP-related headers.
 - The consent page shows the client name and host as text only (no external logo or link rendering), and validates `authorization_id` against a strict character class before using it in storage or URLs.
-- Note HTML from agents is stored as received, mirroring the existing `create-note` REST function; all render paths sanitize (`SanitizationService`, TipTap schema).
+- Agent-supplied note HTML is sanitized before storage and again on render. The write-side allowlist preserves the editor's superscript and subscript elements while removing scripts, event handlers, and unsafe URLs.
 - Known limitation: RFC 8707 `resource` binding is not enforced (Supabase tokens carry `aud: "authenticated"`).

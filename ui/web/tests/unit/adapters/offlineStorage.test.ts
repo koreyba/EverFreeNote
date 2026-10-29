@@ -45,6 +45,29 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     localStorage.clear()
   })
 
+  it('keeps unreadable fallback notes and queue intact instead of treating them as empty', async () => {
+    localStorage.setItem('offline_notes', '{broken')
+    localStorage.setItem('offline_queue', '{also-broken')
+    await expect(webOfflineStorageAdapter.loadNotes()).rejects.toThrow('could not be read')
+    await expect(webOfflineStorageAdapter.getQueue()).rejects.toThrow('could not be read')
+    await expect(webOfflineStorageAdapter.saveNotes([])).rejects.toThrow('could not be read')
+    await expect(webOfflineStorageAdapter.upsertQueue([])).rejects.toThrow('could not be read')
+    expect(localStorage.getItem('offline_notes')).toBe('{broken')
+    expect(localStorage.getItem('offline_queue')).toBe('{also-broken')
+  })
+
+  it('only cleans a matching owned synced tombstone with no queued changes', async () => {
+    const removed = makeNote('deleted', '2026-01-01T00:00:00Z', { user_id: 'owner-a', status: 'synced', deleted: true })
+    const changed = { ...removed, id: 'changed', title: 'Newer content' }
+    const queued = { ...removed, id: 'queued' }
+    const unknown = { ...removed, id: 'unknown', user_id: undefined }
+    await webOfflineStorageAdapter.saveNotes([removed, changed, queued, unknown])
+    await webOfflineStorageAdapter.upsertQueueItem({ ...makeQueueItem('queued-op'), noteId: queued.id })
+    const result = await webOfflineStorageAdapter.removeSyncedTombstones!([removed, { ...changed, title: 'Old content' }, queued, unknown])
+    expect(result).toEqual(['deleted'])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([changed, queued, unknown])
+  })
+
   afterEach(() => {
     jest.restoreAllMocks()
   })
@@ -68,6 +91,51 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
 
     await webOfflineStorageAdapter.deleteNote('note-2')
     expect(await webOfflineStorageAdapter.loadNotes()).toEqual([])
+  })
+
+  it('refreshes only tags in an unchanged synced cache entry', async () => {
+    const cached = makeNote('note-1', '2026-01-01T00:00:00Z', { user_id: 'user-1' })
+    await webOfflineStorageAdapter.saveNote(cached)
+    expect(await webOfflineStorageAdapter.patchSyncedTags([{ expected: cached, tags: ['renamed'] }])).toEqual(['note-1'])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([{ ...cached, tags: ['renamed'] }])
+  })
+
+  it('does not rewrite shared storage for an empty tag patch', async () => {
+    const setItem = jest.spyOn(Storage.prototype, 'setItem')
+    expect(webOfflineStorageAdapter.atomicTagPatches).toBe(false)
+    expect(await webOfflineStorageAdapter.patchSyncedTags([])).toEqual([])
+    expect(setItem).not.toHaveBeenCalled()
+  })
+
+  it('does not overwrite a newer or queued cached draft during tag refresh', async () => {
+    const expected = makeNote('note-1', '2026-01-01T00:00:00Z', { user_id: 'user-1' })
+    const newer = { ...expected, updatedAt: '2026-01-02T00:00:00Z', description: 'New draft', status: 'pending' as const }
+    await webOfflineStorageAdapter.saveNote(newer)
+    expect(await webOfflineStorageAdapter.patchSyncedTags([{ expected, tags: ['renamed'] }])).toEqual([])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([newer])
+
+    const sameRevision = { ...expected, description: 'Newer text with the same revision' }
+    await webOfflineStorageAdapter.saveNote(sameRevision)
+    expect(await webOfflineStorageAdapter.patchSyncedTags([{ expected, tags: ['renamed'] }])).toEqual([])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([sameRevision])
+
+    await webOfflineStorageAdapter.saveNote(expected)
+    await webOfflineStorageAdapter.upsertQueueItem({ ...makeQueueItem('q-1'), noteId: expected.id })
+    expect(await webOfflineStorageAdapter.patchSyncedTags([{ expected, tags: ['renamed'] }])).toEqual([])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([expected])
+  })
+
+  it('retains a changed or queued synced snapshot when removing remotely missing notes', async () => {
+    const expected = makeNote('note-1', '2026-01-01T00:00:00Z', { user_id: 'user-1' })
+    const changed = { ...expected, description: 'New local content with the same revision' }
+    await webOfflineStorageAdapter.saveNote(changed)
+    expect(await webOfflineStorageAdapter.removeSyncedNotes([expected])).toEqual([])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([changed])
+
+    await webOfflineStorageAdapter.saveNote(expected)
+    await webOfflineStorageAdapter.upsertQueueItem({ ...makeQueueItem('q-1'), noteId: expected.id })
+    expect(await webOfflineStorageAdapter.removeSyncedNotes([expected])).toEqual([])
+    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([expected])
   })
 
   it('maintains the mutation queue and updates item status', async () => {
@@ -99,6 +167,27 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     await webOfflineStorageAdapter.removeQueueItems([])
     await webOfflineStorageAdapter.removeQueueItems(['q-2'])
     expect(await webOfflineStorageAdapter.getQueue()).toEqual([])
+  })
+
+  it('appends a batch without replacing pending or failed queue items', async () => {
+    const pending = makeQueueItem('q-1')
+    const failed = makeQueueItem('q-2', 'failed')
+    const added = makeQueueItem('q-3')
+    await webOfflineStorageAdapter.upsertQueueItem(pending)
+    await webOfflineStorageAdapter.upsertQueueItem(failed)
+
+    await webOfflineStorageAdapter.appendQueueItems([added])
+
+    expect(await webOfflineStorageAdapter.getQueue()).toEqual([pending, failed, added])
+  })
+
+  it('leaves the existing queue intact if the fallback batch write fails', async () => {
+    const pending = makeQueueItem('q-1')
+    await webOfflineStorageAdapter.upsertQueueItem(pending)
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => { throw new Error('quota exceeded') })
+
+    await expect(webOfflineStorageAdapter.appendQueueItems([makeQueueItem('q-2')])).rejects.toThrow('quota exceeded')
+    expect(await webOfflineStorageAdapter.getQueue()).toEqual([pending])
   })
 
   it('marks an existing note as synced and clears its pending operations', async () => {
@@ -135,12 +224,12 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     ])
   })
 
-  it('ignores malformed stored JSON and clears both stores', async () => {
+  it('reports malformed stored JSON until an explicit clear', async () => {
     localStorage.setItem('offline_notes', '{not json')
     localStorage.setItem('offline_queue', '{not json')
 
-    expect(await webOfflineStorageAdapter.loadNotes()).toEqual([])
-    expect(await webOfflineStorageAdapter.getQueue()).toEqual([])
+    await expect(webOfflineStorageAdapter.loadNotes()).rejects.toThrow('could not be read')
+    await expect(webOfflineStorageAdapter.getQueue()).rejects.toThrow('could not be read')
 
     await webOfflineStorageAdapter.clearAll()
 

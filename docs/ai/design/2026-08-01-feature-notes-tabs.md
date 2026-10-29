@@ -281,9 +281,83 @@ transition captures the live editor synchronously first — a late flush would
 re-mark a saved tab as dirty. Reading scroll has no synchronous capture path,
 so its latest value is flushed on unmount instead.
 
-### Split View remains possible
+### Desktop split view (2026-10-28)
 
-The workspace is modeled as a list of independent tab sessions, while the controller exposes one active session today. A future split view can mount two active-session presenters without changing tab identity or persistence semantics.
+`NotesShell` presents two existing workspace tab IDs side by side. The active
+tab owns the sole editor/controller session; the other tab uses a sanitized,
+read-only, scrollable preview. Activating another pane goes through the same
+controller flush and capture boundary as the normal tab strip. This avoids two
+editor references and competing writes to the same note. Selecting an already
+open note retains the existing deduplication rule. A third selected tab
+replaces the currently active pane; closing either displayed tab leaves split.
+Exit keeps all tabs, and temporarily hiding a pane below 680px of workspace
+width does not change either tab. The owner-stamped workspace snapshot stores
+the optional left, right, and focused tab IDs together with the tabs. Older
+snapshots without this field retain their original behavior. Hydration accepts
+the layout only when both distinct tab IDs still exist, they do not refer to
+the same note, and the focused ID belongs to the pair. A missing second note
+is permitted so the empty pane can still be used to choose one.
+After keyboard or pointer activation, focus moves to the newly active pane;
+if saving fails, focus stays on the activation button.
+
+For same-document navigation and account switching, the existing owner- and
+epoch-scoped workspace memory retains active split sessions. If persisting an
+explicit split close fails, its closed state is retained in memory so a stale
+stored layout does not reappear when returning from Settings. No additional
+note content is stored. If browser storage is unavailable, this memory cannot
+survive a full reload or document termination.
+
+The Split View preference is a browser-level, default-off localStorage flag,
+following other local display preferences. Its provider sits outside the
+account and route boundaries, retaining an unsaved choice for this document
+when storage is unavailable. Settings reports a failed persistence attempt.
+The shell hides the split button and presentation while the flag is off, but
+retains the existing paired tab IDs, the active editor and its draft. Another
+browser tab's storage event applies the same gate; an in-flight split opening
+rechecks the flag after the editor flush before it can create a new tab.
+
+Reading scroll notifications remain debounced, but each visible reader also
+keeps its latest position in memory. The controller captures these positions
+before any tab transition; split exit and resize capture them as well. A
+delayed reading update is accepted only if both tab ID and note ID still
+match, so a previous note's scroll cannot overwrite a replacement note. New
+unsaved editors still use their existing synchronous editor session capture,
+including when their first save assigns an ID.
+
+```mermaid
+flowchart LR
+  list[Note list or tab strip] --> boundary[Capture and flush active editor]
+  boundary -->|success| tabs[Workspace tab sessions]
+  boundary -->|failure| active[Keep active draft and report error]
+  tabs --> active
+  tabs --> preview[Read-only pane]
+  preview -->|Activate| boundary
+```
+
+## Sign-out with local drafts
+
+```mermaid
+flowchart LR
+  request[Sign out] --> check[Check account and local drafts]
+  check -->|safe| logout[Sign out and clear workspace]
+  check -->|unsaved or unknown| choice[Keep editing or discard]
+  choice -->|keep| editor[Return to app]
+  choice -->|discard| logout
+```
+
+Notes flushes the mounted editor and waits for its local writes before checking
+all tabs. Settings checks the stored, account-scoped tab states because no
+editor is mounted there. A change of account cancels an outstanding decision;
+an auth sign-out error leaves the workspace intact. The guard does not lock
+other browser windows or guarantee server sync.
+
+Before an app-controlled transition from Notes to Settings or AI Index, the
+controller also reads the account-scoped snapshot back. Any unfinished tab
+must match its saved identity, mode and draft; an evicted or stale tab blocks
+the transition. Closing an inactive unfinished tab requires confirmation.
+Browser-controlled history navigation and reload are separate boundaries and
+are not intercepted by this guard. A document-scoped fallback and best-effort
+browser warning are described below.
 
 ## Non-Functional Requirements
 
@@ -312,6 +386,82 @@ The design covers every requirements goal and transition:
 | Reload and browser-tab isolation | versioned `sessionStorage` adapter with in-memory fallback |
 | Tags/Search/Settings/internal opens | one controller boundary and a mounted workspace hook |
 | Desktop/mobile views | separate presentation components consuming the same hook/model |
-| Future Split View | independent tab sessions with one active presenter today |
+| Split View follow-up | independent tab sessions, one active editor and one read-only presenter |
 
 The only intentionally deferred behavior is native-mobile persistence policy; native UI can reuse the model without changing web `sessionStorage` semantics. No design gap blocks implementation.
+
+## Account-session isolation (2026-10-29)
+
+An authentication identity change advances a synchronous session epoch and
+remounts the account-owned UI and query cache. A token refresh for the same
+identity does neither. Async navigation checks its captured epoch before
+continuing, and Settings/AI navigation snapshots are scoped to an owner.
+Legacy unowned navigation snapshots are ignored.
+
+The old editor flushes its pending debounced save on an account change; the
+captured owner remains attached to that write. A deliberate discard cancels
+that save. Writes to the same owner and note are serialized across remounts in
+one JavaScript context, so a delayed old write cannot overwrite a later one.
+While a write is in flight, its owner can return and see its latest in-memory
+snapshot immediately. Completion replaces that snapshot with the local saved
+copy. Other owners and notes remain independent.
+
+```mermaid
+flowchart LR
+  auth[Identity change] --> epoch[Advance session epoch]
+  epoch --> ui[New account UI and query cache]
+  epoch --> old[Flush old owner's pending editor save]
+  old --> serial[Owner and note write coordinator]
+  serial --> cache[Local cache and queue]
+```
+
+This is not cross-window or cross-device locking. Storage failure can prevent
+an outstanding draft from being saved. Existing offline sync drains already
+running at sign-out are not cancelled by this boundary and require separate
+owner-scoped queue verification.
+
+## Same-document history fallback (2026-10-29)
+
+An in-memory provider outside the account-remount boundary holds unfinished
+workspace snapshots by owner while the document remains alive. On route or
+account teardown, Notes synchronously captures the mounted editor, including
+input still waiting for its debounce. Settings checks this copy before
+sign-out. A successful explicit sign-out deletes that owner's memory and marks
+its old epoch invalid so a late teardown cannot restore discarded data.
+
+The first create allocates its note ID before starting the local write. Its
+owner and tab binding is attached to a recovered draft, without replacing newer
+text. `ownerNoteWrites` serializes subsequent writes to that same ID even if
+the first write resolves after remount. Closing or reusing a tab forgets only
+its binding. The in-memory copy is removed when all tabs are saved.
+
+Each editor save also receives an owner-and-tab cancellation token. Discarding
+a tab cancels its editor debounce and only that tab's pending writes;
+discard-and-sign-out cancels the owner's writes.
+A cancelled pending snapshot is hidden immediately, while its write remains
+in the serializer until settled. A save waiting for its queue is stopped before
+starting the local write. Once a save has entered the current storage adapter,
+it may finish and the discard dialog says so; it is not safe to blindly delete
+a note or overwrite another, later version.
+
+```mermaid
+flowchart LR
+  input[Live editor] --> capture[Capture on route or account teardown]
+  capture --> memory[Owner-scoped volatile workspace]
+  create[First local create] --> bind[Bind owner and tab to note ID]
+  bind --> memory
+  memory --> restore[Restore same-document session]
+  restore --> writes[Serialized owner and note writes]
+  logout[Explicit sign-out] --> clear[Clear owner and invalidate old epoch]
+```
+
+`beforeunload` requests a browser warning for unfinished work on Notes and
+Settings and for any earlier owner's unfinished in-memory draft. The warning
+does not identify an owner or include note content; the browser chooses whether
+to show it. The volatile copy is lost
+when the document dies. This mechanism does not protect a hard reload, crash,
+another browser window, or a mobile process killed without a warning.
+
+## Confirming manual saves
+
+The editor keeps the exact submitted snapshot separate from later typing. Only a successful durable manual write in the same account and editor session advances its saved baseline; failed or stale completions cannot clear newer drafts. Creation of a new note uses its confirmed ID to connect the existing editor session to the saved note without remounting. Autosave acknowledgements are ordered so an older completion cannot replace a newer confirmed save.

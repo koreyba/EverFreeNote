@@ -1,7 +1,8 @@
 import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { SupabaseProvider } from '@ui/web/providers/SupabaseProvider'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
+import { AccountSessionBoundary, SupabaseProvider, useSupabase } from '@ui/web/providers/SupabaseProvider'
+import { QueryProvider } from '@/components/providers/QueryProvider'
 import { useNoteAuth } from '@ui/web/hooks/useNoteAuth'
 import { buildBrowserSupabaseStorageKey, webSupabaseClientFactory } from '@ui/web/adapters/supabaseClient'
 
@@ -97,4 +98,34 @@ it('clears local access on sign-out and ignores an older session request finishi
   act(() => onAuthStateChange.mock.calls[0][0]('SIGNED_OUT', null))
   await act(async () => finish({ data: { session: session() }, error: null }))
   expect(screen.getByText('signed-out')).toBeTruthy()
+})
+
+it('keeps state on token refresh but replaces it for a new auth epoch, even for the same account', async () => {
+  let instances = 0
+  const clients: QueryClient[] = []
+  function Probe() {
+    const { user: current } = useSupabase()
+    const client = useQueryClient()
+    if (!clients.includes(client)) clients.push(client)
+    const [instance] = React.useState(() => ++instances)
+    return <output data-testid="account-boundary">{instance}:{current?.id ?? 'signed-out'}:{client.getQueryData(['probe']) ?? 'empty'}</output>
+  }
+  render(<SupabaseProvider><AccountSessionBoundary><QueryProvider><Probe /></QueryProvider></AccountSessionBoundary></SupabaseProvider>)
+  await waitFor(() => expect(screen.getByTestId('account-boundary').textContent).toContain('signed-out'))
+  act(() => onAuthStateChange.mock.calls[0][0]('SIGNED_IN', session()))
+  const first = screen.getByTestId('account-boundary').textContent
+  expect(first).toContain(user.id)
+  const firstClient = clients.at(-1)!
+  firstClient.setQueryData(['probe'], 'old-account-data')
+  act(() => onAuthStateChange.mock.calls[0][0]('TOKEN_REFRESHED', session()))
+  expect(clients.at(-1)).toBe(firstClient)
+  expect(firstClient.getQueryData(['probe'])).toBe('old-account-data')
+  act(() => {
+    onAuthStateChange.mock.calls[0][0]('SIGNED_OUT', null)
+    onAuthStateChange.mock.calls[0][0]('SIGNED_IN', session())
+  })
+  expect(screen.getByTestId('account-boundary').textContent).toContain(user.id)
+  expect(screen.getByTestId('account-boundary').textContent).not.toBe(first)
+  expect(clients.at(-1)).not.toBe(firstClient)
+  expect(clients.at(-1)!.getQueryData(['probe'])).toBeUndefined()
 })

@@ -5,6 +5,7 @@ import { OfflineCacheService } from '@core/services/offlineCache'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import type { CachedNote } from '@core/types/offline'
 import type { NoteViewModel } from '@core/types/domain'
+import { advanceNoteListRevision } from '@ui/web/lib/noteListRevision'
 
 jest.mock('sonner', () => ({ toast: { info: jest.fn() } }))
 const note: NoteViewModel = { id: 'n1', user_id: 'u1', title: 'Remote', description: '<p>Updated</p>', tags: [], created_at: '2026-09-22', updated_at: '2026-09-22' }
@@ -16,10 +17,9 @@ function setup() {
   const getNotes = jest.fn().mockResolvedValue({ notes: [note], totalCount: 1, hasMore: false })
   const getNoteStatus = jest.fn().mockResolvedValue({ status: 'found', note })
   const getExistingNoteIds = jest.fn().mockResolvedValue([])
-  const onCachedNotesRemoved = jest.fn()
-  const options: NoteRefreshOptions = { userId: 'u1', tabId: 't1', note, isEditing: false, queryClient, offlineCache, onCachedNotesRemoved, noteService: { getNotes, getNoteStatus, getExistingNoteIds }, hasPendingChanges: jest.fn(() => false), onNoteRefreshed: jest.fn(), onNoteDeleted: jest.fn().mockResolvedValue(undefined) }
+  const options: NoteRefreshOptions = { userId: 'u1', tabId: 't1', note, isEditing: false, queryClient, offlineCache, onCachedNotesUnavailable: jest.fn(), onCachedNotesAvailable: jest.fn(), noteService: { getNotes, getNoteStatus, getExistingNoteIds }, hasPendingChanges: jest.fn(() => false), onNoteRefreshed: jest.fn(), onNoteDeleted: jest.fn().mockResolvedValue(undefined) }
   const hook = renderHook((props: NoteRefreshOptions) => useNoteRefresh(props), { initialProps: options })
-  return { ...hook, options, queryClient, getNotes, getNoteStatus, getExistingNoteIds, onCachedNotesRemoved, signal: new AbortController().signal }
+  return { ...hook, options, queryClient, getNotes, getNoteStatus, getExistingNoteIds, signal: new AbortController().signal }
 }
 it('replaces the list with the newest first page without changing an open note', async () => {
   const { result, options, queryClient, getNotes, signal } = setup()
@@ -43,6 +43,17 @@ it('refreshes the reading snapshot and handles remote deletion', async () => {
   getNoteStatus.mockResolvedValue({ status: 'not_found' })
   await act(async () => result.current.refreshNote(signal))
   expect(options.onNoteDeleted).toHaveBeenCalledWith('n1')
+})
+it('ignores a pre-delete note response while allowing a later restored note', async () => {
+  const { result, options, getNoteStatus, queryClient, signal } = setup()
+  let finish!: (value: unknown) => void
+  getNoteStatus.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  const pending = result.current.refreshNote(signal)
+  advanceNoteListRevision(queryClient, 'u1')
+  await act(async () => { finish({ status: 'found', note }); await pending })
+  expect(options.onNoteRefreshed).not.toHaveBeenCalled()
+  await act(async () => result.current.refreshNote(signal))
+  expect(options.onNoteRefreshed).toHaveBeenCalledWith(note)
 })
 it('keeps queued local changes instead of replacing them from the server', async () => {
   const { result, options, getNoteStatus, signal } = setup()
@@ -69,6 +80,33 @@ it('does not replace another account list after an in-flight refresh', async () 
   expect(queryClient.getQueryData(['notes', 'u1', '', null])).toBeUndefined()
   expect(queryClient.getQueryData(['notes', 'u2', '', null])).toBeUndefined()
 })
+it('does not replace a newer list with an older in-flight response', async () => {
+  const { result, getNotes, queryClient, signal } = setup()
+  const queryKey = ['notes', 'u1', '', null]
+  const old = { pages: [{ notes: [note], totalCount: 1, hasMore: false }], pageParams: [0] }
+  const afterDelete = { pages: [{ notes: [], totalCount: 0, hasMore: false }], pageParams: [0] }
+  queryClient.setQueryData(queryKey, old)
+  let finish!: (page: unknown) => void
+  getNotes.mockReturnValue(new Promise(resolve => { finish = resolve }))
+  const pending = result.current.refreshList(signal)
+  queryClient.setQueryData(queryKey, afterDelete)
+  await act(async () => { finish(old.pages[0]); await pending })
+  expect(queryClient.getQueryData(queryKey)).toEqual(afterDelete)
+})
+it('ignores a pre-delete response even when the deleted note was not in the loaded page', async () => {
+  const { result, getNotes, queryClient, signal } = setup()
+  const queryKey = ['notes', 'u1', '', null]
+  const empty = { pages: [{ notes: [], totalCount: 0, hasMore: false }], pageParams: [0] }
+  queryClient.setQueryData(queryKey, empty)
+  let finish!: (page: unknown) => void
+  getNotes.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  const pending = result.current.refreshList(signal)
+  advanceNoteListRevision(queryClient, 'u1')
+  await act(async () => { finish({ notes: [note], totalCount: 1, hasMore: false }); await pending })
+  expect(queryClient.getQueryData(queryKey)).toEqual(empty)
+  await act(async () => result.current.refreshList(signal))
+  expect(queryClient.getQueryData(queryKey)).toEqual({ pages: [{ notes: [note], totalCount: 1, hasMore: false }], pageParams: [0] })
+})
 it.each(['editing', 'tab', 'account', 'pending', 'aborted'])('ignores a late reading response after %s changes', async (change) => {
   const { result, options, getNoteStatus, rerender } = setup()
   let finish!: (value: unknown) => void
@@ -84,13 +122,13 @@ it.each(['editing', 'tab', 'account', 'pending', 'aborted'])('ignores a late rea
   expect(options.onNoteRefreshed).not.toHaveBeenCalled()
 })
 
-it('removes two remotely deleted cached notes on list refresh without opening them', async () => {
-  const { result, signal, onCachedNotesRemoved, getExistingNoteIds } = setup()
+it('retains remotely absent cached notes on list refresh without opening them', async () => {
+  const { result, signal, getExistingNoteIds, options } = setup()
   await offlineCache.saveNotes([cached('gone-1'), cached('gone-2')])
   await act(async () => result.current.refreshList(signal))
-  expect(await offlineCache.loadNotes()).toEqual([])
+  expect(await offlineCache.loadNotes()).toEqual([cached('gone-1'), cached('gone-2')])
   expect(getExistingNoteIds).toHaveBeenCalledWith(['gone-1', 'gone-2'], 'u1', signal)
-  expect(onCachedNotesRemoved).toHaveBeenCalledWith([cached('gone-1'), cached('gone-2')])
+  expect(options.onCachedNotesUnavailable).toHaveBeenCalledWith([cached('gone-1'), cached('gone-2')])
 })
 it('retains cached notes from later pages, unsynced drafts and other accounts', async () => {
   const { result, signal, getExistingNoteIds } = setup()
@@ -100,6 +138,26 @@ it('retains cached notes from later pages, unsynced drafts and other accounts', 
   await act(async () => result.current.refreshList(signal))
   expect(await offlineCache.loadNotes()).toEqual(saved)
   expect(getExistingNoteIds).toHaveBeenCalledWith(['older'], 'u1', signal)
+})
+it('reports only server-verified IDs as available, including notes outside the first page', async () => {
+  const { result, signal, getExistingNoteIds, options } = setup()
+  await offlineCache.saveNotes([cached('older'), cached('missing')])
+  getExistingNoteIds.mockResolvedValue(['older'])
+  await act(async () => result.current.refreshList(signal))
+  expect(options.onCachedNotesAvailable).toHaveBeenCalledWith(['n1', 'older'])
+  expect(options.onCachedNotesUnavailable).toHaveBeenCalledWith([cached('missing')])
+})
+it('does not report an old cached snapshot after it was deleted or edited during verification', async () => {
+  const { result, options, getExistingNoteIds, signal } = setup()
+  await offlineCache.saveNotes([cached('deleted'), cached('edited'), cached('still-missing')])
+  let finish!: (ids: string[]) => void
+  getExistingNoteIds.mockImplementation(() => new Promise<string[]>(done => { finish = done }))
+  const pending = result.current.refreshList(signal)
+  await waitFor(() => expect(getExistingNoteIds).toHaveBeenCalledTimes(1))
+  await offlineCache.deleteNote('deleted')
+  await offlineCache.saveNote(cached('edited', { title: 'A later edit', status: 'pending' }))
+  await act(async () => { finish([]); await pending })
+  expect(options.onCachedNotesUnavailable).toHaveBeenCalledWith([cached('still-missing')])
 })
 it('retains the cache and list if deletion verification fails', async () => {
   const { result, signal, getExistingNoteIds, queryClient } = setup()
@@ -112,7 +170,7 @@ it('retains the cache and list if deletion verification fails', async () => {
   expect(queryClient.getQueryData(['notes', 'u1', '', null])).toEqual(old)
 })
 it.each(['edit', 'queue', 'abort', 'account', 'editor'])('preserves a cached note when %s changes during deletion verification', async change => {
-  const { result, options, rerender, getExistingNoteIds, onCachedNotesRemoved } = setup()
+  const { result, options, rerender, getExistingNoteIds } = setup()
   await offlineCache.saveNote(cached('gone'))
   const abort = new AbortController()
   let finish!: (ids: string[]) => void
@@ -126,19 +184,15 @@ it.each(['edit', 'queue', 'abort', 'account', 'editor'])('preserves a cached not
   if (change === 'account') rerender({ ...options, userId: 'u2' })
   await act(async () => { finish([]); await pending })
   expect(await offlineCache.loadNotes()).toHaveLength(1)
-  expect(onCachedNotesRemoved).not.toHaveBeenCalled()
 })
 
-it('does not reset an editor opened while cache removal is completing', async () => {
-  const { result, options, onCachedNotesRemoved, signal } = setup()
+it('never removes a local copy in response to a missing server row', async () => {
+  const { result, signal } = setup()
   await offlineCache.saveNote(cached('gone'))
-  let finish!: (ids: string[]) => void
-  const remove = jest.spyOn(offlineCache, 'removeSyncedNotes').mockImplementation(() => new Promise(resolve => { finish = resolve }))
+  const remove = jest.spyOn(offlineCache, 'removeSyncedNotes')
   try {
-    const pending = result.current.refreshList(signal)
-    await waitFor(() => expect(remove).toHaveBeenCalledTimes(1))
-    jest.mocked(options.hasPendingChanges).mockReturnValue(true)
-    await act(async () => { finish(['gone']); await pending })
-    expect(onCachedNotesRemoved).not.toHaveBeenCalled()
+    await act(async () => result.current.refreshList(signal))
+    expect(remove).not.toHaveBeenCalled()
+    expect(await offlineCache.loadNotes()).toEqual([cached('gone')])
   } finally { remove.mockRestore() }
 })

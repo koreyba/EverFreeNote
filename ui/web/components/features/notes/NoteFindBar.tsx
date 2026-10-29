@@ -41,18 +41,18 @@ export function NoteFindBar({ scrollRef, titleRef, bodyRef, bodySelector, includ
     const observer = new MutationObserver(refresh)
     if (bodyRef.current) observer.observe(bodyRef.current, { childList: true, characterData: true, subtree: true })
     const title = titleRef.current
-    if (title instanceof HTMLInputElement) title.addEventListener("input", refresh)
+    if ((title instanceof HTMLInputElement || title instanceof HTMLTextAreaElement)) title.addEventListener("input", refresh)
     else if (title) observer.observe(title, { childList: true, characterData: true, subtree: true })
     return () => {
       observer.disconnect()
-      if (title instanceof HTMLInputElement) title.removeEventListener("input", refresh)
+      if ((title instanceof HTMLInputElement || title instanceof HTMLTextAreaElement)) title.removeEventListener("input", refresh)
     }
   }, [bodyRef, query, scan, titleRef])
 
   React.useLayoutEffect(() => {
     const active = matches[activeIndex]
     const title = titleRef.current
-    if (title instanceof HTMLInputElement) title.toggleAttribute("data-note-find-current", active?.kind === "title")
+    if ((title instanceof HTMLInputElement || title instanceof HTMLTextAreaElement)) title.toggleAttribute("data-note-find-current", active?.kind === "title")
     const textRanges = matches.flatMap((match) => match.kind === "text" ? [match.range] : [])
     const hasHighlights = typeof CSS !== "undefined" && Boolean(CSS.highlights) && typeof Highlight !== "undefined"
     let allHighlight: Highlight | undefined
@@ -104,7 +104,7 @@ export function NoteFindBar({ scrollRef, titleRef, bodyRef, bodySelector, includ
       observer?.disconnect()
       if (hasHighlights && CSS.highlights.get("note-find-matches") === allHighlight) CSS.highlights.delete("note-find-matches")
       if (hasHighlights && CSS.highlights.get("note-find-current") === currentHighlight) CSS.highlights.delete("note-find-current")
-      if (title instanceof HTMLInputElement) title.removeAttribute("data-note-find-current")
+      if ((title instanceof HTMLInputElement || title instanceof HTMLTextAreaElement)) title.removeAttribute("data-note-find-current")
     }
   }, [activeIndex, bodyRef, matches, scrollRef, scrollRevision, titleRef])
 

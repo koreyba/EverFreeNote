@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, fireEvent, waitFor } from "@testing-library/react"
+import { render, fireEvent, screen, waitFor } from "@testing-library/react"
 import type { Editor } from "@tiptap/react"
 import { EditorMenuBar } from "@ui/web/components/EditorMenuBar"
 import { browser } from "@ui/web/adapters/browser"
@@ -40,6 +40,7 @@ function createMockEditor(options: MockEditorOptions = {}) {
   const chainObj: Record<string, jest.Mock> = {}
   const chainMethods = [
     "focus",
+    "command",
     "toggleBold",
     "toggleItalic",
     "toggleUnderline",
@@ -101,6 +102,7 @@ function createMockEditor(options: MockEditorOptions = {}) {
   const editor = {
     on: jest.fn(),
     off: jest.fn(),
+    view: { dom: document.createElement("div") },
     chain: jest.fn().mockReturnValue(chainObj),
     isActive: isActiveMock,
     getAttributes: getAttributesMock,
@@ -220,7 +222,7 @@ describe("EditorMenuBar", () => {
       const btn = container.querySelector('[data-cy="bold-button"]') as HTMLButtonElement
       fireEvent.click(btn)
       expect(editor.chain).toHaveBeenCalled()
-      expect(chainObj.focus).toHaveBeenCalled()
+      expect(chainObj.command).toHaveBeenCalledWith(expect.any(Function))
       expect(chainObj.toggleBold).toHaveBeenCalled()
       expect(runMock).toHaveBeenCalled()
     })
@@ -409,6 +411,7 @@ describe("EditorMenuBar", () => {
       )
       const btn = container.querySelector('[data-cy="image-button"]') as HTMLButtonElement
       fireEvent.click(btn)
+      fireEvent.click(screen.getByRole('button', { name: 'Insert from URL' }))
       expect(browser.prompt).toHaveBeenCalledWith("Image URL:")
       expect(chainObj.setImage).toHaveBeenCalledWith({ src: "https://example.com/test.png" })
       expect(runMock).toHaveBeenCalled()
@@ -422,6 +425,7 @@ describe("EditorMenuBar", () => {
       )
       const btn = container.querySelector('[data-cy="image-button"]') as HTMLButtonElement
       fireEvent.click(btn)
+      fireEvent.click(screen.getByRole('button', { name: 'Insert from URL' }))
       expect(browser.prompt).toHaveBeenCalledWith("Image URL:")
       expect(chainObj.setImage).not.toHaveBeenCalled()
       expect(runMock).not.toHaveBeenCalled()

@@ -26,6 +26,7 @@ export const NOTE_COLUMNS = 'id, title, description, tags, created_at, updated_a
  * notebook from turning a tool call into a full table read.
  */
 export const TAG_SCAN_NOTE_LIMIT = 5000
+const TAG_SCAN_PAGE_SIZE = 1000
 
 /** Writable columns of `public.notes`. The note body lives in `description`. */
 type NoteColumns = {
@@ -43,9 +44,14 @@ type NoteRow = {
   updated_at: string | null
 }
 
-/** Removes characters that would break PostgREST's quoted `or()` filter values. */
-export function escapeIlikeValue(value: string): string {
-  return value.replaceAll('"', '').replaceAll('\\', '').trim()
+/** Encode literal search text for a regex inside PostgREST's quoted or() filter. */
+export function escapeSearchValue(value: string): string {
+  // Regex backslashes must themselves be escaped for PostgREST's filter parser.
+  return value.trim().replace(/[.*+?^${}()|[\]\\"]/g, (character) => {
+    if (character === '\\') return '\\\\\\\\'
+    if (character === '"') return '\\"'
+    return `\\\\${character}`
+  })
 }
 
 export function toNoteRecord(row: NoteRow): NoteRecord {
@@ -59,14 +65,25 @@ export function toNoteRecord(row: NoteRow): NoteRecord {
   }
 }
 
+// PostgREST accepts PostgreSQL array literals as equality operands. Quote every
+// string so commas, quotes, backslashes and the string "NULL" stay literal.
+function pgTextArrayLiteral(values: unknown[]): string {
+  return `{${values.map((value) => value === null ? 'NULL' : `"${String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`).join(',')}}`
+}
+
 export function createSupabaseNotebookRepository(supabase: SupabaseClient, userId: string): NotebookRepository {
   const notes = () => supabase.from('notes')
 
-  const getNote = async (id: string): Promise<NoteRecord | null> => {
+  const getNoteRow = async (id: string): Promise<NoteRow | null> => {
     const { data, error } = await notes().select(NOTE_COLUMNS).eq('id', id).eq('user_id', userId).maybeSingle()
 
     if (error) throw error
-    return data ? toNoteRecord(data as NoteRow) : null
+    return data as NoteRow | null
+  }
+
+  const getNote = async (id: string): Promise<NoteRecord | null> => {
+    const row = await getNoteRow(id)
+    return row ? toNoteRecord(row) : null
   }
 
   return {
@@ -83,9 +100,10 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
         request = tagMatch === 'any' ? request.overlaps('tags', tagFilter) : request.contains('tags', tagFilter)
       }
 
-      const needle = query ? escapeIlikeValue(query) : ''
+      const needle = query ? escapeSearchValue(query) : ''
       if (needle) {
-        request = request.or(`title.ilike."%${needle}%",description.ilike."%${needle}%"`)
+        // imatch supports literal `*`, which PostgREST treats as a wildcard in ilike.
+        request = request.or(`title.imatch."${needle}",description.imatch."${needle}"`)
       }
 
       const { data, error, count } = await request
@@ -139,42 +157,61 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
     },
 
     async listTags(): Promise<TagVocabulary> {
-      const { data, error } = await notes()
-        .select('tags')
-        .eq('user_id', userId)
-        .not('tags', 'eq', '{}')
-        .limit(TAG_SCAN_NOTE_LIMIT)
+      const rows: { tags: unknown }[] = []
+      let count: number | null = null
+      while (rows.length < TAG_SCAN_NOTE_LIMIT) {
+        const start = rows.length
+        const size = Math.min(TAG_SCAN_PAGE_SIZE, TAG_SCAN_NOTE_LIMIT - start)
+        const result = await notes()
+          .select('tags', { count: 'exact' })
+          .eq('user_id', userId)
+          .not('tags', 'eq', '{}')
+          .order('id', { ascending: true })
+          .range(start, start + size - 1)
+        if (result.error) throw result.error
+        const page = (result.data ?? []) as { tags: unknown }[]
+        rows.push(...page)
+        count = result.count
+        if (page.length === 0 || (count !== null && rows.length >= count) || (count === null && page.length < size)) break
+      }
 
-      if (error) throw error
-
-      const rows = (data ?? []) as { tags: unknown }[]
+      let truncated = count !== null && count > rows.length
+      // A missing count requires a one-row probe to distinguish exactly 5000
+      // from a truncated scan. Real PostgREST normally supplies the count.
+      if (count === null && rows.length === TAG_SCAN_NOTE_LIMIT) {
+        const probe = await notes().select('tags').eq('user_id', userId).not('tags', 'eq', '{}')
+          .order('id', { ascending: true }).range(TAG_SCAN_NOTE_LIMIT, TAG_SCAN_NOTE_LIMIT)
+        if (probe.error) throw probe.error
+        truncated = (probe.data?.length ?? 0) > 0
+      }
       const tagLists = rows.map((row) => (Array.isArray(row.tags) ? row.tags.filter((tag): tag is string => typeof tag === 'string') : []))
 
       return {
         tags: aggregateTags(tagLists),
         total: rows.length,
-        truncated: rows.length >= TAG_SCAN_NOTE_LIMIT,
+        truncated,
       }
     },
 
     async editNoteTags(id: string, edit: EditNoteTagsInput): Promise<NoteRecord | null> {
-      const note = await getNote(id)
-      if (!note) return null
+      // Compare the raw array in the UPDATE predicate. A concurrent change
+      // makes the update affect no rows; re-read and apply the edit again.
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const row = await getNoteRow(id)
+        if (!row) return null
+        const note = toNoteRecord(row)
+        const nextTags = applyTagEdit(note.tags, edit)
+        if (tagsUnchanged(note.tags, nextTags)) return note
 
-      const nextTags = applyTagEdit(note.tags, edit)
-      // Nothing to write: adding a tag that is already there, or removing one
-      // that is not, must still succeed so a retried call is harmless.
-      if (tagsUnchanged(note.tags, nextTags)) return note
-
-      const { data, error } = await notes()
-        .update({ tags: nextTags })
-        .eq('id', id)
-        .eq('user_id', userId)
-        .select(NOTE_COLUMNS)
-        .maybeSingle()
-
-      if (error) throw error
-      return data ? toNoteRecord(data as NoteRow) : null
+        let request = notes().update({ tags: nextTags }).eq('id', id).eq('user_id', userId)
+        request = row.tags === null
+          ? request.is('tags', null)
+          : request.eq('tags', pgTextArrayLiteral(row.tags as unknown[]))
+        const { data, error } = await request.select(NOTE_COLUMNS).maybeSingle()
+        if (error) throw error
+        if (data) return toNoteRecord(data as NoteRow)
+      }
+      throw new Error('Concurrent tag updates prevented applying changes; retry the operation')
     },
   }
 }

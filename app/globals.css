@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
-input[data-note-find-current] {
+[data-note-find-current] {
   outline: 2px solid #f59e0b;
   outline-offset: 3px;
 }
@@ -44,6 +44,22 @@ button,
 
 .dark {
   color-scheme: dark;
+}
+
+/* Preserve room for the virtualized list in unusually short desktop windows.
+   The outer scroll is a fallback when even this compact layout cannot fit. */
+@media (min-width: 768px) and (max-height: 480px) {
+  .notes-sidebar-content { overflow-y: auto; }
+  .notes-sidebar-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem; }
+  .notes-sidebar-brand-row { flex: 1; min-width: 0; margin-bottom: 0; }
+  .notes-sidebar-search { width: 2.5rem; flex: none; }
+  .notes-sidebar-search > div { padding: 0; font-size: 0; }
+  .notes-sidebar-controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.25rem; }
+  .notes-sidebar-create { flex: 1; min-width: 0; }
+  .notes-sidebar-count { flex: none; max-width: 65%; }
+  .notes-sidebar-selection { flex-basis: 100%; }
+  .notes-sidebar-list { min-height: 8rem; flex-shrink: 0; }
+  .notes-sidebar-profile { padding: 0.25rem; }
 }
 
 @media (max-width: 767px) {
@@ -211,6 +227,11 @@ mark {
   overflow-wrap: anywhere;
 }
 
+.note-content img {
+  max-width: 100%;
+  height: auto;
+}
+
 .note-content h1,
 .note-content h2,
 .note-content h3,
@@ -293,7 +314,6 @@ mark {
 
 .note-content strong,
 .note-content b {
-  color: var(--color-foreground);
   font-weight: 700;
 }
 
@@ -620,4 +640,28 @@ mark {
 
 html:not(.dark) {
   --color-primary-foreground: oklch(100% 0 0);
+}
+
+/* The same document geometry is used while reading and writing. */
+.note-document-width {
+  width: 100%;
+  max-width: 52rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+.note-document-title {
+  font-size: 1.75rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+  color: var(--color-foreground);
+}
+@media (min-width: 768px) {
+  .note-document-width { padding-inline: 2rem; }
+  .note-document-title { font-size: 2.25rem; }
+}
+
+@media (max-width: 359px) {
+  .note-document-title { font-size: 1.5rem; }
 }

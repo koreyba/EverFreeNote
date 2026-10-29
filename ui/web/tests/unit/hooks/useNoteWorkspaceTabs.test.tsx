@@ -43,15 +43,56 @@ describe('useNoteWorkspaceTabs persistence warning', () => {
     expect(toast.warning).toHaveBeenCalledTimes(1)
   })
 
+  it('warns when even the active note cannot be remembered', () => {
+    mockWrite.mockReturnValue({ persisted: false, droppedTabIds: [] })
+    const { result } = renderHook(() => useNoteWorkspaceTabs('user-1'))
+    expect(toast.warning).not.toHaveBeenCalled()
+
+    act(() => { result.current.updateTab(result.current.activeTabId, { draft: { title: 'Unsaved note' } }) })
+    act(() => { result.current.updateTab(result.current.activeTabId, { draft: { title: 'Still editing' } }) })
+
+    expect(toast.warning).toHaveBeenCalledTimes(1)
+    expect(toast.warning).toHaveBeenCalledWith('Open tabs could not be remembered', expect.objectContaining({
+      description: expect.stringContaining('Save your changes'),
+    }))
+  })
+
   it('restores for the signed-in account and re-reads when the account changes', () => {
     const { rerender } = renderHook(({ userId }) => useNoteWorkspaceTabs(userId), {
       initialProps: { userId: 'user-1' },
     })
 
-    expect(mockRead).toHaveBeenLastCalledWith({ userId: 'user-1' })
+    expect(mockRead).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'user-1' }))
 
     rerender({ userId: 'user-2' })
 
-    expect(mockRead).toHaveBeenLastCalledWith({ userId: 'user-2' })
+    expect(mockRead).toHaveBeenLastCalledWith(expect.objectContaining({ userId: 'user-2' }))
+  })
+
+  it('rejects a stale view update after the tab changes note identity', () => {
+    const { result } = renderHook(() => useNoteWorkspaceTabs('user-1'))
+    const tabId = result.current.activeTabId
+    act(() => { result.current.updateTabForNote(tabId, null, { view: { scrollTop: 250 } }) })
+    expect(result.current.activeTab.view.scrollTop).toBe(250)
+    act(() => { result.current.updateTab(tabId, { noteId: 'new-note' }) })
+    act(() => { result.current.updateTabForNote(tabId, null, { view: { scrollTop: 800 } }) })
+    expect(result.current.activeTab.view.scrollTop).toBe(250)
+    act(() => { result.current.updateTabForNote(tabId, 'new-note', { view: { scrollTop: 420 } }) })
+    expect(result.current.activeTab.view.scrollTop).toBe(420)
+  })
+
+  it('refreshes saved tags without overwriting a draft that became dirty', () => {
+    const note = { id: 'note-1', title: 'Title', description: 'Body', tags: ['old'], user_id: 'user-1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const { result } = renderHook(() => useNoteWorkspaceTabs('user-1'))
+    act(() => { result.current.openNote(note) })
+    act(() => { result.current.updateTab(result.current.activeTabId, { saveState: 'dirty', draft: { tags: 'my draft' } }) })
+    act(() => { result.current.updateSavedTags([{ id: note.id, tags: ['new'] }]) })
+    expect(result.current.activeTab.draft.tags).toBe('my draft')
+    expect(result.current.activeTab.note?.tags).toEqual(['old'])
+
+    act(() => { result.current.updateTab(result.current.activeTabId, { saveState: 'saved' }) })
+    act(() => { result.current.updateSavedTags([{ id: note.id, tags: ['new'] }]) })
+    expect(result.current.activeTab.draft.tags).toBe('new')
+    expect(result.current.activeTab.note?.tags).toEqual(['new'])
   })
 })

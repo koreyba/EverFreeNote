@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type KeyboardEvent, type WheelEvent } from "react"
-import { WarningCircle as AlertCircle, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CircleNotch as Loader2, Plus, Circle, X } from "@phosphor-icons/react"
+import { WarningCircle as AlertCircle, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CircleNotch as Loader2, Columns, Plus, Circle, X } from "@phosphor-icons/react"
 import { MAX_NOTE_WORKSPACE_TABS, type NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
@@ -16,6 +16,9 @@ export type NotesTabStripProps = {
   addTabDisabled?: boolean
   addTabCapacityPending?: boolean
   maximumTabCount?: number
+  onToggleSplit?: () => void
+  splitView?: boolean
+  splitDisabled?: boolean
 }
 
 type ReadonlyNotesTabStripProps = Readonly<NotesTabStripProps>
@@ -133,6 +136,9 @@ export function NotesTabStrip({
   addTabDisabled = false,
   addTabCapacityPending = false,
   maximumTabCount = MAX_NOTE_WORKSPACE_TABS,
+  onToggleSplit,
+  splitView = false,
+  splitDisabled = false,
 }: ReadonlyNotesTabStripProps) {
   const tabViewportRef = useRef<HTMLDivElement | null>(null)
   const tabButtonRefs = useRef(new Map<string, HTMLButtonElement>())
@@ -335,6 +341,22 @@ export function NotesTabStrip({
         </div>
       </div>
       {renderScrollButton(1)}
+      {onToggleSplit && (
+        <Button
+          type="button"
+          variant={splitView ? "secondary" : "ghost"}
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          data-cy="workspace-split-button"
+          aria-label={splitView ? "Close split view" : "Open split view"}
+          aria-pressed={splitView}
+          title={splitView ? "Close split view" : "Open split view"}
+          disabled={splitDisabled}
+          onClick={onToggleSplit}
+        >
+          <Columns className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      )}
     </div>
   )
 }

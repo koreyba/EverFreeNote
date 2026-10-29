@@ -38,3 +38,8 @@ description: Test plan for the structural refactor
 
 - [ ] Existing tests verified passing after refactor
 - [ ] TypeScript compiles clean
+
+## Image insertion follow-up
+
+- Cover file selection, repeat selection, unsupported/corrupt/oversized files, URL insertion, and workspace persistence failure.
+- Manually checked a 2.7 MB PNG in mobile-sized Chrome against the local Docker app: it saved and remained visible after reload and reopening the note. The large tab could not be restored automatically; the workspace warning is shown. Physical Android/iOS pickers remain to be checked.

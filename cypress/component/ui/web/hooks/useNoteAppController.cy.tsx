@@ -5,6 +5,7 @@ import { SupabaseTestProvider } from '../../../../../ui/web/providers/SupabasePr
 import { NoteViewModel } from '../../../../../core/types/domain'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import type { NoteEditorHandle } from '../../../../../ui/web/components/features/notes/NoteEditor'
+import { webOfflineStorageAdapter } from '../../../../../ui/web/adapters/offlineStorage'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SinonStub = any
@@ -28,6 +29,7 @@ const TestComponent = () => {
     <div>
       <div data-cy="loading">{controller.loading ? 'true' : 'false'}</div>
       <div data-cy="user">{controller.user ? controller.user.id : 'no-user'}</div>
+      <div data-cy="workspace-hydrated">{controller.workspaceHydrated ? 'true' : 'false'}</div>
       <div data-cy="isEditing">{controller.isEditing ? 'true' : 'false'}</div>
       <div data-cy="selectedNote-id">{controller.selectedNote ? controller.selectedNote.id : 'none'}</div>
       <div data-cy="selectedNote-tags">{controller.selectedNote?.tags?.join(',') || ''}</div>
@@ -115,6 +117,7 @@ interface MockQueryBuilder {
   delete: SinonStub
   eq: SinonStub
   single: SinonStub
+  maybeSingle: SinonStub
   then: (resolve: (res: { data: unknown[]; error: null; count: number }) => void) => void
 }
 
@@ -123,6 +126,9 @@ describe('useNoteAppController', () => {
   let mockQueryBuilder: MockQueryBuilder
 
   beforeEach(() => {
+    cy.clearLocalStorage()
+    cy.window().then(win => win.sessionStorage.clear())
+    cy.then(() => webOfflineStorageAdapter.clearAll())
     flushSpy = cy.stub()
     flushPendingSaveImpl = null
     mockQueryBuilder = {
@@ -136,6 +142,10 @@ describe('useNoteAppController', () => {
       delete: cy.stub().returnsThis(),
       eq: cy.stub().returnsThis(),
       single: cy.stub().resolves({ data: { id: '1', title: 'Saved Note', tags: [] }, error: null }),
+      maybeSingle: cy.stub().callsFake(() => {
+        const id = mockQueryBuilder.eq.getCalls().findLast((call: { args: unknown[] }) => call.args[0] === 'id')?.args[1]
+        return Promise.resolve({ data: { id, user_id: 'test-user', title: `Note ${id}`, description: 'Desc', tags: [], created_at: '2023-01-01', updated_at: '2023-01-01' }, error: null })
+      }),
       then: (resolve: (res: { data: unknown[]; error: null; count: number }) => void) => resolve({ data: [], error: null, count: 0 })
     }
 
@@ -154,14 +164,18 @@ describe('useNoteAppController', () => {
 
   it('flushes pending editor save when selecting a note while editing', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
     cy.get('[data-cy="register-editor-ref-btn"]').click()
 
     cy.get('[data-cy="select-note-btn"]').click()
@@ -173,14 +187,18 @@ describe('useNoteAppController', () => {
 
   it('flushes pending editor save when clicking a search result while editing', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
     cy.get('[data-cy="register-editor-ref-btn"]').click()
 
     cy.get('[data-cy="search-result-click-btn"]').click()
@@ -188,6 +206,46 @@ describe('useNoteAppController', () => {
     cy.then(() => {
       expect(flushSpy).to.have.been.called
     })
+  })
+
+  it('waits for the pending save before switching to another note', () => {
+    let resolveSave: (() => void) | undefined
+    flushPendingSaveImpl = () => new Promise<void>((resolve) => { resolveSave = resolve })
+
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
+        <QueryProvider><TestComponent /></QueryProvider>
+      </SupabaseTestProvider>
+    )
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
+    cy.get('[data-cy="register-editor-ref-btn"]').click()
+    cy.get('[data-cy="select-note-btn"]').click()
+    cy.wrap(null).should(() => expect(flushSpy).to.have.been.calledOnce)
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.then(() => { expect(resolveSave).to.be.a('function'); resolveSave?.() })
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '2')
+  })
+
+  it('keeps the active note when its pending save fails', () => {
+    flushPendingSaveImpl = () => Promise.reject(new Error('save failed'))
+
+    cy.mount(
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
+        <QueryProvider><TestComponent /></QueryProvider>
+      </SupabaseTestProvider>
+    )
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+    cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
+    cy.get('[data-cy="register-editor-ref-btn"]').click()
+    cy.get('[data-cy="select-note-btn"]').click()
+    cy.wrap(null).should(() => expect(flushSpy).to.have.been.calledOnce)
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
   })
 
   it('ignores stale edit completions after a newer edit request wins the flush race', () => {
@@ -204,14 +262,18 @@ describe('useNoteAppController', () => {
     }
 
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
     cy.get('[data-cy="register-editor-ref-btn"]').click()
 
     cy.get('[data-cy="edit-note-btn"]').click()
@@ -224,14 +286,18 @@ describe('useNoteAppController', () => {
 
   it('flushes pending editor save when creating a note while editing', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
     cy.get('[data-cy="register-editor-ref-btn"]').click()
 
     cy.get('[data-cy="create-note-btn"]').click()
@@ -243,14 +309,18 @@ describe('useNoteAppController', () => {
 
   it('flushes pending editor save when clicking a tag while editing', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
     cy.get('[data-cy="register-editor-ref-btn"]').click()
 
     cy.get('[data-cy="tag-click-btn"]').click()
@@ -262,14 +332,18 @@ describe('useNoteAppController', () => {
 
   it('flushes pending editor save when selecting null (back) while editing', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
     cy.get('[data-cy="register-editor-ref-btn"]').click()
 
     cy.get('[data-cy="select-null-note-btn"]').click()
@@ -296,12 +370,14 @@ describe('useNoteAppController', () => {
 
   it('handles create note state', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
+
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
 
     cy.get('[data-cy="create-note-btn"]').click()
     cy.get('[data-cy="isEditing"]').should('contain', 'true')
@@ -310,26 +386,32 @@ describe('useNoteAppController', () => {
 
   it('handles edit note state', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
     cy.get('[data-cy="isEditing"]').should('contain', 'true')
     cy.get('[data-cy="selectedNote-id"]').should('contain', '1')
   })
 
   it('handles select note', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
+
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
 
     cy.get('[data-cy="select-note-btn"]').click()
     cy.get('[data-cy="isEditing"]').should('contain', 'false')
@@ -338,12 +420,14 @@ describe('useNoteAppController', () => {
 
   it('handles search', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
+
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
 
     cy.get('[data-cy="search-btn"]').click()
     cy.get('[data-cy="searchQuery"]').should('contain', 'test query')
@@ -360,6 +444,8 @@ describe('useNoteAppController', () => {
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     // Wait for auth check
     cy.get('[data-cy="user"]').should('contain', 'test-user')
 
@@ -372,12 +458,14 @@ describe('useNoteAppController', () => {
 
   it('handles delete note', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
+
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
 
     cy.get('[data-cy="delete-note-btn"]').click()
     cy.get('[data-cy="deleteDialogOpen"]').should('contain', 'true')
@@ -391,12 +479,14 @@ describe('useNoteAppController', () => {
 
   it('handles tag filtering', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
+
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
 
     cy.get('[data-cy="tag-click-btn"]').click()
     cy.get('[data-cy="filterByTag"]').should('contain', 'test-tag')
@@ -407,12 +497,14 @@ describe('useNoteAppController', () => {
 
   it('handles search result click', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
+
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
 
     cy.get('[data-cy="search-result-click-btn"]').click()
     cy.get('[data-cy="selectedNote-id"]').should('contain', '3')
@@ -421,12 +513,14 @@ describe('useNoteAppController', () => {
 
   it('handles invalidation', () => {
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
+
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
 
     cy.get('[data-cy="invalidate-btn"]').click()
     // Hard to assert invalidation directly without spying on queryClient, 
@@ -452,11 +546,15 @@ describe('useNoteAppController', () => {
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     // Wait for user and notes to load
     cy.get('[data-cy="user"]').should('contain', 'test-user')
 
     // Select the note first to verify state update
     cy.get('[data-cy="edit-note-btn"]').click()
+    cy.get('[data-cy="selectedNote-id"]').should('have.text', '1')
+    cy.get('[data-cy="isEditing"]').should('have.text', 'true')
     cy.get('[data-cy="selectedNote-id"]').should('contain', '1')
 
     cy.get('[data-cy="remove-tag-btn"]').click()
@@ -497,6 +595,8 @@ describe('useNoteAppController', () => {
       </SupabaseTestProvider>
     )
 
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
+
     cy.get('[data-cy="user"]').should('contain', 'test-user')
     cy.get('[data-cy="remove-tag-btn"]').click()
 
@@ -508,12 +608,14 @@ describe('useNoteAppController', () => {
     (mockSupabase.rpc as unknown as SinonStub).resolves({ data: null, error: null })
 
     cy.mount(
-      <SupabaseTestProvider supabase={mockSupabase}>
+      <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
           <TestComponent />
         </QueryProvider>
       </SupabaseTestProvider>
     )
+
+    cy.get('[data-cy="workspace-hydrated"]').should('have.text', 'true')
 
     // Trigger search
     cy.get('[data-cy="search-btn"]').click()

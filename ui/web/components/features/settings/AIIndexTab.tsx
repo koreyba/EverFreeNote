@@ -426,7 +426,7 @@ function AIIndexErrorState({
 export function AIIndexTab() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { user, supabase } = useSupabase()
+  const { user, supabase, getSessionSnapshot } = useSupabase()
   const noteService = React.useMemo(() => new NoteService(supabase), [supabase])
   const [filter, setFilter] = React.useState<AIIndexFilter>("all")
   const [searchDraft, setSearchDraft] = React.useState("")
@@ -482,9 +482,9 @@ export function AIIndexTab() {
   }, [filter, notes])
 
   React.useEffect(() => {
-    if (restoredStateRef.current) return
+    if (restoredStateRef.current || !user?.id) return
 
-    const restoredState = consumeAIIndexViewState()
+    const restoredState = consumeAIIndexViewState(user.id)
     clearActiveSettingsNoteReturnPath()
     restoredStateRef.current = true
 
@@ -495,7 +495,7 @@ export function AIIndexTab() {
     setSearchQuery(restoredState.searchQuery)
     setInitialScrollOffset(restoredState.scrollOffset)
     setScrollOffset(restoredState.scrollOffset)
-  }, [])
+  }, [user?.id])
 
   React.useEffect(() => {
     if (!user?.id) return
@@ -603,13 +603,16 @@ export function AIIndexTab() {
   }), [filter, persistedSearchQuery, scrollOffset, searchDraft])
 
   const handleOpenNote = React.useCallback((noteId: string) => {
-    saveAIIndexViewState(currentViewState)
+    if (!user?.id) return
+    const session = getSessionSnapshot?.()
+    if (session && session.userId !== user.id) return
+    saveAIIndexViewState(currentViewState, user.id)
     saveAIIndexPendingNoteState({
       noteId,
       returnPath: "/settings?tab=ai-index",
-    })
+    }, user.id)
     router.push("/")
-  }, [currentViewState, router])
+  }, [currentViewState, getSessionSnapshot, router, user?.id])
 
   const mergedNotes = React.useMemo(() => mergeOptimisticNotes(notes, filter, optimisticMutations), [filter, notes, optimisticMutations])
   const displayedNotes = React.useMemo(() => mergedNotes.map((entry) => entry.note), [mergedNotes])

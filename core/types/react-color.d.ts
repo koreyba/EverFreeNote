@@ -9,7 +9,7 @@ declare module 'react-color' {
 
   export interface ColorProps {
     color?: string
-    onChange?: (color: ColorResult) => void
+    onChange?: (color: ColorResult, event?: React.SyntheticEvent<HTMLElement>) => void
     onChangeComplete?: (color: ColorResult) => void
     className?: string
   }

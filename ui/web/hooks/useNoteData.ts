@@ -53,9 +53,17 @@ export function useNoteData({
   }, [aggregatedFtsData, resolveSearchResult])
 
   const pages = notesQuery.data?.pages
-  const totalNotes = (pages?.length && typeof pages[0]?.totalCount === 'number')
-    ? pages[0].totalCount
-    : notes.length
+  const locallyDeletedIds = new Set(offlineOverlay.filter((note) => note.deleted).map((note) => note.id))
+  const hiddenServerIds = new Set(baseNotes.filter((note) => locallyDeletedIds.has(note.id)).map((note) => note.id))
+  const serverCount = pages?.length && typeof pages[0]?.totalCount === 'number' ? pages[0].totalCount : undefined
+  const loadedIds = new Set(baseNotes.map(note => note.id))
+  const allServerNotesLoaded = serverCount !== undefined && loadedIds.size === serverCount
+  // An unseen overlay ID might also be on an unloaded server page, so an
+  // exact combined total cannot be inferred until the server list is complete.
+  const hasUnseenOverlay = offlineOverlay.some(note => !loadedIds.has(note.id))
+  const totalNotes = serverCount === undefined || allServerNotesLoaded
+    ? notes.length
+    : hasUnseenOverlay ? undefined : Math.max(0, serverCount - hiddenServerIds.size)
 
   // Sidebar list is now decoupled from search panel and always shows the regular notes list.
   const notesDisplayed = notes.length

@@ -3,30 +3,42 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
+import type { MutationQueueItem } from '@core/types/offline'
 import {
   addWorkspaceTab,
   createNoteWorkspaceState,
+  MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH,
   MAX_NOTE_WORKSPACE_TABS,
   serializeNoteWorkspaceState,
   updateWorkspaceTab,
 } from '@core/services/noteWorkspaceTabs'
 import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
 import { toast } from 'sonner'
+import { setTagMutationRecovery } from '@ui/web/lib/tagMutationRecovery'
 
 let mockSelectedNote: NoteViewModel | null = null
 let mockIsEditing = true
 let mockIsOffline = false
 let mockOfflineOverlay: Array<{ id: string; status: string }> = []
 let mockNotes: NoteViewModel[] = []
+let mockTagServerCount: number | null = null
+let mockTagQueue: Array<Partial<MutationQueueItem> & { id: string }> = []
+let mockAtomicTagPatches = true
 let mockResolvedSearchResult: NoteViewModel | null = null
 let mockNoteToDelete: NoteViewModel | null = null
+let mockAuthUser: { id: string } | null = { id: 'user-1' }
+let mockProviderUser: { id: string } | null = { id: 'user-1' }
+let mockSessionSnapshot = { userId: 'user-1' as string | null, epoch: 0 }
+const mockGetSessionSnapshot = () => mockSessionSnapshot
 
 const mockGetNotes = jest.fn()
 const mockGetExistingNoteIds = jest.fn()
 const mockLoadCachedNotes = jest.fn()
 const mockRemoveSyncedNotes = jest.fn()
+const mockPatchSyncedTags = jest.fn()
 const mockGetNoteStatus = jest.fn()
 const mockGetNote = jest.fn()
+const mockGetNotesByIds = jest.fn()
 const mockHandleSelectNote = jest.fn()
 const mockHandleSearchResultClick = jest.fn()
 const mockHandleEditNoteRaw = jest.fn()
@@ -41,15 +53,19 @@ const mockResetFtsResults = jest.fn()
 const mockHandleAutoSave = jest.fn()
 const mockHandleSaveNote = jest.fn()
 const mockHandleReadNote = jest.fn()
+const mockWaitForPendingNoteWrites = jest.fn()
 const mockClearActiveSettingsNoteReturnPath = jest.fn()
 const mockResolveSearchResult = jest.fn(() => mockResolvedSearchResult)
 const mockUpdateNoteMutation = jest.fn()
 const mockPersistOfflineNoteUpdates = jest.fn().mockResolvedValue(undefined)
 const mockConfirmDeleteNote = jest.fn()
 
-jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn() } }))
+jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success: jest.fn(), warning: jest.fn() } }))
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
-  useSupabase: () => ({ supabase: { key: 'supabase' } }),
+  useSupabase: () => ({ supabase: {
+    key: 'supabase',
+    from: () => ({ select: () => ({ eq: async () => ({ count: mockTagServerCount ?? mockNotes.length, error: null }) }) }),
+  }, user: mockProviderUser, getSessionSnapshot: mockGetSessionSnapshot }),
 }))
 jest.mock('@core/services/notes', () => ({
   NoteService: jest.fn().mockImplementation(() => ({
@@ -57,6 +73,7 @@ jest.mock('@core/services/notes', () => ({
     getNotes: mockGetNotes,
     getExistingNoteIds: mockGetExistingNoteIds,
     getNote: mockGetNote,
+    getNotesByIds: mockGetNotesByIds,
   })),
 }))
 jest.mock('@core/utils/noteSnapshot', () => ({
@@ -72,7 +89,7 @@ jest.mock('@ui/web/lib/aiIndexNavigationState', () => ({
 
 jest.mock('@ui/web/hooks/useNoteAuth', () => ({
   useNoteAuth: () => ({
-    user: { id: 'user-1' },
+    user: mockAuthUser,
     loading: false,
     handleSignInWithGoogle: jest.fn(),
     handleTestLogin: jest.fn(),
@@ -119,10 +136,10 @@ jest.mock('@ui/web/hooks/useNoteSync', () => ({
     isOffline: mockIsOffline,
     lastSavedAt: null,
     setLastSavedAt: mockSetLastSavedAt,
-    offlineCache: { deleteNote: jest.fn(), loadNotes: mockLoadCachedNotes, removeSyncedNotes: mockRemoveSyncedNotes, saveNote: jest.fn() },
+    offlineCache: { deleteNote: jest.fn(), loadNotes: mockLoadCachedNotes, removeSyncedNotes: mockRemoveSyncedNotes, patchSyncedTags: mockPatchSyncedTags, saveNote: jest.fn(), supportsAtomicTagPatches: () => mockAtomicTagPatches },
     enqueueMutation: jest.fn(),
     enqueueBatchAndDrainIfOnline: jest.fn(),
-    offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } },
+    offlineQueueRef: { current: { getQueue: async () => mockTagQueue } },
   }),
 }))
 jest.mock('@ui/web/hooks/useNotesMutations', () => ({
@@ -133,7 +150,8 @@ jest.mock('@ui/web/hooks/useNotesMutations', () => ({
 }))
 jest.mock('@ui/web/hooks/useNotesQuery', () => ({
   useNotesQuery: () => ({
-    data: { pages: [] },
+    data: { pages: [{ notes: mockNotes, totalCount: mockTagServerCount ?? mockNotes.length }] },
+    refetch: async () => ({ data: { pages: [{ notes: mockNotes, totalCount: mockTagServerCount ?? mockNotes.length }] } }),
     fetchNextPage: jest.fn(),
     hasNextPage: false,
     isFetchingNextPage: false,
@@ -162,6 +180,7 @@ jest.mock('@ui/web/hooks/useNoteSaveHandlers', () => ({
     handleSaveNote: mockHandleSaveNote,
     handleReadNote: mockHandleReadNote,
     confirmDeleteNote: mockConfirmDeleteNote,
+    waitForPendingNoteWrites: mockWaitForPendingNoteWrites,
     handleRemoveTagFromNote: jest.fn(),
     persistOfflineNoteUpdates: mockPersistOfflineNoteUpdates,
   }),
@@ -236,20 +255,190 @@ function setup() {
 describe('useNoteAppController additional observable behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    setTagMutationRecovery('user-1')
+    setTagMutationRecovery('user-2')
     window.sessionStorage.clear()
     mockSelectedNote = null
     mockIsEditing = true
     mockIsOffline = false
     mockOfflineOverlay = []
     mockNotes = []
+    mockTagServerCount = null
+    mockTagQueue = []
+    mockAtomicTagPatches = true
+    mockLoadCachedNotes.mockResolvedValue([])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids)
+    mockGetNotesByIds.mockImplementation(async (ids) => mockNotes.filter(note => ids.includes(note.id)))
+    mockRemoveSyncedNotes.mockImplementation(async (cached) => cached.map((note: { id: string }) => note.id))
+    mockPatchSyncedTags.mockImplementation(async (patches) => patches.map((patch: { expected: { id: string } }) => patch.expected.id))
     mockResolvedSearchResult = null
     mockNoteToDelete = null
+    mockAuthUser = { id: 'user-1' }
+    mockProviderUser = { id: 'user-1' }
+    mockSessionSnapshot = { userId: 'user-1', epoch: 0 }
     mockHandleAutoSave.mockReset().mockResolvedValue(undefined)
     mockHandleSaveNote.mockReset().mockResolvedValue(undefined)
     mockHandleReadNote.mockReset().mockResolvedValue(undefined)
+    mockWaitForPendingNoteWrites.mockReset().mockResolvedValue(undefined)
     mockConfirmDeleteNote.mockReset().mockResolvedValue(true)
     mockUpdateNoteMutation.mockReset()
     mockUpdateNoteMutation.mockResolvedValue(undefined)
+  })
+
+  it('hides the old workspace immediately when the provider changes users before the auth hook catches up', async () => {
+    const first = makeNote({ id: 'first', title: 'Private first note' })
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note: first })
+    const { result, rerender } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(first) })
+    expect(result.current.activeTab.note?.title).toBe('Private first note')
+
+    mockProviderUser = { id: 'user-2' }
+    rerender()
+    expect(result.current.workspaceHydrated).toBe(false)
+    expect(result.current.activeTab.note).toBeNull()
+
+    mockAuthUser = { id: 'user-2' }
+    rerender()
+    expect(result.current.workspaceHydrated).toBe(false)
+    expect(result.current.activeTab.note).toBeNull()
+
+    // The provider's synchronous session snapshot must agree as well; a
+    // stale epoch must never make the new owner's workspace visible.
+    mockSessionSnapshot = { userId: 'user-2', epoch: 1 }
+    rerender()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    expect(result.current.activeTab.note).toBeNull()
+  })
+
+  it('does not enter settings when an unsaved inactive tab was dropped from the storage budget', async () => {
+    const first = makeNote({ id: 'first', title: 'First', description: 'x'.repeat(5000) })
+    const second = makeNote({ id: 'second', title: 'Second' })
+    mockNotes = [first, second]
+    mockGetNoteStatus.mockImplementation((id: string) => Promise.resolve({
+      status: 'found', note: id === 'first' ? first : second,
+    }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(first) })
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Storage unavailable'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ noteId: 'first', title: 'First unsaved', description: 'x'.repeat(5000), tags: '' })).rejects.toThrow('Storage unavailable')
+    })
+    expect(result.current.activeTab.saveState).toBe('error')
+    await act(async () => { await result.current.addTab() })
+    await act(async () => { await result.current.handleSelectNote(second) })
+    await act(async () => {
+      await result.current.handleAutoSave({
+        noteId: 'second', title: 'Second', description: 'x'.repeat(MAX_NOTE_WORKSPACE_SERIALIZED_LENGTH - 1500), tags: '',
+      })
+    })
+
+    const snapshot = JSON.parse(window.sessionStorage.getItem(NOTE_WORKSPACE_STORAGE_KEY)!) as { tabs: Array<{ noteId: string | null }> }
+    expect(result.current.tabs.some(tab => tab.noteId === 'first' && tab.saveState === 'error')).toBe(true)
+    expect(snapshot.tabs.some(tab => tab.noteId === 'first')).toBe(false)
+    let navigation: unknown
+    await act(async () => { navigation = await result.current.captureSettingsReturnState() })
+    expect(navigation).toBeNull()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('unsaved'))
+  })
+
+  it('allows settings when every unfinished draft was actually persisted', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Write failed'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ title: 'Unsent', description: 'Draft', tags: '' })).rejects.toThrow('Write failed')
+    })
+    await act(async () => { await result.current.addTab() })
+    expect(result.current.tabs[0].saveState).toBe('error')
+    const snapshot = await act(async () => result.current.captureSettingsReturnState())
+    expect(snapshot).not.toBeNull()
+  })
+
+  it('blocks settings if the available workspace snapshot contains an older draft', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Write failed'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ title: 'Newest', description: 'Draft', tags: '' })).rejects.toThrow('Write failed')
+    })
+    await act(async () => { await result.current.addTab() })
+    const raw = JSON.parse(window.sessionStorage.getItem(NOTE_WORKSPACE_STORAGE_KEY)!)
+    raw.tabs[0].draft.title = 'Older'
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, JSON.stringify(raw))
+    const snapshot = await act(async () => result.current.captureSettingsReturnState())
+    expect(snapshot).toBeNull()
+    expect(result.current.tabs[0].draft.title).toBe('Newest')
+  })
+
+  it('blocks settings when the workspace cannot be read back', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    mockHandleAutoSave.mockRejectedValueOnce(new Error('Write failed'))
+    await act(async () => {
+      await expect(result.current.handleAutoSave({ title: 'Unsent', description: 'Draft', tags: '' })).rejects.toThrow('Write failed')
+    })
+    await act(async () => { await result.current.addTab() })
+    const original = Storage.prototype.getItem
+    const read = jest.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) {
+      if (key === NOTE_WORKSPACE_STORAGE_KEY) throw new Error('Storage unavailable')
+      return original.call(this, key)
+    })
+    const snapshot = await act(async () => result.current.captureSettingsReturnState())
+    expect(snapshot).toBeNull()
+    read.mockRestore()
+  })
+
+  it('flushes input made while another pending write is finishing before settings navigation', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    let release!: () => void
+    mockWaitForPendingNoteWrites.mockReturnValueOnce(new Promise<void>(resolve => { release = resolve }))
+    let currentDraft = 'First'
+    const savedDrafts: string[] = []
+    const editorRef = { current: { flushPendingSave: jest.fn(async () => { savedDrafts.push(currentDraft) }) } }
+    act(() => result.current.registerNoteEditorRef(editorRef as never))
+    let transition!: Promise<unknown>
+    await act(async () => {
+      transition = result.current.captureSettingsReturnState()
+      await Promise.resolve()
+    })
+    expect(savedDrafts).toEqual(['First'])
+    currentDraft = 'Last'
+    await act(async () => { release(); await transition })
+    expect(savedDrafts).toEqual(['First', 'Last'])
+  })
+
+  it('cancels settings navigation if the signed-in account changes while waiting', async () => {
+    const { result, rerender } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    let release!: () => void
+    mockWaitForPendingNoteWrites.mockReturnValueOnce(new Promise<void>(resolve => { release = resolve }))
+    let transition!: Promise<unknown>
+    await act(async () => { transition = result.current.captureSettingsReturnState(); await Promise.resolve() })
+    mockProviderUser = { id: 'user-2' }
+    rerender()
+    let snapshot: unknown
+    await act(async () => { release(); snapshot = await transition })
+    expect(snapshot).toBeNull()
+  })
+
+  it('requires confirmation before discarding an inactive dirty tab', async () => {
+    let state = createNoteWorkspaceState(() => 'dirty', 'user-1')
+    state = updateWorkspaceTab(state, 'dirty', { draft: { title: 'Unsent' }, saveState: 'dirty', mode: 'editing' })
+    state = addWorkspaceTab(state, () => 'other')
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(state))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.closeTab('dirty') })
+    expect(result.current.tabs.some(tab => tab.id === 'dirty')).toBe(true)
+    expect(result.current.tabPendingClose).toEqual({ tabId: 'dirty', label: 'Unsent' })
+    act(() => result.current.cancelCloseTab())
+    expect(result.current.tabs.some(tab => tab.id === 'dirty')).toBe(true)
+    await act(async () => { await result.current.closeTab('dirty') })
+    await act(async () => { await result.current.confirmCloseTab() })
+    expect(result.current.tabs.some(tab => tab.id === 'dirty')).toBe(false)
   })
 
   it('flushes pending editor work before creating a note and captures the current UI state', async () => {
@@ -280,7 +469,7 @@ describe('useNoteAppController additional observable behavior', () => {
       searchQuery: 'initial search',
       filterByTag: 'initial-tag',
     })
-    expect(flushPendingSave).toHaveBeenCalledTimes(2)
+    expect(flushPendingSave).toHaveBeenCalledTimes(3)
     window.history.pushState({}, '', '/')
   })
 
@@ -310,12 +499,74 @@ describe('useNoteAppController additional observable behavior', () => {
   it('returns to the note list after creating a blank tab so the active slot can receive a note', async () => {
     const { result } = setup()
 
+    let createdId: string | null = null
     await act(async () => {
-      await result.current.addTab()
+      createdId = await result.current.addTab()
     })
 
+    expect(createdId).toBe(result.current.activeTabId)
     expect(result.current.activeTab.note).toBeNull()
     expect(result.current.notePaneVisible).toBe(false)
+  })
+
+  it('does not create or activate another tab when flushing the current editor fails', async () => {
+    const first = makeNote({ id: 'first', title: 'First' })
+    const second = makeNote({ id: 'second', title: 'Second' })
+    mockGetNoteStatus.mockImplementation((id: string) => Promise.resolve({
+      status: 'found', note: id === 'first' ? first : second,
+    }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(first) })
+    const firstTabId = result.current.activeTabId
+    await act(async () => { await result.current.addTab() })
+    await act(async () => { await result.current.handleSelectNote(second) })
+    await act(async () => { await result.current.handleEditNote(second) })
+    const secondTabId = result.current.activeTabId
+    const draft = { title: 'Unsaved second', description: '<p>Keep this</p>', tags: '' }
+    const flushPendingSave = jest.fn().mockRejectedValue(new Error('Storage unavailable'))
+    const captureSession = jest.fn(() => ({ draft, view: { scrollTop: 15 } }))
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave, captureSession } } as never))
+
+    let addedId: string | null = 'not attempted'
+    await act(async () => { addedId = await result.current.addTab() })
+    expect(addedId).toBeNull()
+    let activated = true
+    await act(async () => { activated = await result.current.activateTab(firstTabId) })
+    expect(activated).toBe(false)
+    await act(async () => { await result.current.closeTab(secondTabId) })
+    const settingsSnapshot = await act(async () => result.current.captureSettingsReturnState())
+
+    expect(settingsSnapshot).toBeNull()
+    expect(result.current.activeTabId).toBe(secondTabId)
+    expect(result.current.tabs).toHaveLength(2)
+    expect(result.current.activeTab.draft).toEqual(draft)
+    expect(result.current.activeTab.view.scrollTop).toBe(15)
+    expect(flushPendingSave).toHaveBeenCalledTimes(4)
+  })
+
+  it('creates only one tab when add is requested twice during a pending save', async () => {
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleCreateNote() })
+    let finishSave: () => void = () => undefined
+    const pendingSave = new Promise<void>((resolve) => { finishSave = resolve })
+    const flushPendingSave = jest.fn(() => pendingSave)
+    act(() => result.current.registerNoteEditorRef({ current: { flushPendingSave } } as never))
+
+    let firstId: string | null = null
+    let secondId: string | null = 'not attempted'
+    await act(async () => {
+      const first = result.current.addTab()
+      secondId = await result.current.addTab()
+      finishSave()
+      firstId = await first
+    })
+
+    expect(firstId).toBe(result.current.activeTabId)
+    expect(secondId).toBeNull()
+    expect(result.current.tabs).toHaveLength(2)
+    expect(flushPendingSave).toHaveBeenCalledTimes(1)
   })
 
   it('returns to the note list when closing the final blank tab replacement', async () => {
@@ -333,6 +584,8 @@ describe('useNoteAppController additional observable behavior', () => {
   it('asks before discarding a tab whose save failed, and only closes on confirm', async () => {
     const { result } = setup()
     const tabId = result.current.activeTabId
+    const cancelPendingSave = jest.fn()
+    act(() => result.current.registerNoteEditorRef({ current: { cancelPendingSave, flushPendingSave: jest.fn() } } as never))
 
     // Reach the error state the way the app does: an autosave that rejects.
     mockHandleAutoSave.mockRejectedValueOnce(new Error('Network unavailable'))
@@ -356,6 +609,7 @@ describe('useNoteAppController additional observable behavior', () => {
     })
     expect(result.current.tabPendingClose).toBeNull()
     expect(result.current.tabs.map((tab) => tab.id)).toContain(tabId)
+    expect(cancelPendingSave).not.toHaveBeenCalled()
 
     await act(async () => {
       await result.current.closeTab(tabId)
@@ -366,6 +620,7 @@ describe('useNoteAppController additional observable behavior', () => {
 
     expect(result.current.tabPendingClose).toBeNull()
     expect(result.current.tabs.map((tab) => tab.id)).not.toContain(tabId)
+    expect(cancelPendingSave).toHaveBeenCalledTimes(1)
   })
 
   it('names the failed tab from its draft when the note never reached the server', async () => {
@@ -691,6 +946,29 @@ describe('useNoteAppController additional observable behavior', () => {
     window.history.pushState({}, '', '/')
   })
 
+  it('applies the latest browser navigation after an in-flight tag update finishes', async () => {
+    window.history.replaceState({}, '', '/?view=tags')
+    mockNotes = [makeNote({ tags: ['old'] })]
+    let resolveWrite!: () => void
+    mockUpdateNoteMutation.mockImplementation(() => new Promise<void>((resolve) => { resolveWrite = resolve }))
+    const { result, unmount } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    let operation!: Promise<boolean | string>
+    act(() => { operation = result.current.handleRenameTag('old', 'new') })
+    await waitFor(() => expect(mockUpdateNoteMutation).toHaveBeenCalled())
+    act(() => {
+      window.history.pushState({}, '', '/?view=notes&search=open')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+    expect(result.current.activeMainView).toBe('tags')
+    await act(async () => { resolveWrite(); await operation })
+    expect(result.current.activeMainView).toBe('notes')
+    expect(result.current.isSearchPanelOpen).toBe(true)
+    unmount()
+    window.history.replaceState({}, '', '/')
+  })
+
   it('opens the tags view when the app mounts after navigating from settings', () => {
     window.history.pushState({}, '', '/settings')
 
@@ -710,6 +988,78 @@ describe('useNoteAppController additional observable behavior', () => {
 
     unmount()
     window.history.pushState({}, '', '/')
+  })
+
+  it('stops verifying tags when the account changes before the cache read finishes', async () => {
+    mockNotes = [makeNote({ id: 'first', tags: ['old'] })]
+    let releaseCache!: (notes: never[]) => void
+    mockLoadCachedNotes.mockImplementationOnce(() => new Promise((resolve) => { releaseCache = resolve }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    let operation!: Promise<boolean | string>
+    act(() => { operation = result.current.handleRenameTag('old', 'new') })
+    await waitFor(() => expect(releaseCache).toBeDefined())
+    mockSessionSnapshot = { userId: 'user-2', epoch: 1 }
+    await act(async () => { releaseCache([]); await operation })
+
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('does not start another batch or reconcile tags after an account switch', async () => {
+    mockNotes = Array.from({ length: 9 }, (_, index) => makeNote({ id: `note-${index}`, tags: ['old'] }))
+    let releaseBatch!: () => void
+    const batch = new Promise<void>((resolve) => { releaseBatch = resolve })
+    mockUpdateNoteMutation.mockImplementation(() => batch)
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    let operation!: Promise<boolean | string>
+    act(() => { operation = result.current.handleRenameTag('old', 'new') })
+    await waitFor(() => expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(8))
+    mockSessionSnapshot = { userId: 'user-2', epoch: 1 }
+    await act(async () => { releaseBatch(); await operation })
+
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(8)
+    expect(mockGetNotesByIds).not.toHaveBeenCalled()
+    expect(mockPatchSyncedTags).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('shows only the original account an unfinished tag batch and asks it to review after the write settles', async () => {
+    mockNotes = Array.from({ length: 9 }, (_, index) => makeNote({ id: `note-${index}`, tags: ['old'] }))
+    let releaseBatch!: () => void
+    const batch = new Promise<void>((resolve) => { releaseBatch = resolve })
+    mockUpdateNoteMutation.mockImplementation(() => batch)
+    const accountA = setup()
+    await waitFor(() => expect(accountA.result.current.workspaceHydrated).toBe(true))
+    let operation!: Promise<boolean | string>
+    act(() => { operation = accountA.result.current.handleRenameTag('old', 'new') })
+    await waitFor(() => expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(8))
+
+    mockSessionSnapshot = { userId: 'user-2', epoch: 1 }
+    accountA.unmount()
+    mockProviderUser = { id: 'user-2' }
+    mockAuthUser = { id: 'user-2' }
+    const accountB = setup()
+    await waitFor(() => expect(accountB.result.current.workspaceHydrated).toBe(true))
+    expect(accountB.result.current.tagManagementBlockReason ?? '').not.toContain('previous tag')
+    accountB.unmount()
+
+    mockSessionSnapshot = { userId: 'user-1', epoch: 2 }
+    mockProviderUser = { id: 'user-1' }
+    mockAuthUser = { id: 'user-1' }
+    const returnedA = setup()
+    await waitFor(() => expect(returnedA.result.current.workspaceHydrated).toBe(true))
+    expect(returnedA.result.current.tagManagementBlockReason).toContain('still finishing')
+    await act(async () => { releaseBatch(); await operation })
+    await waitFor(() => expect(returnedA.result.current.tagManagementBlockReason).toContain('may be incomplete'))
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(8)
+    expect(toast.success).not.toHaveBeenCalledWith('Tag "old" renamed to "new"')
+    await act(async () => { await returnedA.result.current.checkTagCoverage() })
+    expect(returnedA.result.current.tagCoverageNotice).toContain('Review')
+    returnedA.unmount()
   })
 
   it('persists tag rename, deletion, and cleanup mutations', async () => {
@@ -763,31 +1113,26 @@ describe('useNoteAppController additional observable behavior', () => {
       await result.current.handleDeleteTag('missing')
       await result.current.handleCleanTags()
     })
-    expect(toast.info).toHaveBeenCalledWith('No empty or duplicate tags found to clean')
+    expect(toast.info).toHaveBeenCalledWith('No matching tags found in the loaded notes.')
     expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
     unmount()
 
     const firstNote = makeNote({ id: 'first', tags: ['old'] })
     const secondNote = makeNote({ id: 'second', tags: ['old'] })
     mockNotes = [firstNote, secondNote]
-    mockUpdateNoteMutation
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error('write failed'))
-      .mockResolvedValueOnce(undefined)
+    mockUpdateNoteMutation.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('write failed'))
 
     const rerendered = setup()
     await act(async () => {
       await rerendered.result.current.handleRenameTag('old', 'new')
     })
 
-    expect(toast.error).toHaveBeenCalledWith('Failed to rename tag: write failed')
-    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'first',
-      tags: ['old'],
-    }))
+    expect(toast.error).toHaveBeenCalledWith('The tag change may be incomplete. Notes were refreshed; review them before retrying.')
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(2)
+    expect(toast.success).not.toHaveBeenCalledWith('Tag "old" renamed to "new"')
   })
 
-  it('routes tag changes through the offline queue when offline', async () => {
+  it('blocks global tag changes offline without adding anything to the queue', async () => {
     mockIsOffline = true
     const firstNote = makeNote({ id: 'first', tags: ['old'] })
     mockNotes = [firstNote]
@@ -797,15 +1142,482 @@ describe('useNoteAppController additional observable behavior', () => {
       await result.current.handleRenameTag('old', 'new')
     })
 
-    expect(mockPersistOfflineNoteUpdates).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'first', tags: ['new'] }),
-    ])
+    expect(mockPersistOfflineNoteUpdates).not.toHaveBeenCalled()
     expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Connect to the internet to manage tags across notes.')
+  })
+
+  it('blocks a global change when a fresh total exceeds the loaded collection', async () => {
+    mockNotes = Array.from({ length: 50 }, (_, i) => makeNote({ id: `note-${i}`, tags: ['old'] }))
+    mockTagServerCount = 51
+    const { result } = setup()
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Loaded 50 of 51 notes. Load more notes and check again.')
+  })
+
+  it('rejects duplicate rows instead of treating them as complete coverage', async () => {
+    mockNotes = [makeNote({ id: 'same', tags: ['old'] }), makeNote({ id: 'same', tags: ['old'] })]
+    mockTagServerCount = 2
+    const { result } = setup()
+    await act(async () => { await result.current.handleDeleteTag('old') })
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Some notes appeared more than once. Refresh and check again.')
+  })
+
+  it('blocks a global change while a note mutation remains queued', async () => {
+    mockNotes = [makeNote({ tags: ['old'] })]
+    mockTagQueue = [{ id: 'pending-change', noteId: 'current', operation: 'update', payload: { user_id: 'user-1' }, clientUpdatedAt: '2024-01-01T00:00:00Z', status: 'pending' }]
+    const { result } = setup()
+    await act(async () => { await result.current.handleDeleteTag('old') })
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Finish syncing your notes before managing tags.')
+  })
+
+  it.each(['pending', 'failed'] as const)('does not let another account’s %s queue block a tag change', async (status) => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const foreign = { id: 'foreign', user_id: 'user-a', title: 'Private title', description: 'Private body', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status }
+    mockLoadCachedNotes.mockResolvedValue([foreign])
+    mockTagQueue = [{ id: 'foreign-op', noteId: foreign.id, operation: 'update', payload: { user_id: foreign.user_id, title: foreign.title, description: foreign.description, tags: foreign.tags }, clientUpdatedAt: foreign.updatedAt, status }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({ id: 'current', tags: ['new'] }))
+    expect(mockTagQueue).toHaveLength(1)
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([])
+    expect(JSON.stringify(jest.mocked(toast).error.mock.calls)).not.toContain('Private')
+  })
+
+  it('does not attribute an unrelated ownerless operation to the other account', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    mockTagQueue = [{ id: 'unknown-op', noteId: 'unknown', operation: 'update', payload: { title: 'Private changes', tags: ['old'] }, clientUpdatedAt: '2024-01-01T00:00:00Z', status: 'pending' }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('Some local changes need account verification')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockTagQueue).toHaveLength(1)
+    expect(JSON.stringify(jest.mocked(toast).error.mock.calls)).not.toContain('Private')
+  })
+
+  it('allows a foreign ownerless snapshot only when the related operation proves its exact contents', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const foreign = { id: 'foreign-legacy', title: 'Private title', description: 'Private body', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockLoadCachedNotes.mockResolvedValue([foreign])
+    mockTagQueue = [{ id: 'foreign-op', noteId: foreign.id, operation: 'create', payload: { user_id: 'user-a', title: foreign.title, description: foreign.description, tags: foreign.tags }, clientUpdatedAt: foreign.updatedAt, status: 'pending' }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([])
+    expect(mockTagQueue).toHaveLength(1)
+  })
+
+  it('retains a foreign dirty note without making it block another account', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const foreign = { id: 'foreign-dirty', user_id: 'user-a', title: 'Private draft', description: 'Private body', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockLoadCachedNotes.mockResolvedValue([foreign])
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([])
+    expect(foreign.tags).toEqual(['old'])
+  })
+
+  it('does not infer ownership from a related foreign operation with different contents', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const unknown = { id: 'ambiguous', title: 'Private draft', description: 'Newer body', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockLoadCachedNotes.mockResolvedValue([unknown])
+    mockTagQueue = [{ id: 'foreign-op', noteId: unknown.id, operation: 'create', payload: { user_id: 'user-a', title: unknown.title, description: 'Different body', tags: unknown.tags }, clientUpdatedAt: unknown.updatedAt, status: 'pending' }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('Some local changes need account verification')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockTagQueue).toHaveLength(1)
+    expect(JSON.stringify(jest.mocked(toast).error.mock.calls)).not.toContain('Private')
+  })
+
+  it('explains why a foreign queue blocks tags in shared-array storage', async () => {
+    mockAtomicTagPatches = false
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const foreign = { id: 'foreign', user_id: 'user-a', title: 'Private title', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockLoadCachedNotes.mockResolvedValue([foreign])
+    mockTagQueue = [{ id: 'foreign-op', noteId: foreign.id, operation: 'update', payload: { user_id: foreign.user_id }, clientUpdatedAt: foreign.updatedAt, status: 'pending' }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('another or unverified account')
+    expect(String(outcome)).toContain('IndexedDB')
+    expect(String(outcome)).not.toContain('Finish syncing your notes')
+    expect(String(outcome)).not.toContain('Private title')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockTagQueue).toHaveLength(1)
+  })
+
+  it('blocks foreign saved snapshots in shared-array storage even without a queue', async () => {
+    mockAtomicTagPatches = false
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    mockLoadCachedNotes.mockResolvedValue([{ id: 'foreign', user_id: 'user-a', tags: ['other'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' }])
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('another or unverified account')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+  })
+
+  it('permits fallback tag changes when all local data belongs to the current account', async () => {
+    mockAtomicTagPatches = false
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+  })
+
+  it('blocks conflicting owners and leaves both queued operations untouched', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const operation = { noteId: 'conflicting', operation: 'update' as const, clientUpdatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockTagQueue = [{ ...operation, id: 'first', payload: { user_id: 'user-a' } }, { ...operation, id: 'second', payload: { user_id: 'user-1' } }]
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(String(outcome)).toContain('Some local changes need account verification')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockTagQueue).toHaveLength(2)
+  })
+
+  it('does not report success if another ownerless operation appears during a tag write', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    mockUpdateNoteMutation.mockImplementation(async () => {
+      mockTagQueue = [{ id: 'late-unknown', noteId: 'unknown', operation: 'update', payload: { title: 'Private' }, clientUpdatedAt: '2024-01-01T00:00:00Z', status: 'pending' }]
+    })
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(false)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockTagQueue).toHaveLength(1)
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it.each([0, 1, 50, 51, 101, 1001])('checks the complete loaded collection of %i notes', async (count) => {
+    mockNotes = Array.from({ length: count }, (_, i) => makeNote({ id: `note-${i}` }))
+    mockTagServerCount = count
+    const { result } = setup()
+    await act(async () => { await result.current.checkTagCoverage() })
+    expect(mockGetExistingNoteIds).toHaveBeenCalledWith(mockNotes.map((note) => note.id), 'user-1')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('preserves a dirty open draft and refuses a global deletion', async () => {
+    mockIsEditing = false
+    const note = makeNote({ tags: ['old'] })
+    mockNotes = [note]
+    const state = createNoteWorkspaceState(() => 'dirty-tab', 'user-1')
+    const dirty = updateWorkspaceTab(state, state.activeTabId, {
+      note, noteId: note.id, mode: 'editing', saveState: 'dirty',
+      draft: { title: 'Keep this draft', description: 'Unsaved body', tags: 'old' },
+    })
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(dirty))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleDeleteTag('old') })
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(result.current.tabs[0].draft.description).toBe('Unsaved body')
+    expect(toast.error).toHaveBeenCalledWith('Save changes in open notes before managing tags.')
+  })
+
+  it('keeps an uncertain result visible if the reread also fails after a timeout', async () => {
+    mockNotes = [makeNote({ tags: ['old'] })]
+    mockUpdateNoteMutation.mockRejectedValueOnce(new Error('request timed out'))
+    mockGetNotesByIds.mockRejectedValue(new Error('offline'))
+    const { result } = setup()
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
+  })
+
+  it('updates only tags in a synced cached note instead of discarding offline content', async () => {
+    const note = makeNote({ id: 'cached', tags: ['old'], description: 'Keep this offline content' })
+    mockNotes = [note]
+    const cached = { ...note, status: 'synced', updatedAt: note.updated_at }
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockGetNotesByIds.mockImplementation(async (ids) => ids.includes(note.id) ? [{ ...note, tags: ['new'] }] : [])
+    const { result } = setup()
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([{ expected: cached, tags: ['new'] }])
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('retains a synced local copy absent on the server during an unrelated tag change', async () => {
+    const note = makeNote({ id: 'present', tags: ['old'] })
+    const cached = { ...makeNote({ id: 'deleted' }), status: 'synced' as const, updatedAt: '2024-01-01T00:00:00Z' }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids.filter((id: string) => id === note.id))
+    const { result } = setup()
+
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+
+    expect(mockGetExistingNoteIds).toHaveBeenCalledWith([cached.id], 'user-1')
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('blocks a tag change that would affect a missing owned local copy', async () => {
+    const note = makeNote({ id: 'present', tags: ['old'] })
+    const cached = { ...makeNote({ id: 'missing', tags: ['old'] }), status: 'synced' as const, updatedAt: '2024-01-01T00:00:00Z' }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids.filter((id: string) => id === note.id))
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toContain('Some local copies are unavailable on the server')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('retains cached content and reports an unconfirmed change when absence cannot be verified', async () => {
+    const note = makeNote({ id: 'present', tags: ['old'] })
+    const cached = { ...makeNote({ id: 'deleted' }), status: 'synced' as const, updatedAt: '2024-01-01T00:00:00Z' }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => {
+      if (ids.includes(cached.id)) throw new Error('network failure')
+      return ids
+    })
+    const { result } = setup()
+
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
+  })
+
+  it('blocks a missing ownerless cache entry before sending any tag update', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const ownerless = { id: 'unknown', title: 'Keep this', tags: [' OLD '], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    mockLoadCachedNotes.mockResolvedValue([ownerless])
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe('No tag changes were sent by this attempt. Some cached notes with an unknown account would be changed. They were kept for safety.')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+  })
+
+  it('allows an unrelated tag change while retaining a missing ownerless cache entry', async () => {
+    const note = makeNote({ id: 'current', tags: ['old'] })
+    const ownerless = { id: 'unknown', tags: ['different'], description: 'Keep me', updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([ownerless])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids.filter((id: string) => id === note.id))
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([])
+    expect(result.current.tagCoverageNotice).toContain('unknown account')
+    expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('does not patch an unrelated ownerless copy that shares a server note ID', async () => {
+    const note = makeNote({ id: 'shared-id', tags: ['old'] })
+    const unknown = { id: note.id, title: 'Private local copy', description: 'Keep me', tags: ['other'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([unknown])
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(true)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledWith(expect.objectContaining({ id: note.id, tags: ['new'] }))
+    expect(mockPatchSyncedTags).toHaveBeenCalledWith([])
+    expect(unknown.tags).toEqual(['other'])
+  })
+
+  it('blocks delete and clean if they would modify tags on a missing ownerless entry', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const ownerless = { id: 'unknown', tags: [' OLD ', 'old'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    mockLoadCachedNotes.mockResolvedValue([ownerless])
+    const { result } = setup()
+    let deleteOutcome: unknown
+    let cleanOutcome: unknown
+    await act(async () => { deleteOutcome = await result.current.handleDeleteTag('old') })
+    await act(async () => { cleanOutcome = await result.current.handleCleanTags() })
+    expect(deleteOutcome).toContain('No tag changes were sent by this attempt.')
+    expect(cleanOutcome).toContain('No tag changes were sent by this attempt.')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+  })
+
+  it('does not report success if an ownerless cached entry gains the affected tag during the write', async () => {
+    const note = makeNote({ id: 'current', tags: ['old'] })
+    const before = { id: 'unknown', tags: ['other'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    const after = { ...before, tags: ['other', 'old'] }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValueOnce([]).mockResolvedValueOnce([before]).mockResolvedValue([after])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids.filter((id: string) => id === note.id))
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(false)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
+  })
+
+  it('rechecks an ownerless entry changed during the post-write server reads', async () => {
+    const note = makeNote({ id: 'current', tags: ['old'] })
+    const before = { id: 'unknown', tags: ['other'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    const after = { ...before, tags: ['other', 'old'] }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValueOnce([before]).mockResolvedValueOnce([before]).mockResolvedValueOnce([before]).mockResolvedValue([after])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids.filter((id: string) => id === note.id))
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(false)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('rechecks the queue if a write appears during the post-write server reads', async () => {
+    const note = makeNote({ id: 'current', tags: ['old'] })
+    const ownerless = { id: 'unknown', tags: ['other'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    const owned = { ...note, updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    mockNotes = [note]
+    mockLoadCachedNotes.mockResolvedValue([ownerless, owned])
+    mockGetExistingNoteIds.mockImplementation(async (ids) => ids.filter((id: string) => id === note.id))
+    mockGetNotesByIds.mockImplementation(async (ids) => {
+      if (ids.includes(owned.id)) mockTagQueue = [{ id: 'late-queued-write' }]
+      return mockNotes.filter(item => ids.includes(item.id))
+    })
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(false)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockTagQueue).toEqual([{ id: 'late-queued-write' }])
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('does not report success if a queued write appears during the batch', async () => {
+    const note = makeNote({ id: 'current', tags: ['old'] })
+    mockNotes = [note]
+    mockUpdateNoteMutation.mockImplementation(async () => { mockTagQueue = [{ id: 'late-queued-write' }] })
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe(false)
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(mockTagQueue).toEqual([{ id: 'late-queued-write' }])
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
+  })
+
+  it('blocks a remotely absent open tab without losing its saved local content', async () => {
+    const deleted = makeNote({ id: 'deleted', title: 'Keep open', tags: ['other'] })
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const state = createNoteWorkspaceState(() => 'saved-tab', 'user-1')
+    const withNote = updateWorkspaceTab(state, state.activeTabId, {
+      note: deleted, noteId: deleted.id, mode: 'reading', saveState: 'saved',
+      draft: { title: 'Keep open', description: 'Local text to retain', tags: 'other' },
+    })
+    window.sessionStorage.setItem(NOTE_WORKSPACE_STORAGE_KEY, serializeNoteWorkspaceState(withNote))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe('No tag changes were sent by this attempt. An open note is no longer available. Close its tab and check again.')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(result.current.tabs[0].draft.description).toBe('Local text to retain')
+    expect(result.current.tabs[0].noteId).toBe(deleted.id)
+  })
+
+  it('rechecks the cache before a batch so a newly queued draft blocks every write', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const draft = { id: 'draft', user_id: 'user-1', updatedAt: '2024-01-01T00:00:00Z', status: 'pending' as const }
+    mockLoadCachedNotes.mockResolvedValueOnce([]).mockResolvedValue([draft])
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe('No tag changes were sent by this attempt. Finish syncing your notes before managing tags.')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+  })
+
+  it('rechecks for an ownerless entry that appears during server verification', async () => {
+    mockNotes = [makeNote({ id: 'current', tags: ['old'] })]
+    const ownerless = { id: 'unknown', tags: ['old'], updatedAt: '2024-01-01T00:00:00Z', status: 'synced' as const }
+    mockLoadCachedNotes.mockResolvedValueOnce([]).mockResolvedValue([ownerless])
+    const { result } = setup()
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.handleRenameTag('old', 'new') })
+    expect(outcome).toBe('No tag changes were sent by this attempt. Some cached notes with an unknown account would be changed. They were kept for safety.')
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(mockRemoveSyncedNotes).not.toHaveBeenCalled()
+  })
+
+  it('requires a successful reread before retrying an uncertain tag change', async () => {
+    mockNotes = [makeNote({ tags: ['old'] })]
+    mockUpdateNoteMutation.mockRejectedValueOnce(new Error('request timed out'))
+    mockGetNotesByIds.mockRejectedValue(new Error('offline'))
+    const { result } = setup()
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(1)
+    expect(toast.success).not.toHaveBeenCalled()
+
+    mockGetNotesByIds.mockResolvedValue([])
+    await act(async () => { await result.current.handleRenameTag('old', 'new') })
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(2)
+    expect(toast.success).toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('waits for the pending editor save before entering tag management', async () => {
+    const note = makeNote({ tags: ['old'] })
+    mockSelectedNote = note
+    mockNotes = [note]
+    mockIsEditing = true
+    let resolveSave!: () => void
+    const flush = jest.fn(() => new Promise<void>((resolve) => { resolveSave = resolve }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    act(() => result.current.registerNoteEditorRef({ current: {
+      flushPendingSave: flush,
+      captureSession: () => ({
+        draft: { title: 'Pending draft', description: 'Pending text', tags: 'old' },
+        view: { scrollTop: 0 },
+      }),
+      scrollToChunk: jest.fn(),
+    } }))
+    let finished = false
+    let transition!: Promise<boolean>
+    act(() => { transition = result.current.prepareTagManagement().then((value) => { finished = true; return value }) })
+    expect(flush).toHaveBeenCalledTimes(1)
+    expect(finished).toBe(false)
+    expect(result.current.tabs[0].draft.title).toBe('Pending draft')
+    await act(async () => { resolveSave(); await transition })
+    expect(finished).toBe(true)
   })
 })
 
-describe('Refresh preserves workspace drafts while removing saved hidden notes', () => {
+describe('Refresh preserves workspace drafts and locally saved hidden notes', () => {
   it.each(['dirty', 'saving', 'error', 'saved'] as const)(
     'reconciles a hidden tab with save state %s', async saveState => {
       window.sessionStorage.clear()
@@ -827,14 +1639,9 @@ describe('Refresh preserves workspace drafts while removing saved hidden notes',
       const { result } = setup()
       await act(async () => result.current.refreshNotes(new AbortController().signal))
       const editor = result.current.tabs.find(tab => tab.id === 'editor-tab')
-      if (saveState === 'saved') {
-        expect(editor?.noteId).toBeNull()
-        expect(editor?.draft.title).toBe('')
-      } else {
-        expect(editor?.noteId).toBe(note.id)
-        expect(editor?.draft.description).toBe('<p>Keep this text</p>')
-        expect(editor?.saveState).toBe(saveState)
-      }
+      expect(editor?.noteId).toBe(note.id)
+      expect(editor?.draft.description).toBe('<p>Keep this text</p>')
+      expect(editor?.saveState).toBe(saveState)
     },
   )
 })

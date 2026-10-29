@@ -38,7 +38,7 @@ function setup(overrides: SaveHandlersOverrides = {}) {
       saveNote: jest.fn().mockResolvedValue(undefined),
       deleteNote: jest.fn().mockResolvedValue(undefined),
     },
-    enqueueMutation: jest.fn().mockResolvedValue(undefined),
+    enqueueMutation: jest.fn(async (_item, applyLocal) => { await applyLocal?.() }),
     offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } },
     setOfflineOverlay: jest.fn(),
     setPendingCount: jest.fn(),
@@ -199,8 +199,8 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
       noteId: note.id,
       operation: 'delete',
-      payload: {},
-    }))
+      payload: { user_id: 'user-1' },
+    }), expect.any(Function))
     expect(params.offlineCache.saveNote).toHaveBeenCalledWith(expect.objectContaining({
       id: note.id,
       deleted: true,
@@ -226,8 +226,12 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
       await result.current.confirmDeleteNote()
     })
 
-    expect(params.deleteNoteMutation.mutateAsync).toHaveBeenCalledWith({ id: 'deleting' })
+    expect(params.deleteNoteMutation.mutateAsync).toHaveBeenCalledWith({ id: 'deleting', silent: true })
+    expect(params.offlineCache.deleteNote).toHaveBeenCalledWith('deleting')
     expect(params.setSelectedNote).not.toHaveBeenCalledWith(null)
+    expect(params.selectedNoteRef.current).toBe(selected)
+    expect(params.setIsEditing).not.toHaveBeenCalledWith(false)
+    expect(toast.success).toHaveBeenCalledWith('Note deleted successfully')
     expect(params.setDeleteDialogOpen).toHaveBeenCalledWith(false)
     expect(params.setNoteToDelete).toHaveBeenCalledWith(null)
   })

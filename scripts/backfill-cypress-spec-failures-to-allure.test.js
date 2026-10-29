@@ -12,7 +12,7 @@ const scriptPath = path.join(
 
 const createFixture = (t) => {
   const tempDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "everfreenote-cypress-backfill-"),
+    path.join(fs.realpathSync.native(os.tmpdir()), "everfreenote-cypress-backfill-"),
   );
   t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
 
@@ -32,6 +32,7 @@ const runBackfill = ({
   junitDir,
   logFile,
   summaryFile,
+  screenshotsDir,
   runOutcome,
   env = {},
 }) => {
@@ -47,6 +48,9 @@ const runBackfill = ({
 
   if (summaryFile) {
     args.push("--summary-file", summaryFile);
+  }
+  if (screenshotsDir) {
+    args.push("--screenshots-dir", screenshotsDir);
   }
   if (runOutcome) {
     args.push("--run-outcome", runOutcome);
@@ -329,6 +333,28 @@ test("uses only the latest JUnit report when a spec is retried", (t) => {
   assert.match(summary, /\| Tests \(passed\) \| 2 \|/);
   assert.match(summary, /\| Tests \(failed\) \| 0 \|/);
   assert.doesNotMatch(summary, /\| Tests \(total\) \| 3 \|/);
+});
+
+test("labels screenshots neutrally when all tests pass", (t) => {
+  const fixture = createFixture(t);
+  const screenshotsDir = path.join(fixture.tempDir, "screenshots");
+  fs.mkdirSync(path.join(screenshotsDir, "editor"), { recursive: true });
+  fs.writeFileSync(path.join(screenshotsDir, "editor", "reading.png"), "");
+  fs.writeFileSync(fixture.logFile, "");
+  fs.writeFileSync(
+    path.join(fixture.junitDir, "component-tests-passed.xml"),
+    '<testsuites tests="1" failures="0" skipped="0"><testsuite name="editor" file="cypress/component/editor/Reading.cy.tsx" tests="1" failures="0"><testcase name="reading" /></testsuite></testsuites>',
+  );
+
+  const run = runBackfill({ ...fixture, screenshotsDir, runOutcome: "success" });
+
+  assert.equal(run.status, 0, run.stderr);
+  const summary = fs.readFileSync(fixture.summaryFile, "utf8");
+  assert.match(summary, /Tests \(total\) \| 1/);
+  assert.match(summary, /Tests \(failed\) \| 0/);
+  assert.match(summary, /<summary>Test screenshots \(1\)<\/summary>/);
+  assert.match(summary, /cypress\/screenshots\/editor\/reading\.png/);
+  assert.doesNotMatch(summary, /Failed test screenshots/);
 });
 
 test("rejects output paths outside the workspace", (t) => {

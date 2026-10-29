@@ -68,6 +68,23 @@ describe('NoteView copy action', () => {
     mockCopy.mockResolvedValue(undefined)
   })
 
+  it('names undescribed images for reading without changing the copied note', async () => {
+    const body = '<p>Photos<img src="https://example.com/first.png"><img src="https://example.com/decorative.png" alt=""><img src="https://example.com/second.png" alt="A sunny garden"></p>'
+    const { container } = renderNoteView({ description: body })
+    const images = container.querySelectorAll('img')
+
+    expect(images[0].getAttribute('alt')).toBe('Image without description')
+    expect(images[1].getAttribute('alt')).toBe('')
+    expect(images[2].getAttribute('alt')).toBe('A sunny garden')
+
+    fireEvent.click(screen.getByLabelText('Copy note'))
+    await waitFor(() => expect(mockCopy).toHaveBeenCalled())
+    const copiedHtml = mockCopy.mock.calls[0][0].html
+    expect(copiedHtml).not.toContain('Image without description')
+    expect(copiedHtml).toContain('alt="A sunny garden"')
+    expect(copiedHtml).toContain('alt=""')
+  })
+
   it('copies the note body with the self-copy marker and clean plain text', async () => {
     renderNoteView()
 
@@ -111,16 +128,13 @@ describe('NoteView copy action', () => {
 
   it('restores the saved scroll position and reports later scrolling after the debounce delay', () => {
     jest.useFakeTimers()
-    const requestAnimationFrame = jest.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      callback(0)
-      return 1
-    })
     try {
       const onViewSessionChange = jest.fn()
       const { container } = renderNoteView({ initialScrollTop: 48, onViewSessionChange })
       const content = container.querySelector('.overflow-y-auto') as HTMLDivElement
 
-      expect(requestAnimationFrame).toHaveBeenCalled()
+      // Restore before the next frame, so a quick pane switch cannot capture
+      // the reader's initial zero.
       expect(content.scrollTop).toBe(48)
 
       fireEvent.scroll(content, { target: { scrollTop: 60 } })
@@ -134,7 +148,6 @@ describe('NoteView copy action', () => {
       expect(onViewSessionChange).toHaveBeenCalledTimes(1)
       expect(onViewSessionChange).toHaveBeenCalledWith({ scrollTop: 93 })
     } finally {
-      requestAnimationFrame.mockRestore()
       jest.useRealTimers()
     }
   })

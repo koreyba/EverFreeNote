@@ -94,3 +94,9 @@ Static review follow-up: Codacy reported ten annotations. Removed the test's non
 
 ## Merge-gate test synchronization (2026-09-22)
 The full 285fc90 CI run passed 693/694 component cases; all MobileLayout and both new refresh regressions passed. The remaining failure read a one-time IndexedDB snapshot immediately after the confirmation dialog disappeared. Radix closes that dialog on click, before remote and local deletion finish, and Cypress retries assertions against the same array instead of rereading storage. A 500ms DELETE response delay reproduces the failure locally with CI coverage enabled. Wait for the reading pane to show `No Note Selected` (after durable deletion) before checking the cache, then retain the zero-cache and remount assertions. This changes test synchronization only; the production APK remains valid.
+
+## Deferred deletion reliability
+
+Regression coverage exercises a server-committed create whose response is lost, deletion queued while offline or while the browser reports online, retry of a failed DELETE, equal mutation timestamps, an in-flight create alongside an unrelated successful mutation, and account-switch ownership. An isolated local Supabase/PostgREST test uses real rows and a simulated dropped response; it checks the DELETE and that the row is absent afterwards. The account-switch test verifies that another account cannot send the queued DELETE and that it succeeds after the original account returns. IndexedDB component coverage verifies bulk enqueue retains pending and failed items during concurrent writes and rolls back the whole batch on write failure; localStorage fallback coverage checks a failed write retains the prior queue.
+
+A single manager's sequencing does not establish correctness for independent browser windows or devices, or for a create that the server completes after a client timeout and subsequent DELETE. Legacy ownerless queued deletes also remain an account-switch limitation.

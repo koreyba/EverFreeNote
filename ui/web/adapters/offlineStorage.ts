@@ -1,5 +1,6 @@
 import type { CachedNote, MutationQueueItem, MutationStatus, OfflineStorageAdapter } from '@core/types/offline'
 import { OFFLINE_CACHE_LIMIT_BYTES } from '@core/constants/offline'
+import { matchesQueuedSnapshot, queueOwners } from '@ui/web/lib/offlineOwnership'
 
 const DB_NAME = 'everfreenote-offline'
 const DB_VERSION = 2 // Bump version for index migration
@@ -77,25 +78,62 @@ const withStore = async <T>(
 
 const matchesSyncedSnapshot = (expected: CachedNote, current?: CachedNote) => (
   current?.status === 'synced' && !current.deleted && !current.pendingOps?.length &&
-  current.user_id === expected.user_id && current.updatedAt === expected.updatedAt
+  // A matching timestamp is insufficient if another writer reused it. A false
+  // mismatch only retains the snapshot for a later reconciliation.
+  JSON.stringify(current) === JSON.stringify(expected)
 )
+const matchesSyncedTombstone = (expected: CachedNote, current?: CachedNote) => (
+  Boolean(expected.user_id) && expected.deleted === true && expected.status === 'synced' &&
+  current?.deleted === true && current.status === 'synced' && !current.pendingOps?.length &&
+  JSON.stringify(current) === JSON.stringify(expected)
+)
+
+const canClaimLegacySnapshot = (expected: CachedNote, current: CachedNote | undefined, item: MutationQueueItem, queue: MutationQueueItem[], ownerId: string) => (
+  Boolean(current && !current.user_id && JSON.stringify(current) === JSON.stringify(expected) &&
+    queue.some(entry => entry.id === item.id && JSON.stringify(entry) === JSON.stringify(item)) &&
+    queue.filter(entry => entry.noteId === expected.id).every(entry => queueOwners(entry).every(owner => owner === ownerId)) &&
+    queueOwners(item).includes(ownerId) && matchesQueuedSnapshot(current, item))
+)
+
+const claimPrefix = 'offline_owner_claim_v1:'
+const claimKey = (ownerId: string, noteId: string) => `${claimPrefix}${encodeURIComponent(ownerId)}:${encodeURIComponent(noteId)}`
+const snapshotHash = async (note: CachedNote): Promise<string> => {
+  if (!globalThis.crypto?.subtle) throw new Error('Secure ownership verification is unavailable')
+  // Status and pendingOps change when the operation is acknowledged, while
+  // these fields identify the exact content and local version.
+  const value = JSON.stringify([note.id, note.title, note.description, note.tags, note.updatedAt, note.created_at ?? null, Boolean(note.deleted)])
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+const clearLegacyClaims = () => {
+  if (typeof localStorage === 'undefined') return
+  for (let index = localStorage.length - 1; index >= 0; index--) {
+    const key = localStorage.key(index)
+    if (key?.startsWith(claimPrefix)) localStorage.removeItem(key)
+  }
+}
 
 // Fallback на localStorage, если IndexedDB недоступен
 const localFallback = (() => {
   const NOTES_KEY = 'offline_notes'
   const QUEUE_KEY = 'offline_queue'
   const readJson = <T>(key: string): T[] => {
-    if (typeof localStorage === 'undefined') return []
     try {
+      if (typeof localStorage === 'undefined') throw new Error('Local storage is unavailable')
       const raw = localStorage.getItem(key)
       if (!raw) return []
-      return JSON.parse(raw) as T[]
+      const parsed: unknown = JSON.parse(raw)
+      if (!Array.isArray(parsed)) throw new Error('Invalid local data')
+      return parsed as T[]
     } catch {
-      return []
+      // A corrupt or inaccessible key is not an empty account. Refuse writes
+      // that would otherwise overwrite the only recoverable copy.
+      throw new Error('Local data could not be read. Keep this site’s data and try again.')
     }
   }
   const writeJson = (key: string, value: unknown) => {
-    if (typeof localStorage === 'undefined') return
+    if (typeof localStorage === 'undefined') throw new Error('Local storage is unavailable')
     localStorage.setItem(key, JSON.stringify(value))
   }
   return {
@@ -113,6 +151,7 @@ const localFallback = (() => {
       writeJson(NOTES_KEY, notes)
     },
     saveNotes: (list: CachedNote[]) => {
+      readJson<CachedNote>(NOTES_KEY)
       writeJson(NOTES_KEY, list)
     },
     deleteNote: (id: string) => {
@@ -132,6 +171,61 @@ const localFallback = (() => {
       writeJson(NOTES_KEY, notes.filter(note => !removedIds.has(note.id)))
       return removed
     },
+    removeSyncedTombstones: (expected: CachedNote[], signal?: AbortSignal) => {
+      if (signal?.aborted || !expected.length) return []
+      const notes = readJson<CachedNote>(NOTES_KEY)
+      const queued = new Set(readJson<MutationQueueItem>(QUEUE_KEY).map(item => item.noteId))
+      const snapshots = new Map(expected.map(note => [note.id, note]))
+      const removed = notes.filter(note => {
+        const snapshot = snapshots.get(note.id)
+        return snapshot && !queued.has(note.id) && matchesSyncedTombstone(snapshot, note)
+      }).map(note => note.id)
+      if (signal?.aborted) return []
+      const ids = new Set(removed)
+      if (ids.size) writeJson(NOTES_KEY, notes.filter(note => !ids.has(note.id)))
+      return removed
+    },
+    claimLegacySnapshot: async (expected: CachedNote, item: MutationQueueItem, ownerId: string, signal?: AbortSignal) => {
+      if (signal?.aborted || typeof localStorage === 'undefined') return false
+      let notes = readJson<CachedNote>(NOTES_KEY)
+      let queue = readJson<MutationQueueItem>(QUEUE_KEY)
+      if (!canClaimLegacySnapshot(expected, notes.find(note => note.id === expected.id), item, queue, ownerId)) return false
+      const hash = await snapshotHash(expected)
+      notes = readJson<CachedNote>(NOTES_KEY)
+      queue = readJson<MutationQueueItem>(QUEUE_KEY)
+      if (signal?.aborted || !canClaimLegacySnapshot(expected, notes.find(note => note.id === expected.id), item, queue, ownerId)) return false
+      // One independent key does not rewrite the shared legacy notes/queue arrays.
+      localStorage.setItem(claimKey(ownerId, expected.id), JSON.stringify({ version: 1, hash }))
+      return true
+    },
+    getLegacyClaims: async (ownerId: string, notes: CachedNote[]) => {
+      if (typeof localStorage === 'undefined') throw new Error('Local storage is unavailable')
+      const ids: string[] = []
+      for (const note of notes) {
+        if (note.user_id) continue
+        const raw = localStorage.getItem(claimKey(ownerId, note.id))
+        if (!raw) continue
+        const claim: unknown = JSON.parse(raw)
+        if (!claim || typeof claim !== 'object' || !('version' in claim) || claim.version !== 1 || !('hash' in claim) || typeof claim.hash !== 'string') throw new Error('Local ownership evidence could not be read')
+        if (claim.hash === await snapshotHash(note)) ids.push(note.id)
+      }
+      return ids
+    },
+    patchSyncedTags: (patches: Array<{ expected: CachedNote; tags: string[] }>) => {
+      if (!patches.length) return []
+      const notes = readJson<CachedNote>(NOTES_KEY)
+      const queued = new Set(readJson<MutationQueueItem>(QUEUE_KEY).map(item => item.noteId))
+      const byId = new Map(patches.map(patch => [patch.expected.id, patch]))
+      const updated: string[] = []
+      const next = notes.map(note => {
+        const patch = byId.get(note.id)
+        if (!patch || queued.has(note.id) || !matchesSyncedSnapshot(patch.expected, note)) return note
+        updated.push(note.id)
+        return { ...note, tags: patch.tags }
+      })
+      writeJson(NOTES_KEY, next)
+      return updated
+    },
     getQueue: () => readJson<MutationQueueItem>(QUEUE_KEY),
     upsertQueueItem: (item: MutationQueueItem) => {
       const queue = readJson<MutationQueueItem>(QUEUE_KEY)
@@ -140,7 +234,12 @@ const localFallback = (() => {
       else queue.push(item)
       writeJson(QUEUE_KEY, queue)
     },
-    upsertQueue: (items: MutationQueueItem[]) => writeJson(QUEUE_KEY, items),
+    upsertQueue: (items: MutationQueueItem[]) => { readJson<MutationQueueItem>(QUEUE_KEY); writeJson(QUEUE_KEY, items) },
+    appendQueueItems: (items: MutationQueueItem[]) => {
+      const queue = new Map(readJson<MutationQueueItem>(QUEUE_KEY).map(item => [item.id, item]))
+      items.forEach(item => queue.set(item.id, item))
+      writeJson(QUEUE_KEY, Array.from(queue.values()))
+    },
     popQueueBatch: (size: number) => {
       const queue = readJson<MutationQueueItem>(QUEUE_KEY)
       const batch = queue.slice(0, size)
@@ -191,6 +290,7 @@ const localFallback = (() => {
       if (typeof localStorage === 'undefined') return
       localStorage.removeItem(NOTES_KEY)
       localStorage.removeItem(QUEUE_KEY)
+      clearLegacyClaims()
     },
   }
 })()
@@ -221,6 +321,7 @@ const deleteItem = async (storeName: string, id: string) => {
 
 export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
   ? {
+      atomicTagPatches: true,
       async loadNotes(params = {}) {
         const notes = await readAll<CachedNote>(NOTES_STORE)
         const start = params.offset ?? 0
@@ -251,7 +352,7 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
           const tx = db.transaction([NOTES_STORE, QUEUE_STORE], 'readwrite')
           const store = tx.objectStore(NOTES_STORE)
           const removed: string[] = []
-          const abort = () => tx.abort()
+          const abort = () => { try { tx.abort() } catch { /* The transaction already completed. */ } }
           const cleanup = () => { signal?.removeEventListener('abort', abort); db.close() }
           signal?.addEventListener('abort', abort, { once: true })
           tx.oncomplete = () => { cleanup(); resolve(removed) }
@@ -273,6 +374,101 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
         })
       },
 
+      async removeSyncedTombstones(notes, signal) {
+        if (!notes.length || signal?.aborted) return []
+        const db = await getDB()
+        if (signal?.aborted) { db.close(); return [] }
+        return new Promise<string[]>((resolve, reject) => {
+          const tx = db.transaction([NOTES_STORE, QUEUE_STORE], 'readwrite')
+          const store = tx.objectStore(NOTES_STORE)
+          const removed: string[] = []
+          const abort = () => { try { tx.abort() } catch { /* The transaction already completed. */ } }
+          const cleanup = () => { signal?.removeEventListener('abort', abort); db.close() }
+          signal?.addEventListener('abort', abort, { once: true })
+          tx.oncomplete = () => { cleanup(); resolve(removed) }
+          tx.onerror = tx.onabort = () => { cleanup(); reject(tx.error ?? new Error('Tombstone cleanup cancelled')) }
+          const request = tx.objectStore(QUEUE_STORE).getAll()
+          request.onsuccess = () => {
+            const queued = new Set((request.result as MutationQueueItem[]).map(item => item.noteId))
+            for (const expected of notes) {
+              if (queued.has(expected.id)) continue
+              const current = store.get(expected.id)
+              current.onsuccess = () => {
+                if (matchesSyncedTombstone(expected, current.result)) {
+                  store.delete(expected.id)
+                  removed.push(expected.id)
+                }
+              }
+            }
+          }
+        })
+      },
+
+      async claimLegacySnapshot(expected, item, ownerId, signal) {
+        if (signal?.aborted) return false
+        const db = await getDB()
+        if (signal?.aborted) { db.close(); return false }
+        return new Promise<boolean>((resolve, reject) => {
+          const tx = db.transaction([NOTES_STORE, QUEUE_STORE], 'readwrite')
+          const store = tx.objectStore(NOTES_STORE)
+          let claimed = false
+          let failure: unknown
+          const abort = () => { try { tx.abort() } catch { /* The transaction already completed. */ } }
+          const cleanup = () => { signal?.removeEventListener('abort', abort); db.close() }
+          const fail = (error: unknown) => {
+            failure = error
+            try { tx.abort() } catch { cleanup(); reject(error) }
+          }
+          signal?.addEventListener('abort', abort, { once: true })
+          tx.oncomplete = () => { cleanup(); resolve(claimed) }
+          tx.onerror = tx.onabort = () => { cleanup(); reject(failure ?? tx.error ?? new Error('Ownership claim cancelled')) }
+          const request = tx.objectStore(QUEUE_STORE).getAll()
+          request.onsuccess = () => {
+            try {
+              const queue = request.result as MutationQueueItem[]
+              const current = store.get(expected.id)
+              current.onsuccess = () => {
+                try {
+                  const note = current.result as CachedNote | undefined
+                  if (canClaimLegacySnapshot(expected, note, item, queue, ownerId)) {
+                    store.put({ ...note!, user_id: ownerId })
+                    claimed = true
+                  }
+                } catch (error) { fail(error) }
+              }
+            } catch (error) { fail(error) }
+          }
+        })
+      },
+
+      async getLegacyClaims() { return [] },
+
+      async patchSyncedTags(patches) {
+        if (!patches.length) return []
+        const db = await getDB()
+        return new Promise<string[]>((resolve, reject) => {
+          const tx = db.transaction([NOTES_STORE, QUEUE_STORE], 'readwrite')
+          const store = tx.objectStore(NOTES_STORE)
+          const updated: string[] = []
+          tx.oncomplete = () => { db.close(); resolve(updated) }
+          tx.onerror = tx.onabort = () => { db.close(); reject(tx.error ?? new Error('Cache reconciliation failed')) }
+          const queue = tx.objectStore(QUEUE_STORE).getAll()
+          queue.onsuccess = () => {
+            const queued = new Set((queue.result as MutationQueueItem[]).map(item => item.noteId))
+            for (const patch of patches) {
+              if (queued.has(patch.expected.id)) continue
+              const request = store.get(patch.expected.id)
+              request.onsuccess = () => {
+                if (matchesSyncedSnapshot(patch.expected, request.result)) {
+                  store.put({ ...request.result, tags: patch.tags })
+                  updated.push(patch.expected.id)
+                }
+              }
+            }
+          }
+        })
+      },
+
       async getQueue() {
         return readAll<MutationQueueItem>(QUEUE_STORE)
       },
@@ -286,6 +482,13 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
           store.clear()
           items.forEach((i) => store.put(i))
           return
+        })
+      },
+
+      async appendQueueItems(items) {
+        if (!items.length) return
+        await withStore(QUEUE_STORE, 'readwrite', (store) => {
+          items.forEach((item) => store.put(item))
         })
       },
 
@@ -404,6 +607,7 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
       },
     }
   : {
+      atomicTagPatches: false,
       // fallback на localStorage
       async loadNotes(params = {}) {
         return localFallback.loadNotes(params)
@@ -420,6 +624,18 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
       async removeSyncedNotes(notes, signal) {
         return localFallback.removeSyncedNotes(notes, signal)
       },
+      async removeSyncedTombstones(notes, signal) {
+        return localFallback.removeSyncedTombstones(notes, signal)
+      },
+      async claimLegacySnapshot(note, item, ownerId, signal) {
+        return localFallback.claimLegacySnapshot(note, item, ownerId, signal)
+      },
+      async getLegacyClaims(ownerId, notes) {
+        return localFallback.getLegacyClaims(ownerId, notes)
+      },
+      async patchSyncedTags(patches) {
+        return localFallback.patchSyncedTags(patches)
+      },
       async getQueue() {
         return localFallback.getQueue()
       },
@@ -428,6 +644,9 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
       },
       async upsertQueue(items) {
         localFallback.upsertQueue(items)
+      },
+      async appendQueueItems(items) {
+        localFallback.appendQueueItems(items)
       },
       async popQueueBatch(batchSize) {
         return localFallback.popQueueBatch(batchSize)

@@ -30,6 +30,12 @@ export type NoteWorkspaceTab = {
   saveError: string | null
 }
 
+export type NoteWorkspaceSplit = {
+  leftTabId: string
+  rightTabId: string
+  focusedTabId: string
+}
+
 export type NoteWorkspaceState = {
   version: typeof NOTE_WORKSPACE_VERSION
   /**
@@ -41,6 +47,31 @@ export type NoteWorkspaceState = {
   userId: string | null
   tabs: NoteWorkspaceTab[]
   activeTabId: string
+  /** Optional view layout, owned and persisted with these exact tab sessions. */
+  split?: NoteWorkspaceSplit
+}
+
+export function validateWorkspaceSplit(value: unknown, tabs: readonly NoteWorkspaceTab[]): NoteWorkspaceSplit | null {
+  if (!value || typeof value !== 'object') return null
+  const candidate = value as Record<string, unknown>
+  const { leftTabId, rightTabId, focusedTabId } = candidate
+  if (typeof leftTabId !== 'string' || !leftTabId || typeof rightTabId !== 'string' || !rightTabId || leftTabId === rightTabId) return null
+  if (focusedTabId !== leftTabId && focusedTabId !== rightTabId) return null
+  const left = tabs.find((tab) => tab.id === leftTabId)
+  const right = tabs.find((tab) => tab.id === rightTabId)
+  if (!left || !right || (left.noteId && left.noteId === right.noteId)) return null
+  return { leftTabId, rightTabId, focusedTabId }
+}
+
+export function setWorkspaceSplit(state: NoteWorkspaceState, requested: NoteWorkspaceSplit | null): NoteWorkspaceState {
+  const split = validateWorkspaceSplit(requested, state.tabs)
+  const current = state.split
+  if (split && current && split.leftTabId === current.leftTabId && split.rightTabId === current.rightTabId && split.focusedTabId === current.focusedTabId) return state
+  if (split) return { ...state, split }
+  if (!current) return state
+  const next = { ...state }
+  delete next.split
+  return next
 }
 
 export type NoteWorkspaceTabPatch = {
@@ -260,15 +291,19 @@ export function closeWorkspaceTab(
 
   if (state.tabs.length === 1) {
     const replacement = createEmptyTab(idFactory)
-    return { ...state, tabs: [replacement], activeTabId: replacement.id }
+    return setWorkspaceSplit({ ...state, tabs: [replacement], activeTabId: replacement.id }, null)
   }
 
   const wasActive = state.activeTabId === tabId
   const tabs = state.tabs.filter((tab) => tab.id !== tabId)
-  if (!wasActive) return { ...state, tabs }
+  if (!wasActive) {
+    const next = { ...state, tabs }
+    return state.split?.leftTabId === tabId || state.split?.rightTabId === tabId ? setWorkspaceSplit(next, null) : next
+  }
 
   const nextActive = state.tabs[index + 1] ?? state.tabs[index - 1]
-  return { ...state, tabs, activeTabId: nextActive.id }
+  const next = { ...state, tabs, activeTabId: nextActive.id }
+  return state.split?.leftTabId === tabId || state.split?.rightTabId === tabId ? setWorkspaceSplit(next, null) : next
 }
 
 const normalizeNote = (value: unknown): NoteViewModel | null => {
@@ -388,7 +423,8 @@ export function hydrateNoteWorkspaceState(
   if (tabs.length === 0) return createNoteWorkspaceState(idFactory, userId)
   const requestedActive = typeof source.activeTabId === 'string' ? source.activeTabId : ''
   const activeTabId = tabs.some((tab) => tab.id === requestedActive) ? requestedActive : tabs[0].id
-  return { version: NOTE_WORKSPACE_VERSION, userId, tabs, activeTabId }
+  const split = validateWorkspaceSplit(source.split, tabs)
+  return { version: NOTE_WORKSPACE_VERSION, userId, tabs, activeTabId, ...(split ? { split } : {}) }
 }
 
 /**

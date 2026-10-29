@@ -49,7 +49,13 @@ export class OfflineQueueService {
       payload: item.payload,
       clientUpdatedAt: item.clientUpdatedAt,
     }))
-    await this.storage.upsertQueue(queue)
+    if (this.storage.appendQueueItems) {
+      await this.storage.appendQueueItems(queue)
+    } else {
+      // Older adapters can still preserve existing items, although only adapters
+      // with appendQueueItems can guarantee an atomic batch.
+      for (const entry of queue) await this.storage.upsertQueueItem(entry)
+    }
   }
 
   async getQueue(): Promise<MutationQueueItem[]> {
@@ -63,6 +69,21 @@ export class OfflineQueueService {
   async compact(): Promise<void> {
     const snapshot = await this.storage.getQueue()
     const compacted = compactQueue(snapshot)
+    await this.replaceSnapshot(snapshot, compacted)
+  }
+
+  /** Reconcile a deletion with writes that arrived while a batch was in flight. */
+  async compactNote(noteId: string): Promise<boolean> {
+    const snapshot = (await this.storage.getQueue()).filter((item) => item.noteId === noteId)
+    if (snapshot.length < 2) return false
+    const compacted = compactQueue(snapshot)
+    // Conflicting owners are intentionally kept separate.
+    if (compacted.length >= snapshot.length) return false
+    await this.replaceSnapshot(snapshot, compacted)
+    return true
+  }
+
+  private async replaceSnapshot(snapshot: MutationQueueItem[], compacted: MutationQueueItem[]): Promise<void> {
     // Never replace the entire queue: a newer edit may arrive after the read.
     for (const item of compacted) await this.storage.upsertQueueItem(item)
     const retainedIds = new Set(compacted.map((item) => item.id))

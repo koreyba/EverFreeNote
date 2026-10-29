@@ -52,7 +52,7 @@ describe('RichTextEditor Component', () => {
     cy.get('[data-cy="font-size-button"]').should('exist')
   })
 
-  it('opens image URL prompt when clicking image button', () => {
+  it('opens image URL prompt from the image menu', () => {
     const onContentChangeSpy = cy.spy().as('onContentChangeSpy')
 
     cy.mount(
@@ -67,6 +67,7 @@ describe('RichTextEditor Component', () => {
     })
 
     cy.get('[data-cy="image-button"]').click()
+    cy.contains('button', 'Insert from URL').click()
     cy.window().its('prompt').should('have.been.called')
   })
 
@@ -85,10 +86,12 @@ describe('RichTextEditor Component', () => {
     })
 
     cy.get('[data-cy="image-button"]').click()
+    cy.contains('button', 'Insert from URL').click()
 
     cy.get('@onContentChangeSpy').should('have.been.called')
     cy.get('[data-cy="editor-content"]').find('img').should('exist')
     cy.get('[data-cy="editor-content"]').find('img').should('have.attr', 'src', 'https://example.com/test.jpg')
+    cy.get('[data-cy="editor-content"] [contenteditable="true"]').should('have.focus')
   })
 
   it('does not insert image when prompt is cancelled', () => {
@@ -108,6 +111,7 @@ describe('RichTextEditor Component', () => {
     })
 
     cy.get('[data-cy="image-button"]').click()
+    cy.contains('button', 'Insert from URL').click()
     cy.get('@onContentChangeSpy').should('not.have.been.called')
   })
 

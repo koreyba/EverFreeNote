@@ -5,11 +5,11 @@ export type DebouncedLatestOptions<T> = {
 }
 
 export type DebouncedLatest<T> = {
-  schedule: (next: T) => void
+  schedule: (next: T, options?: { force?: boolean }) => void
   flush: () => Promise<void>
   cancel: () => void
   reset: (base: T) => void
-  rebase: (base: T, nextPending?: T | null) => void
+  rebase: (base: T, nextPending?: T | null, options?: { supersedeInFlight?: boolean }) => void
   getBaseline: () => T | null
   getPending: () => T | null
 }
@@ -33,6 +33,8 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
   let inFlight: Promise<void> | null = null
   let inFlightValue: T | null = null
   let baselineRevision = 0
+  let sessionRevision = 0
+  let needsRetry = false
 
   const clearTimer = () => {
     if (!timer) return
@@ -45,7 +47,7 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
   )
 
   const shouldSkip = (next: T) => {
-    if (lastFlushed === null) return false
+    if (needsRetry || lastFlushed === null) return false
     return areEqual(lastFlushed, next)
   }
 
@@ -55,6 +57,7 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
 
     const next = pending
     const flushRevision = baselineRevision
+    const flushSessionRevision = sessionRevision
     pending = null
 
     if (shouldSkip(next)) {
@@ -66,6 +69,7 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
     inFlight = (async () => {
       try {
         await onFlush(next)
+        if (sessionRevision === flushSessionRevision) needsRetry = false
         if (baselineRevision === flushRevision) {
           lastFlushed = next
         }
@@ -75,8 +79,11 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
           clearTimer()
         }
       } catch (error) {
-        if (pending === null) {
-          queuePending(next)
+        if (sessionRevision === flushSessionRevision) {
+          // A failed write may have partially changed storage. Even a draft
+          // matching the previous baseline must be written again on retry.
+          needsRetry = true
+          if (pending === null) queuePending(next)
         }
         throw error
       } finally {
@@ -95,7 +102,9 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
   const queuePending = (nextPending: T | null, options: { restartTimer?: boolean } = {}) => {
     pending = nextPending
 
-    if (pending === null || shouldSkip(pending)) {
+    // A value equal to the old baseline may still need to be written after a
+    // different in-flight value (for example, undoing an edit during a save).
+    if (pending === null || (inFlightValue === null && shouldSkip(pending))) {
       pending = null
       clearTimer()
       return
@@ -113,31 +122,51 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
     clearTimer()
     timer = setTimeout(() => {
       timer = null
-      void flushNow()
+      // Callers of explicit flush receive errors; timer-triggered failures are
+      // already surfaced by onFlush and leave the draft queued for retry.
+      void flushNow().catch(() => {})
     }, delayMs)
   }
 
+  const flushAll = async () => {
+    clearTimer()
+    // A transition must wait for the newest draft, including edits scheduled
+    // while an earlier write is in flight. Only one write runs at a time.
+    while (inFlight !== null || pending !== null) {
+      await flushNow()
+      clearTimer()
+    }
+  }
+
   return {
-    schedule: (next: T) => {
+    schedule: (next: T, options?: { force?: boolean }) => {
+      if (options?.force) needsRetry = true
       queuePending(next)
     },
 
-    flush: flushNow,
+    flush: flushAll,
 
     cancel: () => {
       clearTimer()
       pending = null
+      needsRetry = false
     },
 
     reset: (base: T) => {
       clearTimer()
       pending = null
       baselineRevision += 1
+      sessionRevision += 1
+      needsRetry = false
       lastFlushed = base
     },
 
-    rebase: (base: T, nextPending?: T | null) => {
+    rebase: (base: T, nextPending?: T | null, options?: { supersedeInFlight?: boolean }) => {
       baselineRevision += 1
+      if (options?.supersedeInFlight) {
+        sessionRevision += 1
+        needsRetry = false
+      }
       lastFlushed = base
       // Default behavior: keep the current pending draft when caller omits nextPending.
       queuePending(nextPending === undefined ? pending : nextPending, { restartTimer: false })

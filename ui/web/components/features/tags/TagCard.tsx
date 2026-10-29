@@ -18,6 +18,7 @@ interface TagCardProps {
   readonly onRequestRename: (tag: TagWithCount) => void
   readonly onRequestDelete: (tag: TagWithCount) => void
   readonly isHighlighted?: boolean
+  readonly actionsDisabled?: boolean
   readonly className?: string
 }
 
@@ -27,6 +28,7 @@ export function TagCard({
   onRequestRename,
   onRequestDelete,
   isHighlighted,
+  actionsDisabled = false,
   className,
 }: TagCardProps) {
   return (
@@ -67,6 +69,7 @@ export function TagCard({
             size="icon"
             className="h-9 w-9 rounded-lg text-muted-foreground opacity-90 group-hover:opacity-100 hover:text-foreground hover:bg-muted shrink-0"
             aria-label={`Actions for tag ${tag.name}`}
+            disabled={actionsDisabled}
             data-testid={`tag-menu-trigger-${tag.name}`}
           >
             <MoreVertical className="h-4 w-4" />

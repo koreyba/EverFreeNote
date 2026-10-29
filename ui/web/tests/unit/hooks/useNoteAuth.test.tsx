@@ -189,6 +189,41 @@ describe('useNoteAuth', () => {
     expect(callback).toHaveBeenCalled()
   })
 
+  it('keeps the workspace and session when sign-out returns an error', async () => {
+    window.sessionStorage.setItem('everfreenote:notes-workspace:v1', 'preserve-draft')
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user, loading: false })
+    mockAuthService.signOut.mockResolvedValueOnce({ error: new Error('Auth unavailable') })
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { result } = renderAuthHook()
+    const callback = jest.fn()
+
+    await act(async () => result.current.handleSignOut(callback))
+
+    expect(result.current.user).toBe(user)
+    expect(window.sessionStorage.getItem('everfreenote:notes-workspace:v1')).toBe('preserve-draft')
+    expect(callback).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('sign out'))
+    consoleError.mockRestore()
+  })
+
+  it('does not clear the new account workspace when an old sign-out finishes late', async () => {
+    let snapshot = { userId: user.id as string | null, epoch: 1 }
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user, loading: false, getSessionSnapshot: () => snapshot })
+    let finish!: (value: { error: null }) => void
+    mockAuthService.signOut.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    const { result, queryClient } = renderAuthHook()
+    const removeQueries = jest.spyOn(queryClient, 'removeQueries')
+    const callback = jest.fn()
+    let signingOut!: Promise<void>
+    await act(async () => { signingOut = result.current.handleSignOut(callback); await Promise.resolve() })
+    snapshot = { userId: 'user-2', epoch: 3 }
+    window.sessionStorage.setItem('everfreenote:notes-workspace:v1', 'new-account-workspace')
+    await act(async () => { finish({ error: null }); await signingOut })
+    expect(window.sessionStorage.getItem('everfreenote:notes-workspace:v1')).toBe('new-account-workspace')
+    expect(removeQueries).not.toHaveBeenCalled()
+    expect(callback).not.toHaveBeenCalled()
+  })
+
   it('reports sign-out and account deletion failures without leaving loading flags set', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined)
     const { result, rerender } = renderAuthHook()

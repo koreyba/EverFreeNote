@@ -3,7 +3,6 @@
 import * as React from "react"
 import { useEffect, useState, useRef } from "react"
 import { CaretLeft as ChevronLeft, MagnifyingGlass as Search, X } from "@phosphor-icons/react"
-import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import InteractiveTag from "@/components/InteractiveTag"
@@ -44,6 +43,7 @@ interface SearchResultsPanelProps {
     controller: NoteAppController
     hasGeminiApiKey?: boolean
     onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+    onOpenAIIndex: () => void
     onClose: () => void
     className?: string
 }
@@ -56,10 +56,10 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
     controller,
     hasGeminiApiKey = true,
     onOpenInContext,
+    onOpenAIIndex,
     onClose,
     className
 }: SearchResultsPanelProps, ref) {
-    const router = useRouter()
     const { supabase } = useSupabase()
     const ragSearchSettingsService = React.useMemo(() => new RagSearchSettingsService(supabase), [supabase])
     const {
@@ -264,11 +264,6 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             })
     }, [ragSearchSettings, ragSearchSettingsService])
 
-    const handleOpenAIIndex = React.useCallback(() => {
-        onClose()
-        router.push("/settings?tab=ai-index")
-    }, [onClose, router])
-
     const selectedCount = panelSelectedIds.size
     const allVisibleSelected =
         visibleResultIds.length > 0 &&
@@ -308,9 +303,9 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             } else {
                 controller.resetFtsResults()
             }
-            if (result.failed === 0) {
+            if (result.failed === 0 || result.failedIds?.length === 0) {
                 exitPanelSelectionMode()
-            }
+            } else if (result.failedIds) setPanelSelectedIds(new Set(result.failedIds))
         } finally {
             setPanelBulkDeleting(false)
         }
@@ -557,6 +552,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             className={cn("relative flex flex-col h-full w-full md:w-[var(--search-panel-width)] shrink-0 bg-card border-r z-10 motion-safe:animate-in motion-safe:slide-in-from-left-2 motion-safe:duration-200", className)}
             style={{ "--search-panel-width": `${panelWidth}px` } as React.CSSProperties}
             data-testid="search-results-panel"
+            data-notes-search-pane
             aria-label="Search Results Panel"
         >
             <div className="px-3 pt-3 pb-2 border-b shrink-0 space-y-2">
@@ -678,7 +674,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                     aiHasMore={aiHasMore}
                     aiLoadingMore={aiLoadingMore}
                     loadMoreAI={loadMoreAI}
-                    handleOpenAIIndex={handleOpenAIIndex}
+                    handleOpenAIIndex={onOpenAIIndex}
                     aiRefetch={aiRefetch}
                     handleTagClick={handleTagClick}
                     panelSelectionMode={panelSelectionMode}

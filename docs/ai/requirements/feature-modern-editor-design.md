@@ -51,3 +51,24 @@ Specifically, we want to address:
 ## Questions & Open Items
 - **Q**: Are there specific icon changes or design kits requested?
   - *Decision*: We will update `lucide-react` to its latest version and leverage the latest modern icon pack, using clean, thin-stroke variants if available.
+
+## October 2026 follow-up acceptance
+- Show the complete long title on phone and desktop without horizontal clipping.
+- Keep a note with twelve tags visually compact; expose every tag and all existing operations through an accessible disclosure.
+- Make editing and reading look like the same document, with flat action chrome and a continuous editable canvas.
+- Preserve saving, autosave, tab selection/session restoration, find, mobile keyboard and safe-area behavior.
+
+## Image accessibility follow-up
+- Expose the note body as a named multiline textbox and allow descriptions to be edited for any image using touch or keyboard.
+- Preserve existing content and image attributes; identify images with no description in the interface without silently rewriting them. Mark an image decorative only by an explicit user choice.
+
+## Image size consistency
+- Keep safe image width and height across reading, editing, clipboard, MCP and ENEX export/import. Existing note content must not be rewritten by viewing it.
+- Limit images to the available mobile width and preserve their intended aspect ratio when both dimensions are present.
+
+## October 29 focus and tag correction
+Remove the decorative green editor focus line; preserve caret, real blockquotes and control focus indicators. Restore the tag appearance from before the document redesign. Show as many complete tags as the available row can hold, reserving space for disclosure and Add. Recalculate on resize and font loading. Add opens/closes only the input; disclosure independently expands/collapses the full collection. Preserve filtering, removal and keyboard entry without horizontal scrolling.
+
+After confirming tag entry, close the input and show new tags at the start of the note's tag list. Comma entry remains available for entering multiple tags; the input remains open until the entry is confirmed or focus leaves it.
+
+Start with the tag input closed for all notes, including notes without tags, so the first activation of Add opens and focuses it.

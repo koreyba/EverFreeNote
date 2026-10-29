@@ -37,3 +37,12 @@ description: Actionable plan and breakdown of tasks to redesign the editor and m
 - **Milestone 3**: ~2 hours
 - **Milestone 4**: ~1 hour
 - **Total estimated time**: ~5 hours
+
+
+## October 2026 continuous-document follow-up
+- [x] Replace the clipped title with a wrapping field while retaining save, autosave, selection and find contracts.
+- [x] Unify reader/editor document geometry and action hierarchy.
+- [x] Make long tag collections compact, expandable and keyboard accessible.
+- [x] Verify exact long title, 12 tags, phone/desktop and light/dark states.
+- [x] Re-run editor/reader/session, short/long content, keyboard and safe-area component regressions.
+- [ ] Independent integrated-branch QA and CI (owned by the workspace integrator).

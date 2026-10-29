@@ -78,3 +78,8 @@ export const EditorMenuBar = (props: EditorMenuBarProps) => { ... }
 | Module-level const for extensions | Extension objects are stateless config; module-level const is simpler and more performant than `useMemo` |
 | Flat directory (no `editor/` subfolder) | Both new files have one consumer each at the same level — no need for a new folder |
 | Keep `EMPTY_HISTORY_STATE` etc. in `RichTextEditor.tsx` | These helpers manage the editor's internal `historyState` — not toolbar concerns |
+
+## Image insertion follow-up
+
+- The toolbar offers device and URL sources. Selected PNG, JPEG, GIF, and WebP files up to 10 MiB are validated by decoding and embedded as data URLs, consistent with the existing editor and offline note format. No public image bucket is used.
+- The open-tabs snapshot has a separate size limit. If it cannot be saved, the user is warned to save changes and reopen notes after a reload.

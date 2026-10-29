@@ -60,6 +60,15 @@ export function useAnimatedTabList<T extends { id: string }>(
   const effectiveDuration = reducedMotion ? 0 : durationMs
   const [closingTabs, setClosingTabs] = useState<Array<{ tab: T; index: number }>>([])
   const previousTabsRef = useRef(tabs)
+  const timersRef = useRef(new Set<ReturnType<typeof setTimeout>>())
+
+  useEffect(() => {
+    const timers = timersRef.current
+    return () => {
+      for (const timer of timers) clearTimeout(timer)
+      timers.clear()
+    }
+  }, [])
 
   useEffect(() => {
     const previous = previousTabsRef.current
@@ -71,17 +80,20 @@ export function useAnimatedTabList<T extends { id: string }>(
       .filter(({ tab }) => !tabs.some((candidate) => candidate.id === tab.id))
     if (removed.length === 0) return
 
-    const removedIds = removed.map(({ tab }) => tab.id)
-    setClosingTabs((current) => [...current, ...removed])
+    const removedIds = new Set(removed.map(({ tab }) => tab.id))
+    setClosingTabs((current) => [...current.filter(({ tab }) => !removedIds.has(tab.id)), ...removed])
 
     const timer = setTimeout(() => {
-      setClosingTabs((current) => current.filter((entry) => !removedIds.includes(entry.tab.id)))
+      timersRef.current.delete(timer)
+      // Remove these exact exit entries. A tab may have reopened and closed
+      // again while its first exit animation was still running.
+      setClosingTabs((current) => current.filter((entry) => !removed.includes(entry)))
     }, effectiveDuration)
-
-    return () => clearTimeout(timer)
+    // A later tabs update must not cancel an exit that is already in flight.
+    timersRef.current.add(timer)
   }, [tabs, effectiveDuration])
 
-  if (closingTabs.length === 0) return tabs.map((tab) => ({ tab, closing: false }))
+  if (effectiveDuration <= 0 || closingTabs.length === 0) return tabs.map((tab) => ({ tab, closing: false }))
 
   const entries: AnimatedTabEntry<T>[] = tabs.map((tab) => ({ tab, closing: false }))
   // A tab that came back (reopened before the timer fired) is live, not a ghost.

@@ -78,6 +78,18 @@ graph TD
 - **Performance**: The mobile menu should open smoothly (animation).
 - **Accessibility**: The mobile menu button must have an `aria-label`. The Sheet must trap focus when open.
 
+## Continuous note editing canvas — 2026-10-28
+
+```mermaid
+flowchart TD
+    Workspace[Viewport and mobile safe area] --> Scroller[Note scroller]
+    Scroller --> Metadata[Title and tags]
+    Scroller --> Canvas[Flexible editable canvas]
+    Workspace --> Toolbar[Mobile formatting toolbar]
+```
+
+The canvas fills the remaining scroll area for short notes and grows with long content. On desktop the formatting row remains sticky within that scroll area; on mobile it is docked above navigation. The existing visual-viewport handling moves the workspace above the keyboard. A focus indicator distinguishes the editable surface without making it look like a nested card.
+
 ## Mobile web navigation — 2026-10-28
 
 ```mermaid

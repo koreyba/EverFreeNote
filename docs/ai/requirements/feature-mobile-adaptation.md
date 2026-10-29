@@ -69,3 +69,9 @@ description: Clarify the problem space, gather requirements, and define success 
 - Reading and editing expose an in-note search across the title and body, with match counts, highlighting and previous/next navigation. Expanded editing searches the visible body. Searching must not change the draft.
 - The notes list offers a remembered list or two-column tile view. Tiles retain note opening, selection and swipe-to-delete; hidden tags are counted.
 - Maintain the established desktop layout and functionality. Native apps are outside this change.
+
+## Note editing canvas — 2026-10-28
+
+- On mobile and desktop, a short note's editable canvas fills the space available in the note pane without introducing unnecessary vertical scrolling.
+- The note body is a continuous surface rather than a nested card. Keyboard focus remains visible in light and dark themes.
+- Long notes remain scrollable. Mobile formatting controls stay above navigation and the safe area, including when the visual viewport shrinks for the keyboard.

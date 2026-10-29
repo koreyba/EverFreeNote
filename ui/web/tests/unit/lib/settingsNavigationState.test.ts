@@ -4,6 +4,7 @@ import {
   readSettingsReturnState,
   saveSettingsReturnState,
 } from '@ui/web/lib/settingsNavigationState'
+import { applyNoteOverlay } from '@core/utils/overlay'
 
 describe('settingsNavigationState', () => {
   beforeEach(() => {
@@ -22,10 +23,10 @@ describe('settingsNavigationState', () => {
         searchQuery: 'draft',
         filterByTag: null,
       },
-    })
+    }, 'user-1')
 
     expect(saved).toBe(true)
-    expect(readSettingsReturnState()).toEqual({
+    expect(readSettingsReturnState('user-1')).toEqual({
       returnPath: '/settings?tab=import#dialog',
       notesUiState: {
         selectedNoteId: null,
@@ -36,6 +37,39 @@ describe('settingsNavigationState', () => {
         filterByTag: null,
       },
     })
+  })
+
+  it('never restores one account’s settings snapshot to another account', () => {
+    saveSettingsReturnState({
+      returnPath: '/',
+      notesUiState: { selectedNoteId: null, selectedNote: null, isEditing: false, isSearchPanelOpen: true, searchQuery: 'private search', filterByTag: null },
+    }, 'account-a')
+    expect(readSettingsReturnState('account-b')).toBeNull()
+    expect(consumeSettingsReturnState('account-b')).toBeNull()
+  })
+
+  it('rejects legacy unowned and mismatched selected-note snapshots', () => {
+    const notesUiState = {
+      selectedNoteId: 'note-a',
+      selectedNote: { id: 'note-a', title: 'Private', description: 'Body', tags: [], created_at: '2026-01-01', updated_at: '2026-01-01', user_id: 'account-a' },
+      isEditing: false, isSearchPanelOpen: false, searchQuery: '', filterByTag: null,
+    }
+    expect(saveSettingsReturnState({ returnPath: '/', notesUiState }, 'account-b')).toBe(false)
+    window.sessionStorage.setItem('everfreenote:settings-return-state', JSON.stringify({ returnPath: '/', notesUiState }))
+    expect(readSettingsReturnState('account-a')).toBeNull()
+  })
+
+  it('retains a local-only note when returning from Settings for its owner', () => {
+    const [selectedNote] = applyNoteOverlay([], [{
+      id: 'local-only', user_id: 'account-a', title: 'Offline draft',
+      description: 'Draft body', tags: [], status: 'pending', updatedAt: '2026-01-01T00:00:00.000Z',
+    }])
+    const notesUiState = {
+      selectedNoteId: selectedNote.id, selectedNote,
+      isEditing: false, isSearchPanelOpen: false, searchQuery: '', filterByTag: null,
+    }
+    expect(saveSettingsReturnState({ returnPath: '/', notesUiState }, 'account-a')).toBe(true)
+    expect(readSettingsReturnState('account-a')?.notesUiState.selectedNote?.user_id).toBe('account-a')
   })
 
   it('clears stored settings return state explicitly', () => {
@@ -60,11 +94,11 @@ describe('settingsNavigationState', () => {
         searchQuery: 'term',
         filterByTag: 'tag-a',
       },
-    })
+    }, 'user-1')
 
     clearSettingsReturnState()
 
-    expect(readSettingsReturnState()).toBeNull()
+    expect(readSettingsReturnState('user-1')).toBeNull()
   })
 
   it('drops malformed stored payloads instead of returning them', () => {
@@ -83,7 +117,7 @@ describe('settingsNavigationState', () => {
       }),
     )
 
-    expect(readSettingsReturnState()).toBeNull()
+    expect(readSettingsReturnState('user-1')).toBeNull()
     expect(window.sessionStorage.getItem('everfreenote:settings-return-state')).toBeNull()
   })
 
@@ -109,9 +143,9 @@ describe('settingsNavigationState', () => {
         searchQuery: '',
         filterByTag: 'focus',
       },
-    })
+    }, 'user-2')
 
-    expect(consumeSettingsReturnState()).toEqual({
+    expect(consumeSettingsReturnState('user-2')).toEqual({
       returnPath: '/?from=settings',
       notesUiState: {
         selectedNoteId: 'note-2',
@@ -133,7 +167,7 @@ describe('settingsNavigationState', () => {
         filterByTag: 'focus',
       },
     })
-    expect(readSettingsReturnState()).toBeNull()
+    expect(readSettingsReturnState('user-2')).toBeNull()
   })
 
   it('gracefully handles blocked sessionStorage access', () => {
@@ -159,11 +193,11 @@ describe('settingsNavigationState', () => {
             searchQuery: '',
             filterByTag: null,
           },
-        }),
+        }, 'user-1'),
       ).not.toThrow()
-      expect(readSettingsReturnState()).toBeNull()
+      expect(readSettingsReturnState('user-1')).toBeNull()
       expect(() => clearSettingsReturnState()).not.toThrow()
-      expect(consumeSettingsReturnState()).toBeNull()
+      expect(consumeSettingsReturnState('user-1')).toBeNull()
     } finally {
       if (hadOwnDescriptor && originalOwnDescriptor) {
         Object.defineProperty(window, 'sessionStorage', originalOwnDescriptor)
@@ -197,7 +231,7 @@ describe('settingsNavigationState', () => {
       }),
     )
 
-    expect(readSettingsReturnState()).toBeNull()
+    expect(readSettingsReturnState('user-1')).toBeNull()
     expect(window.sessionStorage.getItem('everfreenote:settings-return-state')).toBeNull()
   })
 })

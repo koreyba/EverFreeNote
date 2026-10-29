@@ -44,3 +44,34 @@ We will use modern oklch curves:
 - Ensure that updating `lucide-react` does not break any existing icons in settings or elsewhere.
 - Run type-checks: `npm run type-check` and `npm run type-check:tests`.
 - Run tests: `npm run test:unit:web` to verify layout components don't crash under standard test cases.
+
+## October 2026 follow-up
+Starting from the separate canvas-fill fix a75c218. Scope: NoteEditor, NoteView, TagInput and shared document styles. Search title guards must accept textarea; existing title-specific test selectors migrate without changing behavior assertions. No persistence schema, native keyboard, navigation or backend contract changes.
+
+
+Implemented:
+- Shared document width/gutters/title CSS in globals.css; 24px narrow-phone, 28px phone and 36px desktop titles.
+- NoteEditor uses an uncontrolled autosizing textarea, retaining the existing save/autosave/session source of truth. Resizes on input, external accepted snapshots, width changes and font readiness. Existing text is preserved; Enter is blocked and newly pasted CR/LF characters are stripped with native undo support.
+- NoteFindBar and findInNote recognize textarea titles alongside input titles.
+- NoteTag supplies accessible filter/remove buttons; TagInput and NoteView share its appearance. Long collections show three tags plus a disclosure, with all tags accessible when expanded. Add tag expands and focuses its input. Reader disclosure resets when opening another note; editor disclosure follows its editing-session key.
+- Flat action buttons and a single primary Save/Edit button. Existing mobile toolbar, full-height canvas, safe-area and keyboard geometry are retained.
+- Title selectors in existing tests now target the field independently of the input/textarea element type. The old horizontal-tag-scroll scenario now verifies the replacement disclosure workflow. The image scrolling fixture uses 667px height because the compact document already fits its image at 844px.
+
+No changes to persistence schemas, backend requests, EditorMenuBar or EditorToolbarButton. No production deployment or native device verification in this change.
+
+## Image accessibility follow-up
+RichTextEditor exposes named multiline textbox semantics. Image options use the existing Tiptap image attributes to update descriptions; the dialog tracks multiple image drafts and rejects stale document positions. A ProseMirror decoration and reading-only sanitization provide a temporary name for images without alt, preserving stored HTML, image sources and dimensions until an explicit edit.
+
+## Image dimensions follow-up
+A shared validator limits image-only pixel attributes in DOMPurify and MCP. The DOMPurify hook is scoped to each synchronous sanitization call. Reading DOM and ProseMirror decorations derive presentation styles without altering stored HTML. ENEX export pairs resources by their source, preserves validated display sizes and alt on `en-media`, embeds supported data images locally, and escapes CDATA boundaries; the importer restores those attributes.
+
+For images with only a height, the rendered reading component and editor plugin observe the loaded intrinsic size and calculate an equivalent width. The existing responsive maximum width then scales the image proportionally. Editor measurements update decorations using non-history transactions, without changing the document or triggering content-change handlers.
+
+## October 29 focus and tag correction
+Removed only the `.ProseMirror:focus-visible` left box-shadow. Original styles were checked against a75c218: editor pills use Tag icons, rounded-full, background/border/shadow and 11px text; reading pills use the secondary palette with rounded-full and 11px text. Compact badge backgrounds sit within accessible button hit areas; desktop removal icons appear on hover or keyboard focus.
+
+`NoteTagList` measures the actual item widths and disclosure label, observes container/item resizing and font readiness, and makes overflow items invisible/inert while retaining measurable geometry. The editor's Add button occupies its own fixed column. All tags remain available through disclosure; the input is a separate row with independent state. Escape cancels pending entry and returns focus to Add; toggling Add closed keeps the existing blur-commit behavior. Backspace confirmation names the last tag even if it is collapsed.
+
+Confirmed entry closes the input; Escape discards only uncommitted text. Comma keeps the input open, allowing additional tags in the same entry session. Each confirmation puts newly added tags first; multiple tags submitted together keep their input order, and duplicates stay in place. The existing ordered tag array is saved without a schema change.
+
+The input starts closed irrespective of tag count, so the first Add activation opens and focuses it instead of closing an unfocused field on an empty note.

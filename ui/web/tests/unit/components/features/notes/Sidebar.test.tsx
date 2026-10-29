@@ -71,26 +71,26 @@ describe("Sidebar", () => {
   })
 
   describe("Sync Status Indicator", () => {
-    it("renders Synchronized dot when online and counts are zero", () => {
+    it("does not claim synchronization when no queue issue is reported", () => {
       const { container } = render(<Sidebar {...defaultProps} isOffline={false} pendingCount={0} failedCount={0} />)
 
-      const statusOutput = container.querySelector('output[aria-label="Synchronized"]')
+      const statusOutput = container.querySelector('[title="Sync status"]')
       expect(statusOutput).toBeTruthy()
-      expect(statusOutput?.className).toContain("bg-emerald-500")
+      expect(statusOutput?.className).toContain("bg-muted-foreground")
     })
 
     it("renders Offline mode status dot when isOffline is true", () => {
       const { container } = render(<Sidebar {...defaultProps} isOffline={true} />)
 
-      const statusOutput = container.querySelector('output[aria-label="Offline mode"]')
+      const statusOutput = container.querySelector('[title="Device: Offline"]')
       expect(statusOutput).toBeTruthy()
       expect(statusOutput?.className).toContain("bg-amber-500")
     })
 
-    it("renders Syncing count status dot when pendingCount > 0", () => {
+    it("describes queued changes as waiting", () => {
       const { container } = render(<Sidebar {...defaultProps} pendingCount={3} />)
 
-      const statusOutput = container.querySelector('output[aria-label="Syncing: 3"]')
+      const statusOutput = container.querySelector('[title="This account on this device: 3 waiting"]')
       expect(statusOutput).toBeTruthy()
       expect(statusOutput?.className).toContain("bg-muted-foreground")
     })
@@ -98,7 +98,7 @@ describe("Sidebar", () => {
     it("renders Sync failed count status dot when failedCount > 0", () => {
       const { container } = render(<Sidebar {...defaultProps} failedCount={2} />)
 
-      const statusOutput = container.querySelector('output[aria-label="Sync failed: 2"]')
+      const statusOutput = container.querySelector('[title="This account on this device: 2 failed"]')
       expect(statusOutput).toBeTruthy()
       expect(statusOutput?.className).toContain("bg-destructive")
     })
@@ -132,7 +132,7 @@ describe("Sidebar", () => {
 
     it("renders fallback text when notes count props are omitted", () => {
       render(<Sidebar {...defaultProps} notesDisplayed={undefined} notesTotal={undefined} />)
-      expect(screen.getByText("- of unknown notes")).toBeTruthy()
+      expect(screen.getByText("- notes shown")).toBeTruthy()
     })
   })
 

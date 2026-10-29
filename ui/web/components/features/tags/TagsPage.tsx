@@ -19,8 +19,14 @@ interface NoteLike {
 interface TagsPageProps {
   readonly notes: NoteLike[]
   readonly onSelectTag: (tagName: string) => void
-  readonly onRenameTag: (oldTag: string, newTag: string) => void
-  readonly onDeleteTag: (tagName: string) => void
+  readonly onRenameTag: (oldTag: string, newTag: string) => boolean | string | void | Promise<boolean | string | void>
+  readonly onDeleteTag: (tagName: string) => boolean | string | void | Promise<boolean | string | void>
+  readonly managementBlockReason?: string | null
+  readonly managementNotice?: string | null
+  readonly onLoadMoreNotes?: () => void
+  readonly onCheckNotes?: () => void
+  readonly checkingNotes?: boolean
+  readonly loadingMoreNotes?: boolean
   readonly className?: string
 }
 
@@ -29,6 +35,12 @@ export function TagsPage({
   onSelectTag,
   onRenameTag,
   onDeleteTag,
+  managementBlockReason,
+  managementNotice,
+  onLoadMoreNotes,
+  onCheckNotes,
+  checkingNotes = false,
+  loadingMoreNotes = false,
   className,
 }: TagsPageProps) {
   const containerRef = React.useRef<HTMLDivElement | null>(null)
@@ -100,8 +112,9 @@ export function TagsPage({
     scrollToTarget(`tag-group-${encodeURIComponent(letter)}`)
   }, [scrollToTarget])
 
-  const handleConfirmRename = React.useCallback((oldTag: string, newTag: string) => {
-    onRenameTag(oldTag, newTag)
+  const handleConfirmRename = React.useCallback(async (oldTag: string, newTag: string) => {
+    const result = await onRenameTag(oldTag, newTag)
+    if (result === false || typeof result === 'string') return result
     setRenameTarget(null)
 
     // Clear letter filter to ensure target letter section is rendered
@@ -122,7 +135,15 @@ export function TagsPage({
       setHighlightedTag((current) => (current === normalizedNewTag ? null : current))
       highlightTimeoutRef.current = null
     }, 2500)
+    return true
   }, [onRenameTag, scrollToTarget])
+
+  const handleConfirmDelete = React.useCallback(async (tag: string) => {
+    const result = await onDeleteTag(tag)
+    if (result === false || typeof result === 'string') return result
+    setDeleteTarget(null)
+    return true
+  }, [onDeleteTag])
 
   return (
     <div
@@ -145,7 +166,7 @@ export function TagsPage({
             </div>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Total tags: <span className="font-semibold text-foreground">{allTags.length}</span>
+            Tags shown: <span className="font-semibold text-foreground">{allTags.length}</span>
           </p>
         </div>
 
@@ -179,6 +200,22 @@ export function TagsPage({
         </div>
       </div>
 
+      <div className="mb-6 space-y-2 text-sm text-muted-foreground" data-testid="tag-coverage-status">
+        <p>Counts are based on loaded and cached notes and may be incomplete.</p>
+        {managementBlockReason && <p role="status">{managementBlockReason}</p>}
+        {managementNotice && <p>{managementNotice}</p>}
+        {(onLoadMoreNotes || onCheckNotes) && (
+          <div className="flex flex-wrap gap-3">
+            {onLoadMoreNotes && <button type="button" className="underline" onClick={onLoadMoreNotes} disabled={loadingMoreNotes}>
+              {loadingMoreNotes ? 'Loading notes…' : 'Load more notes'}
+            </button>}
+            {onCheckNotes && <button type="button" className="underline" onClick={onCheckNotes} disabled={checkingNotes}>
+              {checkingNotes ? 'Checking notes…' : 'Check loaded notes'}
+            </button>}
+          </div>
+        )}
+      </div>
+
       {/* Alphabetical Grid Navigation Bar */}
       {availableLetters.length > 0 && (
         <div className="mb-6 space-y-1.5">
@@ -202,7 +239,7 @@ export function TagsPage({
           <p className="text-sm text-muted-foreground max-w-sm mt-1 px-4">
             {searchQuery
               ? `No tags matching "${searchQuery}".`
-              : "No tags found in your notes. Add tags to your notes to manage them here."}
+              : "No tags found in loaded or cached notes. Other notes may contain tags."}
           </p>
         </div>
       ) : (
@@ -226,6 +263,7 @@ export function TagsPage({
                     key={tag.name}
                     tag={tag}
                     isHighlighted={highlightedTag === tag.name}
+                    actionsDisabled={Boolean(managementBlockReason) || checkingNotes || loadingMoreNotes}
                     onSelectTag={onSelectTag}
                     onRequestRename={(t) => setRenameTarget(t)}
                     onRequestDelete={(t) => setDeleteTarget(t)}
@@ -252,7 +290,7 @@ export function TagsPage({
         tagName={deleteTarget?.name ?? null}
         noteCount={deleteTarget?.count ?? 0}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        onConfirmDelete={onDeleteTag}
+        onConfirmDelete={handleConfirmDelete}
       />
     </div>
   )

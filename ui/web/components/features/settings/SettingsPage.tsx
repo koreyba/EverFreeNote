@@ -11,13 +11,18 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { cn } from "@ui/web/lib/utils"
 import { selectableSurfaceIconClasses, selectableSurfaceStateClasses } from "@ui/web/lib/selectableSurfaceStyles"
 import { useNoteAuth } from "@ui/web/hooks/useNoteAuth"
+import { useGuardedSignOut } from "@ui/web/hooks/useGuardedSignOut"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
+import { useWorkspaceMemory } from "@ui/web/providers/WorkspaceMemoryProvider"
+import { readNoteWorkspaceState } from "@ui/web/lib/noteWorkspaceStorage"
+import { SignOutGuardDialog } from "@/components/features/auth/SignOutGuardDialog"
 import { ImportButton } from "@/components/ImportButton"
 import { ExportButton } from "@/components/ExportButton"
 import { ApiKeysSettingsPanel } from "@/components/features/settings/ApiKeysSettingsPanel"
 import { AIIndexTab } from "@/components/features/settings/AIIndexTab"
 import { DeleteAccountPanel } from "@/components/features/settings/DeleteAccountPanel"
 import { WordPressSettingsPanel } from "@/components/features/settings/WordPressSettingsPanel"
+import { WorkspacePreferencesPanel } from "@/components/features/settings/WorkspacePreferencesPanel"
 import {
   clearSettingsReturnState,
   readSettingsReturnState,
@@ -40,7 +45,7 @@ const SETTINGS_TABS: SettingsTabDefinition[] = [
   {
     id: "account",
     label: "My Account",
-    description: "Email and account management.",
+    description: "Email, browser preferences, and account management.",
     icon: UserRound,
   },
   {
@@ -84,7 +89,42 @@ export function SettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading, deleteAccountLoading, handleDeleteAccount, handleSignOut } = useNoteAuth()
-  const { user: sessionUser, loading: sessionLoading } = useSupabase()
+  const { user: sessionUser, loading: sessionLoading, getSessionSnapshot } = useSupabase()
+  const workspaceMemory = useWorkspaceMemory()
+  const userId = user?.id
+  const sessionUserId = sessionUser?.id
+  React.useEffect(() => {
+    if (!userId || userId !== sessionUserId) return
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      const inMemory = workspaceMemory.read(userId)
+      const persisted = readNoteWorkspaceState({ userId })
+      if (inMemory?.tabs.some(tab => tab.saveState !== 'saved') || persisted.tabs.some(tab => tab.saveState !== 'saved')) {
+        event.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', beforeUnload)
+    return () => window.removeEventListener('beforeunload', beforeUnload)
+  }, [sessionUserId, userId, workspaceMemory])
+  const prepareSignOut = React.useCallback(async () => {
+    if (!userId || sessionUserId !== userId) return false
+    const memoryWorkspace = workspaceMemory.read(userId)
+    if (memoryWorkspace?.tabs.some(tab => tab.saveState !== 'saved')) return false
+    let readable = true
+    const workspace = readNoteWorkspaceState({ userId, onStorageFailure: () => { readable = false } })
+    return readable && workspace.tabs.every(tab => tab.saveState === 'saved')
+  }, [sessionUserId, userId, workspaceMemory])
+  const performSignOut = React.useCallback(() => handleSignOut(() => {
+    clearSettingsReturnState()
+    router.push("/")
+  }), [handleSignOut, router])
+  const signOutGuard = useGuardedSignOut(userId && userId === sessionUserId ? userId : null, prepareSignOut, performSignOut, getSessionSnapshot)
+  const discardGuardedSignOut = signOutGuard.discardAndSignOut
+  const discardAndSignOut = React.useCallback(() => {
+    const started = getSessionSnapshot?.()
+    if (!userId || (started && started.userId !== userId)) return
+    workspaceMemory.cancelOwnerWrites(userId, started?.epoch)
+    void discardGuardedSignOut()
+  }, [discardGuardedSignOut, getSessionSnapshot, userId, workspaceMemory])
   const mobileTabsRef = React.useRef<HTMLDivElement | null>(null)
   const activeMobileTabRef = React.useRef<HTMLButtonElement | null>(null)
   const scrollTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -106,10 +146,10 @@ export function SettingsPage() {
   }, [router])
 
   const handleExit = React.useCallback(() => {
-    const returnState = readSettingsReturnState()
+    const returnState = userId ? readSettingsReturnState(userId) : null
     const safeReturnPath = sanitizeSettingsReturnPath(returnState?.returnPath) ?? "/"
     router.push(safeReturnPath)
-  }, [router])
+  }, [router, userId])
 
   useAppBackHandler(APP_BACK_PRIORITY.navigation, () => {
     handleExit()
@@ -393,18 +433,18 @@ export function SettingsPage() {
                     </ActionSection>
                   ) : null}
                   {activeDefinition.id === "account" ? (
-                    <DeleteAccountPanel
-                      email={user.email}
-                      onConfirm={() => handleDeleteAccount(() => {
-                        clearSettingsReturnState()
-                        router.push("/")
-                      })}
-                      loading={deleteAccountLoading}
-                      onSignOut={() => handleSignOut(() => {
-                        clearSettingsReturnState()
-                        router.push("/")
-                      })}
-                    />
+                    <div className="space-y-6">
+                      <WorkspacePreferencesPanel />
+                      <DeleteAccountPanel
+                        email={user.email}
+                        onConfirm={() => handleDeleteAccount(() => {
+                          clearSettingsReturnState()
+                          router.push("/")
+                        })}
+                        loading={deleteAccountLoading}
+                        onSignOut={signOutGuard.request}
+                      />
+                    </div>
                   ) : null}
                 </div>
               </div>
@@ -412,6 +452,9 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+      <SignOutGuardDialog phase={signOutGuard.phase} onCancel={signOutGuard.cancel}
+        pendingSave={Boolean(userId && workspaceMemory.hasPendingWrites(userId))}
+        onDiscard={discardAndSignOut} />
     </main>
   </MobileWorkspace>
   )

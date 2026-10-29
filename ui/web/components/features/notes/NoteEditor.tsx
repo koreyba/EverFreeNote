@@ -2,9 +2,9 @@
 
 import { useAppBackHandler, APP_BACK_PRIORITY } from "@ui/web/lib/appBack"
 import * as React from "react"
+import { toast } from "sonner"
 import { ArrowsIn, ArrowsOut, CaretLeft as ChevronLeft, Copy, Check, Eye, FloppyDisk as SaveIcon, MagnifyingGlass } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import RichTextEditor, { type RichTextEditorHandle } from "@/components/RichTextEditor"
 import { NoteClipboardService } from "@core/services/noteClipboard"
 import { useCopyNote } from "@ui/web/hooks/useCopyNote"
@@ -26,7 +26,9 @@ const NOOP_CANCEL = () => {}
 
 export interface NoteEditorHandle {
   flushPendingSave: () => Promise<void>
+  cancelPendingSave?: () => void
   captureSession?: () => NoteEditorSession
+  hasUnconfirmedChanges?: () => boolean
   scrollToChunk: (charOffset: number, chunkLength: number) => void
 }
 
@@ -50,8 +52,8 @@ interface NoteEditorProps {
   availableTags?: string[]
   tagCounts?: Record<string, number>
   isSaving: boolean
-  onSave: (data: { title: string; description: string; tags: string }) => void
-  onRead: (data: { title: string; description: string; tags: string }) => void
+  onSave: (data: { title: string; description: string; tags: string }) => void | boolean | { noteId?: string } | Promise<void | boolean | { noteId?: string }>
+  onRead: (data: { title: string; description: string; tags: string }) => void | Promise<void>
   onAutoSave?: (data: { noteId?: string; title: string; description: string; tags: string }) => Promise<{ noteId?: string } | void> | { noteId?: string } | void
   isAutoSaving?: boolean
   autosaveDelayMs?: number
@@ -64,6 +66,7 @@ interface NoteEditorProps {
   initialSession?: NoteEditorSession
   onDraftChange?: (draft: NoteDraftSnapshot) => void
   onViewSessionChange?: (view: Partial<NoteViewSession>) => void
+  getSessionSnapshot?: () => { userId: string | null; epoch: number }
 }
 
 export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
@@ -88,7 +91,16 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   initialSession,
   onDraftChange,
   onViewSessionChange,
+  getSessionSnapshot,
 }: NoteEditorProps, ref) {
+  const editorSessionRef = React.useRef(getSessionSnapshot?.())
+  React.useEffect(() => { editorSessionRef.current = getSessionSnapshot?.() }, [getSessionSnapshot])
+  const shouldFlushOnUnmount = React.useCallback(() => {
+    const editorSession = editorSessionRef.current
+    if (!editorSession || !getSessionSnapshot) return false
+    const current = getSessionSnapshot()
+    return current.epoch !== editorSession.epoch || current.userId !== editorSession.userId
+  }, [getSessionSnapshot])
   const { expanded, setExpanded } = useMobileEditorExpansion()
   useAppBackHandler(APP_BACK_PRIORITY.editor, async () => {
     if (!expanded) return false
@@ -97,12 +109,17 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   })
   React.useEffect(() => () => setExpanded(false), [setExpanded])
   const [showSaving, setShowSaving] = React.useState(false)
+  const [imageProcessing, setImageProcessing] = React.useState(false)
+  const [readPendingSession, setReadPendingSession] = React.useState<number | null>(null)
+  const readPendingRef = React.useRef<number | null>(null)
+  const readRevisionRef = React.useRef(0)
+  const editorLifetimeRef = React.useRef(0)
   const [selectedTags, setSelectedTags] = React.useState<string[]>(() => parseTagString(initialTags))
   const [tagQuery, setTagQuery] = React.useState("")
   const [readyChunkFocus, setReadyChunkFocus] = React.useState<PendingChunkFocus | null>(null)
   const [isBodyEmpty, setIsBodyEmpty] = React.useState(() => NoteClipboardService.isBodyEmpty(initialDescription))
   const [findOpen, setFindOpen] = React.useState(false)
-  const titleInputRef = React.useRef<HTMLInputElement | null>(null)
+  const titleInputRef = React.useRef<HTMLTextAreaElement | null>(null)
   const editorRef = React.useRef<RichTextEditorHandle | null>(null)
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
   const editorRootRef = React.useRef<HTMLDivElement | null>(null)
@@ -111,6 +128,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   const headerRef = React.useRef<HTMLDivElement | null>(null)
   const initialSessionRef = React.useRef(initialSession)
   const previousNoteIdRef = React.useRef(noteId)
+  const hasLocalInputRef = React.useRef(false)
+
+  const resizeTitle = React.useCallback(() => {
+    const title = titleInputRef.current
+    if (!title) return
+    title.style.height = "0px"
+    title.style.height = `${title.scrollHeight}px`
+  }, [])
 
   const selectedTagsRef = React.useRef<string[]>(selectedTags)
   React.useEffect(() => {
@@ -123,7 +148,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
   const getFormData = React.useCallback(() => ({
     title: titleInputRef.current?.value ?? initialTitle,
-    description: editorRef.current?.getHTML() ?? initialDescription,
+    description: editorRef.current?.getContentForSave() ?? initialDescription,
     tags: buildTagString(selectedTagsRef.current),
   }), [initialTitle, initialDescription])
 
@@ -147,6 +172,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   )
 
   const notifyDraftChange = React.useCallback(() => {
+    hasLocalInputRef.current = true
     debouncedDraftNotify.schedule(getFormData())
   }, [debouncedDraftNotify, getFormData])
 
@@ -177,9 +203,10 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   ) => {
     if (fieldDecisions.title === 'accept-external' && titleInputRef.current && titleInputRef.current.value !== snapshot.title) {
       titleInputRef.current.value = snapshot.title
+      resizeTitle()
     }
 
-    if (fieldDecisions.description === 'accept-external' && editorRef.current?.getHTML() !== snapshot.description) {
+    if (fieldDecisions.description === 'accept-external' && editorRef.current?.getContentForSave() !== snapshot.description) {
       editorRef.current?.setContent(snapshot.description)
       setIsBodyEmpty(NoteClipboardService.isBodyEmpty(snapshot.description))
     }
@@ -190,9 +217,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       setSelectedTags(parsed)
       setTagQuery("")
     }
-  }, [])
+  }, [resizeTitle])
 
-  const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave } =
+  const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave: flushNoteSave, hasUnconfirmedChanges, getSaveRevision, finishManualSave, finishManualCreate, acknowledgeManualSave } =
     useNoteEditorAutoSave({
       noteId,
       initialTitle,
@@ -201,9 +228,11 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       autosaveDelayMs,
       onAutoSave,
       getFormData,
+      shouldFlushOnUnmount,
       applyExternalSnapshot,
       cancelDebouncedTagQuery: NOOP_CANCEL,
       onNoteSwitch: () => {
+        hasLocalInputRef.current = false
         setExpanded(false)
         const parsed = parseTagString(initialTags)
         setSelectedTags(parsed)
@@ -211,6 +240,33 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         setTagQuery("")
       },
     })
+  const readPending = readPendingSession === editorSessionKey
+  const flushPendingSave = React.useCallback(async () => {
+    const revision = editorLifetimeRef.current
+    // A file chosen before a transition must be inserted before its final
+    // snapshot. Another file can start while the durable save is in flight.
+    do {
+      await editorRef.current?.waitForPendingImageOperations?.()
+      if (revision !== editorLifetimeRef.current || shouldFlushOnUnmount()) throw new Error("Editor changed before save completed")
+      await flushNoteSave()
+      if (revision !== editorLifetimeRef.current || shouldFlushOnUnmount()) throw new Error("Editor changed before save completed")
+    } while (editorRef.current?.hasPendingImageOperations?.())
+  }, [flushNoteSave, shouldFlushOnUnmount])
+
+  React.useLayoutEffect(() => {
+    resizeTitle()
+    void document.fonts?.ready.then(resizeTitle)
+    const title = titleInputRef.current
+    if (!title || typeof ResizeObserver === "undefined") return
+    let previousWidth = title.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (title.clientWidth === previousWidth) return
+      previousWidth = title.clientWidth
+      resizeTitle()
+    })
+    observer.observe(title)
+    return () => observer.disconnect()
+  }, [editorSessionKey, resizeTitle])
 
   // Sync external auto-saving flag into local display state
   React.useEffect(() => {
@@ -238,18 +294,94 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     void copyNote(editorRef.current?.getHTML() ?? initialDescription)
   }, [copyNote, initialDescription])
 
+  const manualSaveRevisionRef = React.useRef(0)
+  const currentNoteIdRef = React.useRef(noteId)
+  React.useLayoutEffect(() => { currentNoteIdRef.current = noteId }, [noteId])
+  React.useLayoutEffect(() => () => { manualSaveRevisionRef.current += 1 }, [editorSessionKey])
+  React.useLayoutEffect(() => () => {
+    readRevisionRef.current += 1
+    editorLifetimeRef.current += 1
+  }, [editorSessionKey])
+
   const handleSave = () => {
     cancelAutoSave()
     // The manual save records the draft itself; a late debounced notification
     // would re-mark the saved tab as dirty.
     debouncedDraftNotify.cancel()
-    onSave(getFormData())
+    const snapshot = getFormData()
+    const revision = getSaveRevision(snapshot)
+    const manualRevision = ++manualSaveRevisionRef.current
+    const lifetime = editorLifetimeRef.current
+    const startedSession = getSessionSnapshot?.()
+    const onSaved = (saved: void | boolean | { noteId?: string }) => {
+      let result: 'saved' | 'failed' | 'cancelled' = 'cancelled'
+      try {
+        const currentSession = getSessionSnapshot?.()
+        const sameAccount = !startedSession || Boolean(currentSession && startedSession.userId === currentSession.userId && startedSession.epoch === currentSession.epoch)
+        const savedId = typeof saved === 'object' && saved !== null ? saved.noteId : undefined
+        if (!noteId) finishManualCreate(revision, sameAccount ? savedId ?? null : null)
+        if (!sameAccount || manualRevision !== manualSaveRevisionRef.current || lifetime !== editorLifetimeRef.current) return
+        // A void callback gives no confirmation, but is a supported legacy
+        // contract; it must not be treated as an explicit save failure.
+        if (saved === undefined) return
+        if (saved !== true && !savedId) {
+          hasLocalInputRef.current = true
+          result = 'failed'
+          return
+        }
+        if (noteId ? currentNoteIdRef.current !== noteId : currentNoteIdRef.current && currentNoteIdRef.current !== savedId) return
+        acknowledgeManualSave(snapshot, revision)
+        result = 'saved'
+      } finally { finishManualSave(revision, result) }
+    }
+    const onSaveFailed = () => {
+      const currentSession = getSessionSnapshot?.()
+      const sameAccount = !startedSession || Boolean(currentSession && startedSession.userId === currentSession.userId && startedSession.epoch === currentSession.epoch)
+      const current = sameAccount && lifetime === editorLifetimeRef.current && manualRevision === manualSaveRevisionRef.current
+      try {
+        if (!noteId) finishManualCreate(revision, null)
+        // The save owner reports the failure and leaves the draft dirty.
+        if (current) hasLocalInputRef.current = true
+      } finally { finishManualSave(revision, current ? 'failed' : 'cancelled') }
+    }
+    try { void Promise.resolve(onSave(snapshot)).then(onSaved, onSaveFailed) } catch { onSaveFailed() }
   }
 
   const handleRead = () => {
-    cancelAutoSave()
-    debouncedDraftNotify.cancel()
-    onRead(getFormData())
+    if (readPendingRef.current === editorSessionKey) return
+    readPendingRef.current = editorSessionKey
+    setReadPendingSession(editorSessionKey)
+    const revision = ++readRevisionRef.current
+    const startedSession = getSessionSnapshot?.()
+    // Keep any scheduled body autosave alive if a pending image fails before
+    // the transition can flush, and publish the current draft as dirty.
+    debouncedDraftNotify.flush()
+    void (async () => {
+      let readStarted = false
+      try {
+        // Keep editing locked through the transition and read the newest draft.
+        await flushPendingSave()
+        const currentSession = getSessionSnapshot?.()
+        const sameAccount = !startedSession || Boolean(currentSession && startedSession.userId === currentSession.userId && startedSession.epoch === currentSession.epoch)
+        if (!sameAccount || revision !== readRevisionRef.current || (noteId && currentNoteIdRef.current !== noteId)) return
+        debouncedDraftNotify.cancel()
+        readStarted = true
+        await onRead(getFormData())
+      } catch {
+        // The autosave hook reports flush errors. A rejected Read callback also
+        // needs feedback, provided this editor still belongs to the same owner.
+        const currentSession = getSessionSnapshot?.()
+        const sameAccount = !startedSession || Boolean(currentSession && startedSession.userId === currentSession.userId && startedSession.epoch === currentSession.epoch)
+        if (readStarted && sameAccount && revision === readRevisionRef.current) {
+          toast.error('Could not switch to reading. Your changes are still available.')
+        }
+      } finally {
+        if (revision === readRevisionRef.current) {
+          readPendingRef.current = null
+          setReadPendingSession(null)
+        }
+      }
+    })()
   }
 
   const getExportNote = React.useCallback(() => {
@@ -274,12 +406,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     if (normalized.length === 0) return
     const prev = selectedTagsRef.current
     const existing = new Set(prev)
-    const merged = [...prev]
+    const added: string[] = []
     for (const tag of normalized) {
       if (existing.has(tag)) continue
       existing.add(tag)
-      merged.push(tag)
+      added.push(tag)
     }
+    if (added.length === 0) return
+    const merged = [...added, ...prev]
     selectedTagsRef.current = merged
     setSelectedTags(merged)
     setTagQuery("")
@@ -296,6 +430,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
   React.useImperativeHandle(ref, () => ({
     flushPendingSave,
+    cancelPendingSave: cancelAutoSave,
+    hasUnconfirmedChanges: () => Boolean(editorRef.current?.hasPendingImageOperations?.()) || (hasLocalInputRef.current && hasUnconfirmedChanges()),
     captureSession: () => {
       const titleInput = titleInputRef.current
       const titleSelection = titleInput && titleInput.selectionStart !== null && titleInput.selectionEnd !== null
@@ -303,9 +439,9 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         : undefined
       const editorSelection = editorRef.current?.getSelection?.()
 
-      // The capture reads the live editor, so a pending debounced draft
-      // notification is stale and must not fire after the transition.
-      debouncedDraftNotify.cancel()
+      // Publish a pending draft before navigation waits. It cannot fire late
+      // and mark a successfully saved tab dirty after the transition.
+      debouncedDraftNotify.flush()
       debouncedViewNotify.cancel()
 
       return {
@@ -320,7 +456,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     scrollToChunk: (charOffset: number, chunkLength: number) => {
       editorRef.current?.scrollToChunk(charOffset, chunkLength)
     },
-  }), [debouncedDraftNotify, debouncedViewNotify, flushPendingSave, getFormData])
+  }), [cancelAutoSave, debouncedDraftNotify, debouncedViewNotify, flushPendingSave, getFormData, hasUnconfirmedChanges])
 
   React.useEffect(() => {
     const session = initialSessionRef.current
@@ -390,14 +526,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       <div
         ref={headerRef}
         data-mobile-editor-chrome
-        className="relative shrink-0 md:absolute top-0 left-0 right-0 z-30 flex items-center justify-between gap-2 border-b border-border/40 bg-card/75 p-3 backdrop-blur-md md:p-4"
+        className="relative shrink-0 md:absolute top-0 left-0 right-0 z-30 flex items-center justify-between gap-2 border-b border-border/40 bg-card/95 px-3 py-2 backdrop-blur-md md:px-5 md:py-3"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {onBack && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
-              className="h-11 w-11 shrink-0 rounded-full shadow-sm md:hidden"
+              className="h-11 w-11 shrink-0 rounded-xl shadow-none md:hidden"
               onClick={onBack}
               data-cy="note-back-button"
               aria-label="Back"
@@ -412,7 +548,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex gap-1.5 items-center">
-            <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0 rounded-full shadow-sm md:hidden"
+            <Button type="button" variant="ghost" size="icon" className="h-11 w-11 shrink-0 rounded-xl shadow-none md:hidden"
               data-cy="note-find-button" aria-label="Find in note" aria-expanded={findOpen} onClick={() => setFindOpen((open) => !open)}>
               <MagnifyingGlass className="h-4 w-4" />
             </Button>
@@ -421,24 +557,24 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
                 clipping the "more actions" button off the screen edge. */}
             <Button
               onClick={handleRead}
-              variant="outline"
+              variant="ghost"
               size="sm"
               data-cy="note-read-button"
               aria-label="Read"
-              disabled={isSaving}
-              className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
+              disabled={isSaving || readPending}
+              className="h-11 min-w-11 rounded-xl px-0 shadow-none md:h-9 md:min-w-0 md:px-3"
             >
               <Eye className="w-3.5 h-3.5 md:mr-1.5" />
               <span className="hidden md:inline">Read</span>
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               disabled={isSaving || isBodyEmpty}
               data-cy="note-copy-button"
               aria-label="Copy note"
               onClick={handleCopy}
-              className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
+              className="h-11 min-w-11 rounded-xl px-0 shadow-none md:h-9 md:min-w-0 md:px-3"
             >
               {copied ? (
                 <Check className="w-3.5 h-3.5 md:mr-1.5 text-emerald-600" />
@@ -452,8 +588,8 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               size="sm"
               data-cy="note-save-button"
               aria-label="Save"
-              disabled={isSaving}
-              className="h-11 min-w-11 rounded-full px-0 shadow-sm md:h-8 md:min-w-0 md:px-3"
+              disabled={isSaving || readPending || imageProcessing}
+              className="h-11 min-w-11 rounded-xl px-0 shadow-none md:h-9 md:min-w-0 md:px-3"
             >
               <SaveIcon className="w-3.5 h-3.5 md:hidden" />
               <span className="hidden md:inline">Save</span>
@@ -468,11 +604,13 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               />
             )}
           </div>
-          {(showSaving || isSaving) ? (
-            <div className="text-[10px] text-muted-foreground font-medium">Saving...</div>
+          {imageProcessing ? (
+            <div role="status" aria-live="polite" className="text-[10px] text-muted-foreground font-medium">Adding image...</div>
+          ) : (showSaving || isSaving || readPending) ? (
+            <div role="status" aria-live="polite" className="text-[10px] text-muted-foreground font-medium">Saving...</div>
           ) : lastSavedAt ? (
             <div className="text-[10px] text-muted-foreground font-medium">
-              Saved at {new Date(lastSavedAt).toLocaleTimeString()}
+              Last local save (any note): {new Date(lastSavedAt).toLocaleTimeString()}
             </div>
           ) : null}
         </div>
@@ -488,27 +626,49 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       {/* Editor Form */}
       <div
         ref={scrollContainerRef}
+        inert={readPending}
+        aria-busy={readPending || undefined}
         // scrollbar-none: kept in sync with NoteView so the reading and
         // editing surfaces scroll identically — see the note there.
-        className="scrollbar-none relative z-0 min-h-0 flex-1 overflow-y-auto bg-card"
+        className="scrollbar-none relative z-0 flex min-h-0 flex-1 flex-col overflow-y-auto bg-card"
         onScroll={(event) => debouncedViewNotify.schedule({ scrollTop: event.currentTarget.scrollTop })}
       >
-        <div data-mobile-editor-chrome className="max-w-4xl mx-auto px-4 pt-6 md:px-6 md:pt-24 space-y-5">
+        <div data-mobile-editor-chrome className="note-document-width shrink-0 space-y-3 pt-6 md:pt-24">
           <div>
-            <Input
+            <textarea
               key={`title-${editorSessionKey}`}
               ref={titleInputRef}
-              type="text"
+              rows={1}
+              aria-label="Note title"
               placeholder="Note title"
               defaultValue={initialTitle}
-              onChange={() => {
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.nativeEvent.isComposing) event.preventDefault()
+              }}
+              onPaste={(event) => {
+                const pastedText = event.clipboardData.getData("text/plain")
+                if (!/[\r\n]/.test(pastedText)) return
+                event.preventDefault()
+                const title = event.currentTarget
+                const singleLineText = pastedText.replace(/[\r\n]/g, "")
+                // Native insertion preserves textarea undo. Only the new
+                // clipboard text is flattened; existing titles stay intact.
+                if (title.ownerDocument.execCommand?.("insertText", false, singleLineText)) return
+                title.setRangeText(singleLineText, title.selectionStart, title.selectionEnd, "end")
+                resizeTitle()
                 handleContentChange()
                 notifyDraftChange()
               }}
-              className="w-full h-auto border-0 bg-transparent px-0 py-1 text-4xl font-extrabold tracking-tight placeholder:text-muted-foreground/30 focus-visible:ring-0 shadow-none"
+              onChange={() => {
+                resizeTitle()
+                handleContentChange()
+                notifyDraftChange()
+              }}
+              className="note-document-title block w-full resize-none overflow-hidden border-0 bg-transparent p-0 placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:shadow-[inset_0_-2px_0_var(--color-primary)]"
             />
           </div>
           <TagInput
+            key={`tags-${editorSessionKey}`}
             tags={selectedTags}
             onAddTags={addTags}
             onRemoveTag={removeTag}
@@ -518,13 +678,14 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
             placeholder="work, personal, ideas"
           />
         </div>
-        <div ref={bodyRef} className="max-w-4xl mx-auto px-4 md:px-6 pb-6 mt-4">
+        <div ref={bodyRef} className="note-document-width mt-4 flex flex-1 flex-col">
           <RichTextEditor
             key={`editor-${editorSessionKey}`}
             ref={editorRef}
             mobileToolbarContainer={mobileToolbarContainer}
             initialContent={initialDescription}
             onContentChange={handleEditorContentChange}
+            onImageProcessingChange={setImageProcessing}
             chunkFocusRequest={
               readyChunkFocus
                 ? {
@@ -538,7 +699,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
           />
         </div>
       </div>
-      <div className="mobile-editor-toolbar flex shrink-0 min-w-0 items-center border-t border-border/40 bg-background md:hidden">
+      <div inert={readPending} className="mobile-editor-toolbar flex shrink-0 min-w-0 items-center border-t border-border/60 bg-card md:hidden">
         <div ref={setMobileToolbarContainer} className="min-w-0 flex-1" />
         {expanded && (
           <Button

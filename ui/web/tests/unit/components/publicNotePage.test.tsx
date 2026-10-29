@@ -7,6 +7,19 @@ jest.mock("@/components/theme-toggle", () => ({
 }))
 
 describe("PublicNotePage", () => {
+  it("names an undescribed image when reading a shared note", () => {
+    render(<PublicNotePage note={{
+      token: "abc123",
+      title: "Shared Article",
+      description: '<p><img src="https://example.com/photo.png"></p>',
+      tags: [],
+      created_at: "2026-04-28T10:00:00.000Z",
+      updated_at: "2026-04-28T10:00:00.000Z",
+    }} />)
+
+    expect(screen.getByRole("img", { name: "Image without description" })).toBeTruthy()
+  })
+
   it("renders title, sanitized content, non-clickable tags, and the public theme toggle", () => {
     render(
       <PublicNotePage

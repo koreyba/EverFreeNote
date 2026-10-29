@@ -4,7 +4,7 @@ import {
   NOTE_COLUMNS,
   TAG_SCAN_NOTE_LIMIT,
   createSupabaseNotebookRepository,
-  escapeIlikeValue,
+  escapeSearchValue,
   toNoteRecord,
 } from '@core/mcp/supabaseNotebookRepository'
 
@@ -16,6 +16,7 @@ function createBuilder(result: QueryResult) {
     insert: jest.fn(),
     update: jest.fn(),
     eq: jest.fn(),
+    is: jest.fn(),
     order: jest.fn(),
     range: jest.fn(),
     contains: jest.fn(),
@@ -26,7 +27,7 @@ function createBuilder(result: QueryResult) {
     maybeSingle: jest.fn(),
     single: jest.fn(),
   }
-  for (const key of ['select', 'insert', 'update', 'eq', 'order', 'range', 'contains', 'overlaps', 'not', 'or', 'limit']) {
+  for (const key of ['select', 'insert', 'update', 'eq', 'is', 'order', 'range', 'contains', 'overlaps', 'not', 'or', 'limit']) {
     builder[key].mockReturnValue(builder)
   }
   builder.maybeSingle.mockResolvedValue({ data: result.data ?? null, error: result.error ?? null })
@@ -66,8 +67,8 @@ const record = {
 
 describe('core/mcp/supabaseNotebookRepository', () => {
   describe('helpers', () => {
-    it('escapes characters that break PostgREST quoted values', () => {
-      expect(escapeIlikeValue(' a"b\\c ')).toBe('abc')
+    it('preserves literal text through regex and PostgREST quoting', () => {
+      expect(escapeSearchValue(String.raw` a"b\c%_.* `)).toBe(String.raw`a\"b\\\\c%_\\.\\*`)
     })
 
     it('normalises nullable columns into a NoteRecord', () => {
@@ -102,16 +103,16 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       await repository.listNotes({ query: ' foo"bar ', tags: ['work'], tagMatch: 'all', limit: 5, offset: 0 })
 
       expect(builder.contains).toHaveBeenCalledWith('tags', ['work'])
-      expect(builder.or).toHaveBeenCalledWith('title.ilike."%foobar%",description.ilike."%foobar%"')
+      expect(builder.or).toHaveBeenCalledWith(String.raw`title.imatch."foo\"bar",description.imatch."foo\"bar"`)
     })
 
-    it('skips the text filter when the query is blank after escaping', async () => {
+    it('keeps a text filter consisting only of a quote', async () => {
       const { supabase, builder } = createClient({ data: [], count: 0 })
       const repository = createSupabaseNotebookRepository(supabase, userId)
 
       await repository.listNotes({ query: '"', tags: [], tagMatch: 'all', limit: 5, offset: 0 })
 
-      expect(builder.or).not.toHaveBeenCalled()
+      expect(builder.or).toHaveBeenCalledWith(String.raw`title.imatch."\"",description.imatch."\""`)
     })
 
     it('falls back to offset + rows when the count is missing', async () => {
@@ -274,6 +275,19 @@ describe('core/mcp/supabaseNotebookRepository', () => {
   })
 
   describe('listTags', () => {
+    it.each([999, 1000, 1001, 5000, 5001])('scans %i tagged notes through the server row limit', async (total) => {
+      const rows = Array.from({ length: total }, () => ({ tags: ['x'] }))
+      const { supabase, builder } = createClient({ data: rows })
+      builder.then = (resolve: (value: QueryResult) => unknown) => {
+        const [start = 0, requestedEnd = 999] = builder.range.mock.lastCall ?? []
+        const page = rows.slice(start, Math.min(requestedEnd + 1, start + 1000))
+        return Promise.resolve({ data: page, error: null, count: rows.length }).then(resolve)
+      }
+      const result = await createSupabaseNotebookRepository(supabase, userId).listTags()
+      const scanned = Math.min(total, TAG_SCAN_NOTE_LIMIT)
+      expect(result).toEqual({ tags: [{ name: 'x', count: scanned }], total: scanned, truncated: total > TAG_SCAN_NOTE_LIMIT })
+    })
+
     it('reads only the tags column for the user and aggregates it', async () => {
       const { supabase, from, builder } = createClient({
         data: [{ tags: ['work', 'home'] }, { tags: ['work'] }, { tags: [] }],
@@ -283,9 +297,10 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       const result = await repository.listTags()
 
       expect(from).toHaveBeenCalledWith('notes')
-      expect(builder.select).toHaveBeenCalledWith('tags')
+      expect(builder.select).toHaveBeenCalledWith('tags', { count: 'exact' })
       expect(builder.eq).toHaveBeenCalledWith('user_id', userId)
-      expect(builder.limit).toHaveBeenCalledWith(TAG_SCAN_NOTE_LIMIT)
+      expect(builder.range).toHaveBeenCalledWith(0, 999)
+      expect(builder.order).toHaveBeenCalledWith('id', { ascending: true })
       expect(result).toEqual({
         tags: [
           { name: 'work', count: 2 },
@@ -301,14 +316,6 @@ describe('core/mcp/supabaseNotebookRepository', () => {
       const repository = createSupabaseNotebookRepository(supabase, userId)
 
       await expect(repository.listTags()).resolves.toMatchObject({ tags: [{ name: 'ok', count: 1 }] })
-    })
-
-    it('flags a truncated scan when the cap is reached', async () => {
-      const rows = Array.from({ length: TAG_SCAN_NOTE_LIMIT }, () => ({ tags: ['x'] }))
-      const { supabase } = createClient({ data: rows })
-      const repository = createSupabaseNotebookRepository(supabase, userId)
-
-      await expect(repository.listTags()).resolves.toMatchObject({ truncated: true })
     })
 
     it('handles a null payload and rethrows database errors', async () => {
@@ -327,6 +334,47 @@ describe('core/mcp/supabaseNotebookRepository', () => {
   })
 
   describe('editNoteTags', () => {
+    it('retries on a competing tag change without dropping the other writer’s addition', async () => {
+      const { supabase, builder } = createClient({ data: row })
+      builder.maybeSingle
+        .mockResolvedValueOnce({ data: row, error: null })
+        .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({ data: { ...row, tags: ['a', 'b', 'other'] }, error: null })
+        .mockResolvedValueOnce({ data: { ...row, tags: ['a', 'b', 'other', 'mine'] }, error: null })
+      const result = await createSupabaseNotebookRepository(supabase, userId)
+        .editNoteTags(row.id, { add: ['mine'], remove: [] })
+
+      expect(builder.eq).toHaveBeenCalledWith('tags', '{"a","b"}')
+      expect(builder.eq).toHaveBeenCalledWith('tags', '{"a","b","other"}')
+      expect(builder.update).toHaveBeenNthCalledWith(2, { tags: ['a', 'b', 'other', 'mine'] })
+      expect(result?.tags).toEqual(['a', 'b', 'other', 'mine'])
+    })
+
+    it('matches a legacy null tags value and safely quotes array values in the update guard', async () => {
+      const legacy = createClient({ data: { ...row, tags: null } })
+      legacy.builder.maybeSingle.mockResolvedValueOnce({ data: { ...row, tags: null }, error: null })
+        .mockResolvedValueOnce({ data: { ...row, tags: ['new'] }, error: null })
+      await createSupabaseNotebookRepository(legacy.supabase, userId).editNoteTags(row.id, { add: ['new'], remove: [] })
+      expect(legacy.builder.is).toHaveBeenCalledWith('tags', null)
+
+      const unusual = createClient({ data: row })
+      unusual.builder.maybeSingle.mockResolvedValueOnce({ data: { ...row, tags: ['x,"y', 'back\\slash', null] }, error: null })
+        .mockResolvedValueOnce({ data: { ...row, tags: ['x,"y', 'back\\slash', 'new'] }, error: null })
+      await createSupabaseNotebookRepository(unusual.supabase, userId).editNoteTags(row.id, { add: ['new'], remove: [] })
+      expect(unusual.builder.eq).toHaveBeenCalledWith('tags', '{"x,\\"y","back\\\\slash",NULL}')
+    })
+
+    it('returns a conflict error after bounded retries instead of reporting success', async () => {
+      const { supabase, builder } = createClient({ data: row })
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        builder.maybeSingle.mockResolvedValueOnce({ data: row, error: null })
+          .mockResolvedValueOnce({ data: null, error: null })
+      }
+      await expect(createSupabaseNotebookRepository(supabase, userId)
+        .editNoteTags(row.id, { add: ['mine'], remove: [] })).rejects.toThrow('Concurrent tag updates')
+      expect(builder.update).toHaveBeenCalledTimes(5)
+    })
+
     it('adds a tag without disturbing the others', async () => {
       const { supabase, builder } = createClient({ data: row })
       builder.maybeSingle

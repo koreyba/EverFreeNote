@@ -54,6 +54,11 @@ description: Technical implementation notes, patterns, and code guidelines for m
 - Link editing and image insertion are handled through inline URL forms in the toolbar overlay.
 - The React Native toolbar uses explicit bridge commands for `toggleHeadingLevel`, `clearFormatting`, `setLinkUrl`, and `insertImageUrl`; other actions still fall through the generic TipTap chain command lookup in the WebView editor.
 
+## Continuous note editing canvas — 2026-10-28
+
+- The note scroller and rich-text containers form a flex column; the ProseMirror surface fills the remaining space and grows with content. The former fixed 400 px minimum and nested card styling no longer restrict the canvas.
+- Desktop keeps the sticky formatting row; mobile keeps the toolbar portal and existing visual viewport, navigation, and safe-area handling. Keyboard focus has a visible accent in both themes.
+
 ## Mobile web usability — 2026-10-28
 
 - `Sidebar` uses a compact phone header, exposes Select, and keeps the desktop search and account footer at desktop widths. Sign-out remains in Settings.

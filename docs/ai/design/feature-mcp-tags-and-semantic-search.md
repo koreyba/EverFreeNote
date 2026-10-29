@@ -40,7 +40,7 @@ The `SemanticSearch` port mirrors the existing `NotebookRepository` pattern: `co
 
 ### `list_tags`
 
-There is no RPC for the tag vocabulary, so the repository selects only the `tags` column for the user's notes (capped at `TAG_SCAN_NOTE_LIMIT = 5000`) and aggregates in memory. Counting is case-insensitive; the spelling reported is the first one seen, which matches `getTagsWithCounts` in the web app. Sorted by count descending, then by name. `truncated` tells the agent the cap was hit so it does not present the list as exhaustive.
+There is no RPC for the tag vocabulary, so the repository pages over the `tags` column ordered by note id and aggregates up to `TAG_SCAN_NOTE_LIMIT = 5000` notes in memory. An exact count distinguishes the cap from a genuinely truncated result. Counting is case-insensitive; the spelling reported is the first one seen. Results are sorted by count descending, then by name. Paging does not provide a snapshot if the notebook changes during the scan.
 
 ### `list_notes` tag filter
 
@@ -62,11 +62,11 @@ Read-modify-write inside the repository, on the user-scoped client:
 1. Read the note's current tags (returns "not found" when RLS yields nothing).
 2. Remove every tag whose lowercase form appears in `remove`.
 3. Append every tag in `add` whose lowercase form is not already present, preserving the caller's spelling for genuinely new tags.
-4. Write the result back and return the note.
+4. Update only if the stored tag array is still identical to the array read; on conflict, re-read and retry up to five times.
 
 Adding a tag that already exists, or removing an absent one, is a no-op that still succeeds — agents retry, and a retry must not be an error. At least one of `add`/`remove` must be non-empty.
 
-This is not atomic against a concurrent writer, but it is strictly better than `update_note`'s blind replacement: the window is one round trip instead of the agent's entire reasoning turn.
+The conditional update is atomic in PostgreSQL and continues to use the caller's RLS-scoped client. Exhausted retries return a conflict error rather than silently losing another edit. A separate full replacement through `update_note` remains an intentional overwrite.
 
 ### `search_notes_semantic`
 
@@ -89,7 +89,9 @@ The Edge Function implementation POSTs to `/functions/v1/rag-search` with the ca
 | 409 embedding-model mismatch | `unavailable` / `model_mismatch` — tells the user to re-index |
 | anything else | tool error with the upstream message |
 
-Defaults come from the shared RAG settings so MCP behaves like the app: `topK` 15 capped to the requested `limit`, `threshold` 0.55 unless `min_similarity` is given.
+An explicit `min_similarity` wins. Otherwise the adapter reads the authenticated user's saved `similarity_threshold` under RLS and uses the shared default (0.55) only when no setting exists. A settings read error is surfaced rather than silently changing the threshold. The requested limit is bounded by the RAG service's maximum.
+
+The `20261028230000_mcp_rag_settings_select.sql` migration grants the authenticated role SELECT on the user-id and threshold columns needed for this read, without changing RLS or pre-existing grants. Apply the migration before deploying the dependent MCP function.
 
 Grouping by note is deliberate: the agent gets a shortlist to open with `get_note`, matching how the rest of the toolset works, and avoids flooding the context with chunk text.
 

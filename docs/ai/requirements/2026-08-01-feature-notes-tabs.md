@@ -42,6 +42,9 @@ The feature serves authenticated EverFreeNote users who work with several notes 
 - As a note author, I see a subtle dirty/saving/error marker and receive confirmation before closing a tab whose save failed.
 - As a note author, note selection from the list, search results, tag results, and internal note-opening flows follows the same active-tab rule.
 - As a note author, navigating to Tags, Search, or Settings does not destroy the Notes workspace; returning restores it.
+- As a note author, signing out first saves pending work when possible. If any
+  open draft remains unsaved or its state cannot be checked, I can keep editing
+  or explicitly discard the unsaved changes and sign out.
 - As a mobile user, I can see the active note and open-tab count and use a compact tab list to switch or close tabs.
 
 ## Success Criteria
@@ -83,7 +86,56 @@ The following review decisions resolve the v1 ambiguities without changing the r
 - Caret/text-selection restoration is best effort and may be skipped after remote content reconciliation; draft and scroll restoration remain mandatory.
 - The repository's current AI/search “open note in context” callbacks are the internal-open integration point. Any future note-link handler must call the same controller open-note function.
 - Conflict-resolution UI is deferred; existing last-write-wins/autosave reconciliation remains authoritative.
+- When opening Settings or AI Index, each unfinished tab must either be saved
+  locally or have a matching recoverable workspace snapshot. If an unsaved tab
+  was evicted by the storage budget or the stored draft is stale, keep the
+  workspace open so the user can save it or explicitly discard the tab.
 
 ## Requirements Review Resolution (2026-08-01)
 
 All template sections are complete. The supplied concept provides the problem, target users, workflows, edge cases, mobile behavior, reload boundary, and explicit non-goals. The five decisions above are implementation defaults for unspecified details; none require additional backend or product clarification before Phase 4.
+
+## Desktop split view follow-up (2026-10-28)
+
+The earlier split-view non-goal applied to the first tab release. Desktop users
+can now display two different open notes side by side. A split starts with the
+active tab on the left and another open tab on the right, or creates an empty
+right tab for choosing a note. One pane is active for editing and the other is
+independently scrollable for reading. Switching or creating a tab must first
+save the current editor; on failure, the current draft remains visible and the
+transition is blocked. Selecting an already-open note activates its existing
+tab. Exiting split does not close either tab. On mobile or when the available
+workspace is too narrow, only the active pane is shown until space returns.
+The split layout should return after Settings or a browser reload when its
+owner's workspace can be restored. Closing the split or either displayed tab
+must prevent it from reopening. Other accounts must not see the layout.
+
+Split view is an opt-in browser preference in My Account → Workspace. When
+disabled, the split controls and split presentation are hidden while every
+open tab and draft remains available. Enabling it permits an existing valid
+layout to reappear. The setting is local to the browser and shared by accounts
+using it; note and workspace contents remain account-scoped. If the preference
+cannot be saved locally, Settings must explain that the choice may reset.
+
+### Account-session isolation (2026-10-29)
+
+- A change of account must not expose the previous account's note content,
+  filters or navigation state while delayed work completes.
+- Pending edits should continue to save for their original owner; explicit
+  discard must cancel the pending editor save. A same-account token refresh
+  must retain the current workspace.
+- This guarantee is limited to one running browser context. A local storage
+  failure, another browser window or a device can prevent durable ordering.
+
+### Same-document history and unavailable storage (2026-10-29)
+
+- If a draft cannot be saved locally and the workspace snapshot also fails,
+  keep the live draft through same-document Back/Forward between Notes and
+  Settings, including text entered immediately before navigation.
+- A new note whose first save is still running must retain its identity after
+  navigation or an account switch; a later save must not create a duplicate.
+- Another account must never see that in-memory draft. Explicit sign-out
+  discards the owner's volatile workspace, and closing one tab keeps the rest.
+- A browser warning is best effort when leaving the document; it cannot make
+  failed local storage durable or guarantee recovery after reload, browser
+  termination or mobile process eviction.

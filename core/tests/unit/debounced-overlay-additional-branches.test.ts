@@ -98,13 +98,12 @@ describe("createDebouncedLatest additional branches", () => {
     expect(debounced.getPending()).toEqual({ title: "Second", version: 2 })
     resolveFirst()
     await firstFlush
-    expect(debounced.getBaseline()).toEqual({ title: "First", version: 1 })
-
-    await jest.advanceTimersByTimeAsync(100)
     expect(onFlush).toHaveBeenCalledTimes(2)
     expect(onFlush).toHaveBeenLastCalledWith({ title: "Second", version: 2 })
     expect(debounced.getBaseline()).toEqual({ title: "Second", version: 2 })
     expect(debounced.getPending()).toBeNull()
+    await jest.advanceTimersByTimeAsync(100)
+    expect(onFlush).toHaveBeenCalledTimes(2)
   })
 
   it("does not duplicate a pending value equal to the in-flight value", async () => {

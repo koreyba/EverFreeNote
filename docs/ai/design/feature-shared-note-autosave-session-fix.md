@@ -89,6 +89,16 @@ graph TD
 - Baseline must track the newest accepted incoming snapshot even when local draft stays dirty, otherwise "dirty" can collapse incorrectly after concurrent external changes.
 - The debouncer needs explicit baseline rebasing because same-note refreshes are not true session resets.
 - Blur/unmount must flush from the latest reconciled draft, not only from an existing timer, because concurrent same-note refreshes can leave the editor dirty with no pending debounce payload.
+- An explicit flush waits for the in-flight write and any newer drafts before
+  allowing navigation. A failed or partially completed write remains retryable;
+  a reset cannot retry a previous note's draft in the new session.
+- Within one running web controller, local cache and queue writes for the same
+  note are serialized. The first write in a session checks persisted queue
+  timestamps so an equal-clock-tick update remains ordered after a reload.
+  This is not a lock across browser windows or devices and does not guarantee
+  remote synchronization; failed writes still require retry.
+- When a create publishes its ID before its save promise returns, the editor
+  waits for that result before deciding whether the note session changed.
 - No conflict UI is introduced in this design; preserving a dirty local field is a temporary client-side editing safeguard, not a change to the product's last-write-wins persistence model.
 - Web and mobile must be symmetric: for the same note session and the same incoming snapshot, both clients should make the same keep/adopt/acknowledge decision for each tracked field.
 

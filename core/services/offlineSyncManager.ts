@@ -21,12 +21,15 @@ export class OfflineSyncManager {
   private unsubscribe?: () => void
   private defaultOnSuccess?: (item: MutationQueueItem) => Promise<void> | void
   private draining: boolean = false
+  private rerunRequested: boolean = false
+  private disposed: boolean = false
 
   constructor(
     storage: OfflineStorageAdapter,
     private readonly performSync: PerformSync,
     networkStatus?: NetworkStatusProvider,
-    defaultOnSuccess?: (item: MutationQueueItem) => Promise<void> | void
+    defaultOnSuccess?: (item: MutationQueueItem) => Promise<void> | void,
+    private readonly onFailure?: (item: MutationQueueItem) => Promise<void> | void
   ) {
     this.queue = new OfflineQueueService(storage)
     this.online = networkStatus ? networkStatus.isOnline() : true
@@ -35,7 +38,7 @@ export class OfflineSyncManager {
       this.unsubscribe = networkStatus.subscribe((isOnline) => {
         this.online = isOnline
         if (isOnline) {
-          void this.drainQueue().catch((err) => {
+          void this.requestDrain().catch((err) => {
             console.error('[OfflineSyncManager] Network online drainQueue failed:', err)
           })
         }
@@ -52,6 +55,7 @@ export class OfflineSyncManager {
   }
 
   dispose(): void {
+    this.disposed = true
     if (this.unsubscribe) {
       this.unsubscribe()
     }
@@ -60,7 +64,7 @@ export class OfflineSyncManager {
   async enqueue(item: MutationQueueItemInput): Promise<void> {
     await this.queue.enqueue(item)
     if (this.online) {
-      void this.drainQueue().catch((err) => {
+      void this.requestDrain().catch((err) => {
         console.error('[OfflineSyncManager] Enqueue drainQueue failed:', err)
       })
     }
@@ -68,7 +72,7 @@ export class OfflineSyncManager {
 
   async handleOnline(): Promise<void> {
     this.online = true
-    await this.drainQueue()
+    await this.requestDrain()
   }
 
   handleOffline(): void {
@@ -87,6 +91,11 @@ export class OfflineSyncManager {
         await this.queue.markStatus(item.id, 'failed', message)
       } catch (markError) {
         console.warn('Failed to mark item status as failed:', markError)
+      }
+      try {
+        await this.onFailure?.(item)
+      } catch (callbackError) {
+        console.warn('onFailure callback error:', callbackError)
       }
       return false
     }
@@ -114,6 +123,10 @@ export class OfflineSyncManager {
   ): Promise<boolean> {
     let hadProgress = false
     for (const item of batch) {
+      if (item.operation === 'delete' && await this.queue.compactNote(item.noteId)) {
+        // The batch is stale after compaction: read it again before sending.
+        return true
+      }
       const success = await this.processSyncItem(item, options)
       if (success) {
         hadProgress = true
@@ -122,8 +135,16 @@ export class OfflineSyncManager {
     return hadProgress
   }
 
+  async requestDrain(): Promise<void> {
+    if (this.draining) {
+      this.rerunRequested = true
+      return
+    }
+    await this.drainQueue()
+  }
+
   async drainQueue(options?: SyncOptions): Promise<void> {
-    if (!this.online || this.draining) return
+    if (!this.online || this.disposed || this.draining) return
 
     this.draining = true
     try {
@@ -141,6 +162,13 @@ export class OfflineSyncManager {
       }
     } finally {
       this.draining = false
+      const rerun = this.rerunRequested && this.online && !this.disposed
+      this.rerunRequested = false
+      if (rerun) {
+        void this.drainQueue(options).catch((error) => {
+          console.error('[OfflineSyncManager] Follow-up drainQueue failed:', error)
+        })
+      }
     }
   }
 

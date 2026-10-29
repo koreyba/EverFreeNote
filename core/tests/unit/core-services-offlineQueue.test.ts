@@ -20,6 +20,7 @@ describe('core/services/offlineQueue', () => {
       getQueue: jest.fn(),
       upsertQueueItem: jest.fn(),
       upsertQueue: jest.fn(),
+      appendQueueItems: jest.fn(),
       popQueueBatch: jest.fn(),
       getPendingBatch: jest.fn(),
       removeQueueItems: jest.fn(),
@@ -176,11 +177,11 @@ describe('core/services/offlineQueue', () => {
         },
       ]
 
-      mockStorage.upsertQueue.mockResolvedValue()
+      jest.mocked(mockStorage.appendQueueItems!).mockResolvedValue()
 
       await service.enqueueMany(inputs)
 
-      expect(mockStorage.upsertQueue).toHaveBeenCalledWith([
+      expect(jest.mocked(mockStorage.appendQueueItems!)).toHaveBeenCalledWith([
         expect.objectContaining({
           noteId: 'note-1',
           operation: 'create',
@@ -212,22 +213,22 @@ describe('core/services/offlineQueue', () => {
         },
       ]
 
-      mockStorage.upsertQueue.mockResolvedValue()
+      jest.mocked(mockStorage.appendQueueItems!).mockResolvedValue()
 
       await service.enqueueMany(inputs)
 
-      const call = mockStorage.upsertQueue.mock.calls[0][0]
+      const call = jest.mocked(mockStorage.appendQueueItems!).mock.calls[0][0]
       expect(call[0].id).toBeTruthy()
       expect(call[1].id).toBeTruthy()
       expect(call[0].id).not.toBe(call[1].id)
     })
 
     it('enqueues empty array', async () => {
-      mockStorage.upsertQueue.mockResolvedValue()
+      jest.mocked(mockStorage.appendQueueItems!).mockResolvedValue()
 
       await service.enqueueMany([])
 
-      expect(mockStorage.upsertQueue).toHaveBeenCalledWith([])
+      expect(jest.mocked(mockStorage.appendQueueItems!)).toHaveBeenCalledWith([])
     })
   })
 

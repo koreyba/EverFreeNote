@@ -73,3 +73,13 @@ description: Technical implementation notes, patterns, and code guidelines
 **What security measures are in place?**
 
 - No new security concerns; tags are user-generated strings already handled by existing flows.
+
+## Inline entry row (2026-10-29)
+
+`TagInput` overlays the existing tag region while entering, leaving the Add button
+in place. The hidden collection uses `inert` and `aria-hidden` to remove invisible
+controls from keyboard navigation and accessibility APIs. Keeping the collection
+mounted preserves `NoteTagList` sizing. Its rendered `expanded` value is false
+during entry while the user's preference remains in state for restoration. Suggestions
+are positioned directly beneath the input with bounded height and wrapping text.
+No dependencies, persistence rules, normalization or editor-body styling changed.

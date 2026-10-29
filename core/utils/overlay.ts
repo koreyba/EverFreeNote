@@ -36,7 +36,7 @@ export function applyNoteOverlay(serverNotes: Note[], offlineNotes: CachedNote[]
       tags: c.tags ?? existing?.tags ?? [],
       updated_at: c.updatedAt ?? (existing as unknown as { updated_at?: string })?.updated_at ?? new Date().toISOString(),
       created_at: (existing as unknown as { created_at?: string })?.created_at ?? new Date().toISOString(),
-      user_id: (existing as unknown as { user_id?: string })?.user_id ?? '',
+      user_id: (existing as unknown as { user_id?: string })?.user_id ?? c.user_id ?? '',
     })
   })
 

@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 
@@ -65,6 +65,7 @@ type MockNoteEditorProps = {
 
 type MockSearchResultsPanelProps = {
   onOpenInContext: (noteId: string, charOffset: number, chunkLength: number) => void
+  onOpenAIIndex: () => void
   onClose: () => void
 }
 
@@ -120,10 +121,12 @@ jest.mock('@ui/web/lib/settingsNavigationState', () => ({
 
 jest.mock('@ui/web/lib/aiIndexNavigationState', () => ({
   consumeActiveSettingsNoteReturnPath: jest.fn(),
+  readActiveSettingsNoteReturnPath: jest.fn(),
 }))
 
 const mockSaveSettingsReturnState = jest.requireMock<typeof import('@ui/web/lib/settingsNavigationState')>('@ui/web/lib/settingsNavigationState').saveSettingsReturnState as jest.Mock
 const mockConsumeReturnPath = jest.requireMock<typeof import('@ui/web/lib/aiIndexNavigationState')>('@ui/web/lib/aiIndexNavigationState').consumeActiveSettingsNoteReturnPath as jest.Mock
+const mockReadReturnPath = jest.requireMock<typeof import('@ui/web/lib/aiIndexNavigationState')>('@ui/web/lib/aiIndexNavigationState').readActiveSettingsNoteReturnPath as jest.Mock
 
 jest.mock('@/components/features/notes/Sidebar', () => ({
   Sidebar: ({ children, onCreateNote, onOpenSearch, onOpenSettings, onSignOut }: MockSidebarProps) => (
@@ -214,6 +217,7 @@ jest.mock('@/components/features/notes/SearchResultsPanel', () => {
         <button type="button" onClick={() => props.onOpenInContext('note-1', 4, 8)}>Open existing context</button>
         <button type="button" onClick={() => props.onOpenInContext('note-remote', 2, 3)}>Open remote context</button>
         <button type="button" onClick={() => props.onOpenInContext('note-missing', 1, 1)}>Open missing context</button>
+        <button type="button" onClick={props.onOpenAIIndex}>Open AI index</button>
         <button type="button" onClick={props.onClose}>Close search</button>
       </div>
     )
@@ -320,6 +324,7 @@ describe('NotesShell', () => {
     mockApiKeysGetStatus.mockResolvedValue({ gemini: { configured: true } })
     jest.mocked(useQuery).mockReturnValue({ data: { gemini: { configured: true } } } as never)
     mockConsumeReturnPath.mockReturnValue(null)
+    mockReadReturnPath.mockReturnValue(null)
     mockMaybeSingle.mockResolvedValue({ data: fetchedNote })
     Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
       configurable: true,
@@ -333,6 +338,82 @@ describe('NotesShell', () => {
     } else {
       delete (HTMLElement.prototype as unknown as { clientWidth?: number }).clientWidth
     }
+  })
+
+  it('announces offline, queued, and failed changes while editing', () => {
+    renderShell(makeController({ selectedNote: note, isEditing: true, isOffline: true, pendingCount: 2, failedCount: 1 }))
+
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.querySelector('[role="status"]')?.getAttribute('aria-live')).toBe('polite')
+    expect(status.querySelector('[role="status"]')?.getAttribute('aria-atomic')).toBe('true')
+    expect(status.textContent).toContain('Device: Offline')
+    expect(status.textContent).toContain('This account on this device:')
+    expect(status.textContent).toContain('2 waiting')
+    expect(status.textContent).toContain('1 failed')
+    expect(status.textContent).not.toContain('Device-wide')
+  })
+
+  it('requests a browser warning before leaving a failed draft and stays silent for saved notes', () => {
+    const dirtyTab = { ...makeWorkspaceTab(note, true), saveState: 'error' as const }
+    const { rerender } = renderShell(makeController({ selectedNote: note, isEditing: true, tabs: [dirtyTab] }))
+    const unsafe = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(unsafe)
+    expect(unsafe.defaultPrevented).toBe(true)
+
+    rerender(<NotesShell controller={makeController({ selectedNote: note, isEditing: false }) as never} />)
+    const safe = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(safe)
+    expect(safe.defaultPrevented).toBe(false)
+  })
+
+  it('describes queued changes as waiting in reading mode', () => {
+    renderShell(makeController({ selectedNote: note, pendingCount: 3 }))
+
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).toContain('This account on this device:')
+    expect(status.textContent).toContain('3 waiting')
+    expect(status.textContent).not.toContain('Syncing')
+    expect(status.textContent).not.toContain('Synchronized')
+  })
+
+  it('keeps sync failure visible on the tag page', () => {
+    renderShell(makeController({ activeMainView: 'tags', failedCount: 2 }))
+
+    expect(screen.getByTestId('device-sync-status').textContent).toContain('This account on this device: 2 failed')
+    expect(screen.getByTestId('device-sync-status').textContent).not.toMatch(/online|connected|synchronized/i)
+  })
+
+  it.each(['reading', 'editing', 'tags'])('shows unverified local data and recovery guidance in %s view', (view) => {
+    renderShell(makeController({ selectedNote: note, isEditing: view === 'editing', activeMainView: view === 'tags' ? 'tags' : 'notes', legacyUnverifiedCount: 1 }))
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).toContain('Some local data needs account verification')
+    expect(status.textContent).toContain('Sign in to the original account while online')
+    expect(status.textContent).toContain('cannot be verified automatically')
+  })
+
+  it('does not claim synchronization when no queue issues have yet been reported', () => {
+    renderShell(makeController())
+
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).not.toContain('Synchronized')
+    expect(status.textContent).toContain('This account on this device: No waiting or failed changes reported')
+    expect(status.textContent).not.toContain('Device-wide')
+    expect(status.className).toContain('sr-only')
+  })
+
+  it('reports the device offline without claiming the server is reachable', () => {
+    renderShell(makeController({ isOffline: true }))
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).toContain('Device: Offline')
+    expect(status.textContent).not.toContain('This account on this device:')
+    expect(status.textContent).not.toMatch(/online|connected|synchronized/i)
+  })
+
+  it('does not report an empty queue while local data is still loading', () => {
+    renderShell(makeController({ syncStateReady: false }))
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).toContain('Checking local data')
+    expect(status.textContent).not.toContain('No waiting or failed changes reported')
   })
 
   it('renders the empty editor, registers the editor ref, and wires list actions', async () => {
@@ -438,7 +519,7 @@ describe('NotesShell', () => {
     expect(mockSaveSettingsReturnState).toHaveBeenCalledWith(expect.objectContaining({
       returnPath: expect.any(String),
       notesUiState: { selectedNoteId: 'note-1' },
-    }))
+    }), 'user-1')
   })
 
   it('opens an existing search result in context and clears applied focus', async () => {
@@ -476,7 +557,7 @@ describe('NotesShell', () => {
 
   it('routes back to a saved settings path and swallows a failed normal back action', async () => {
     const settingsController = makeController({ selectedNote: note })
-    mockConsumeReturnPath.mockReturnValueOnce('/settings?tab=ai-index')
+    mockReadReturnPath.mockReturnValueOnce('/settings?tab=ai-index')
     const settingsView = renderShell(settingsController)
     fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
     await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index'))
@@ -487,5 +568,68 @@ describe('NotesShell', () => {
     renderShell(failedController)
     fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
     await waitFor(() => expect(failedBack).toHaveBeenCalledWith(null))
+  })
+
+  it('keeps the search open when AI index navigation cannot preserve the workspace', async () => {
+    const capture = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ selectedNoteId: 'note-1' })
+    const controller = makeController({ isSearchPanelOpen: true, captureSettingsReturnState: capture })
+    renderShell(controller)
+    fireEvent.click(screen.getByRole('button', { name: 'Open AI index' }))
+    await waitFor(() => expect(capture).toHaveBeenCalledTimes(1))
+    expect(mockRouterPush).not.toHaveBeenCalled()
+    expect(controller.setIsSearchPanelOpen).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Open AI index' }))
+    await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index'))
+  })
+
+  it('does not consume the AI index return path until the workspace can be preserved', async () => {
+    mockReadReturnPath.mockReturnValue('/settings?tab=ai-index')
+    const capture = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ selectedNoteId: 'note-1' })
+    const controller = makeController({ selectedNote: note, captureSettingsReturnState: capture })
+    renderShell(controller)
+    fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
+    await waitFor(() => expect(capture).toHaveBeenCalledTimes(1))
+    expect(mockConsumeReturnPath).not.toHaveBeenCalled()
+    expect(mockRouterPush).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
+    await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index'))
+    expect(mockConsumeReturnPath).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not navigate or write settings state when an account changes during capture', async () => {
+    let snapshot = { userId: 'user-1', epoch: 1 }
+    const existing = jest.mocked(useSupabase)()
+    jest.mocked(useSupabase).mockReturnValue({ ...existing, getSessionSnapshot: () => snapshot })
+    let finish!: (value: { selectedNoteId: string }) => void
+    const capture = jest.fn(() => new Promise<{ selectedNoteId: string }>(resolve => { finish = resolve }))
+    renderShell(makeController({ captureSettingsReturnState: capture }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
+    expect(capture).toHaveBeenCalledTimes(1)
+    snapshot = { userId: 'user-2', epoch: 2 }
+    await act(async () => { finish({ selectedNoteId: 'note-1' }); await Promise.resolve() })
+    expect(mockSaveSettingsReturnState).not.toHaveBeenCalled()
+    expect(mockRouterPush).not.toHaveBeenCalled()
+  })
+
+  it('captures the live editor when the account boundary changes to another owner', () => {
+    let snapshot: { userId: string | null; epoch: number } = { userId: 'user-1', epoch: 1 }
+    const existing = jest.mocked(useSupabase)()
+    jest.mocked(useSupabase).mockReturnValue({ ...existing, getSessionSnapshot: () => snapshot })
+    const preserve = jest.fn()
+    const { unmount } = renderShell(makeController({ preserveWorkspaceForNavigation: preserve }))
+    snapshot = { userId: 'user-2', epoch: 2 }
+    unmount()
+    expect(preserve).toHaveBeenCalledTimes(1)
+  })
+
+  it('captures on sign-out teardown so a session expiry can preserve the live editor', () => {
+    let snapshot: { userId: string | null; epoch: number } = { userId: 'user-1', epoch: 1 }
+    const existing = jest.mocked(useSupabase)()
+    jest.mocked(useSupabase).mockReturnValue({ ...existing, getSessionSnapshot: () => snapshot })
+    const preserve = jest.fn()
+    const { unmount } = renderShell(makeController({ preserveWorkspaceForNavigation: preserve }))
+    snapshot = { userId: null, epoch: 2 }
+    unmount()
+    expect(preserve).toHaveBeenCalledTimes(1)
   })
 })

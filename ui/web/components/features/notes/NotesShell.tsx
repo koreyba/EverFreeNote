@@ -34,9 +34,15 @@ import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
-import { consumeActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
-import { NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
+import { consumeActiveSettingsNoteReturnPath, readActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
+import { getTabLabel, NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
 import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
+import { SplitEmptyPane, SplitNotePreview } from "@/components/features/notes/SplitNotePreview"
+import type { RegisterViewScrollSurface } from "@/components/features/notes/viewScrollSurface"
+import { useSplitViewPreference } from "@ui/web/providers/SplitViewPreferenceProvider"
+import { DeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
+import { Button } from "@/components/ui/button"
+import { SignOutGuardDialog } from "@/components/features/auth/SignOutGuardDialog"
 
 import { MobileWorkspace } from "@/components/features/navigation/MobileWorkspace"
 import { NavRail } from "@/components/features/navigation/NavRail"
@@ -53,19 +59,58 @@ type NotesShellProps = {
   controller: NoteAppController
 }
 
+type ViewScrollSession = { userId: string | null; epoch: number } | undefined
+type ViewScrollSurface = { noteId: string | null; node: HTMLElement; cancelPending: () => void; session: ViewScrollSession }
+type ViewScrollPosition = { noteId: string | null; scrollTop: number; session: ViewScrollSession }
+
+function isVisibleScrollSurface(node: HTMLElement) {
+  return node.isConnected && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== "hidden"
+}
+
+// Below this width there is not enough room for two useful note surfaces.
+const MIN_SPLIT_WORKSPACE_WIDTH = 680
+
 export function NotesShell({ controller }: NotesShellProps) {
+  const { enabled: splitEnabled, isEnabled: isSplitEnabled } = useSplitViewPreference()
 
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { supabase, getSessionSnapshot } = useSupabase()
   const [noteListLayout, setNoteListLayout] = React.useState<NoteListLayout>("list")
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
+  const preserveWorkspaceRef = React.useRef(controller.preserveWorkspaceForNavigation)
+  React.useLayoutEffect(() => {
+    preserveWorkspaceRef.current = controller.preserveWorkspaceForNavigation
+  }, [controller.preserveWorkspaceForNavigation])
+  React.useLayoutEffect(() => {
+    const mountedPath = globalThis.location.pathname
+    const mountedSession = getSessionSnapshot?.()
+    return () => {
+      const current = getSessionSnapshot?.()
+      const changedSession = Boolean(mountedSession && current && mountedSession.epoch !== current.epoch)
+      if (globalThis.location.pathname !== mountedPath || changedSession) preserveWorkspaceRef.current?.()
+    }
+  }, [getSessionSnapshot])
   const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
-  const { supabase } = useSupabase()
+  const isCurrentSession = React.useCallback((started?: { userId: string | null; epoch: number }) => {
+    if (!started || !getSessionSnapshot) return true
+    const current = getSessionSnapshot()
+    return current.epoch === started.epoch && current.userId === started.userId
+      && started.userId === (controller.user?.id ?? null)
+  }, [controller.user?.id, getSessionSnapshot])
   const wordpressSettingsService = React.useMemo(() => new WordPressSettingsService(supabase), [supabase])
   const apiKeysService = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
   const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
 
   const [pendingChunkFocus, setPendingChunkFocus] = React.useState<PendingChunkFocus | null>(null)
+  const workspaceRef = React.useRef<HTMLDivElement | null>(null)
+  const [workspaceWidth, setWorkspaceWidth] = React.useState(0)
+  const [splitOpening, setSplitOpening] = React.useState(false)
+  const [pendingSplit, setPendingSplit] = React.useState<{ leftTabId: string, rightTabId: string, session?: { userId: string | null, epoch: number } } | null>(null)
+  const splitOpeningRef = React.useRef(false)
+  const paneFocusTargetRef = React.useRef<string | null>(null)
+  const viewScrollsRef = React.useRef(new Map<string, ViewScrollPosition>())
+  const viewScrollSurfacesRef = React.useRef(new Map<string, ViewScrollSurface>())
 
   React.useEffect(() => {
     try {
@@ -108,6 +153,17 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleClearTagFilter,
     handleCreateNote,
     handleSignOut,
+    syncStateReady = true,
+    storageReadError = false,
+    legacyUnverifiedCount = 0,
+    unqueuedLocalCount = 0,
+    unavailableRemoteEdits = false,
+    legacyClaimBlocked = false,
+    localCleanupCount = 0,
+    retryLocalDeletion,
+    restoredNoteCheck = 'idle',
+    retryRestoredNoteCheck,
+    retryLocalVerification,
     pendingCount,
     failedCount,
     isOffline,
@@ -116,9 +172,13 @@ export function NotesShell({ controller }: NotesShellProps) {
     notePaneVisible,
     tabs = [],
     activeTabId = '',
+    split = null,
+    setSplit,
     addTab,
     activateTab,
     closeTab,
+    handleTabViewSessionChange,
+    registerWorkspaceViewCapture,
     canAddTab = true,
     workspaceHydrated = true,
     handleSelectNote,
@@ -130,7 +190,176 @@ export function NotesShell({ controller }: NotesShellProps) {
     handleRenameTag,
     handleDeleteTag,
     notes,
+    notesQuery,
+    tagManagementBlockReason,
+    checkTagCoverage,
+    loadMoreTagNotes,
+    checkingTagCoverage,
+    tagMutationInProgress,
+    tagCoverageNotice,
   } = controller
+
+  const tabsRef = React.useRef(tabs)
+  const activeTabIdRef = React.useRef(activeTabId)
+  React.useLayoutEffect(() => { tabsRef.current = tabs }, [tabs])
+  React.useLayoutEffect(() => { activeTabIdRef.current = activeTabId }, [activeTabId])
+  React.useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (tabs.some(tab => tab.saveState !== 'saved') || noteEditorRef.current?.hasUnconfirmedChanges?.()) {
+        event.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', beforeUnload)
+    return () => window.removeEventListener('beforeunload', beforeUnload)
+  }, [tabs])
+  const registerViewScrollSurface = React.useCallback<RegisterViewScrollSurface>((tabId, noteId, node, cancelPending) => {
+    const surface = { noteId, node, cancelPending, session: getSessionSnapshot?.() }
+    viewScrollSurfacesRef.current.set(tabId, surface)
+    return () => {
+      cancelPending()
+      if (viewScrollSurfacesRef.current.get(tabId) !== surface) return
+      const tab = tabsRef.current.find(item => item.id === tabId)
+      const editing = tabId === activeTabIdRef.current && tab?.mode === "editing"
+      if (tab && tab.noteId === noteId && !editing && isCurrentSession(surface.session) && isVisibleScrollSurface(node)) {
+        const scrollTop = node.scrollTop
+        viewScrollsRef.current.set(tabId, { noteId, scrollTop, session: surface.session })
+        if (scrollTop !== tab.view.scrollTop) handleTabViewSessionChange?.(tabId, noteId, { scrollTop })
+      }
+      viewScrollSurfacesRef.current.delete(tabId)
+    }
+  }, [getSessionSnapshot, handleTabViewSessionChange, isCurrentSession])
+  const recordViewScroll = React.useCallback((tabId: string, noteId: string | null, scrollTop: number, node: HTMLElement) => {
+    const surface = viewScrollSurfacesRef.current.get(tabId)
+    const tab = tabsRef.current.find(item => item.id === tabId)
+    if (!surface || surface.node !== node || surface.noteId !== noteId || tab?.noteId !== noteId || !isCurrentSession(surface.session) || !isVisibleScrollSurface(node)) return false
+    viewScrollsRef.current.set(tabId, { noteId, scrollTop, session: surface.session })
+    return true
+  }, [isCurrentSession])
+  const captureViewScrolls = React.useCallback(() => {
+    for (const tab of tabsRef.current) {
+      const editing = tab.id === activeTabIdRef.current && tab.mode === "editing"
+      if (editing) continue
+      const surface = viewScrollSurfacesRef.current.get(tab.id)
+      if (surface?.noteId === tab.noteId && isCurrentSession(surface.session)) {
+        // A browser may deliver its scroll event after the user switches panes.
+        // Cancel older debounced events and read the live, visible surface.
+        surface.cancelPending()
+        if (isVisibleScrollSurface(surface.node)) {
+          viewScrollsRef.current.set(tab.id, { noteId: tab.noteId, scrollTop: surface.node.scrollTop, session: surface.session })
+        }
+      }
+      const view = viewScrollsRef.current.get(tab.id)
+      // A tab may have been reused for a different note since its last scroll.
+      // The active editor captures its own (potentially newer) position.
+      if (view && view.noteId === tab.noteId && isCurrentSession(view.session) && view.scrollTop !== tab.view.scrollTop) {
+        handleTabViewSessionChange?.(tab.id, tab.noteId, { scrollTop: view.scrollTop })
+      }
+    }
+  }, [handleTabViewSessionChange, isCurrentSession])
+
+  React.useEffect(() => {
+    registerWorkspaceViewCapture?.(captureViewScrolls)
+    return () => registerWorkspaceViewCapture?.(null)
+  }, [captureViewScrolls, registerWorkspaceViewCapture])
+
+  const wasSplitEnabled = React.useRef(splitEnabled)
+  React.useLayoutEffect(() => {
+    if (wasSplitEnabled.current && !splitEnabled) captureViewScrolls()
+    wasSplitEnabled.current = splitEnabled
+  }, [captureViewScrolls, splitEnabled])
+
+  React.useEffect(() => {
+    const workspace = workspaceRef.current
+    if (!workspace) return
+    const measure = () => {
+      captureViewScrolls()
+      setWorkspaceWidth(workspace.getBoundingClientRect().width)
+    }
+    measure()
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure)
+      return () => window.removeEventListener("resize", measure)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(workspace)
+    return () => observer.disconnect()
+  }, [activeMainView, captureViewScrolls])
+
+  // Creating an empty tab is asynchronous because it first flushes the old
+  // editor. Resolve its identity only after the workspace state has committed.
+  React.useEffect(() => {
+    if (!pendingSplit) return
+    if (!splitEnabled || !workspaceHydrated || !isCurrentSession(pendingSplit.session)) {
+      setPendingSplit(null)
+      return
+    }
+    if (!tabs.some((tab) => tab.id === pendingSplit.leftTabId)) {
+      setPendingSplit(null)
+      return
+    }
+    if (!tabs.some((tab) => tab.id === pendingSplit.rightTabId)) return
+    setSplit?.({ leftTabId: pendingSplit.leftTabId, rightTabId: pendingSplit.rightTabId, focusedTabId: pendingSplit.rightTabId })
+    setPendingSplit(null)
+  }, [isCurrentSession, pendingSplit, setSplit, splitEnabled, tabs, workspaceHydrated])
+
+  // Selecting a third tab replaces the last active pane; selecting either
+  // visible tab just transfers focus. Closing a pane returns to one view.
+  React.useEffect(() => {
+    if (!splitEnabled) return
+    setSplit?.((current) => {
+      if (!current) return current
+      if (!tabs.some((tab) => tab.id === current.leftTabId) || !tabs.some((tab) => tab.id === current.rightTabId)) return null
+      if (activeTabId === current.leftTabId || activeTabId === current.rightTabId) {
+        return current.focusedTabId === activeTabId ? current : { ...current, focusedTabId: activeTabId }
+      }
+      return current.focusedTabId === current.leftTabId
+        ? { ...current, leftTabId: activeTabId, focusedTabId: activeTabId }
+        : { ...current, rightTabId: activeTabId, focusedTabId: activeTabId }
+    })
+  }, [activeTabId, setSplit, splitEnabled, tabs])
+
+  React.useEffect(() => {
+    if (paneFocusTargetRef.current !== activeTabId) return
+    paneFocusTargetRef.current = null
+    workspaceRef.current?.querySelector<HTMLElement>('[data-active-pane="true"]')?.focus()
+  }, [activeTabId])
+
+  const handleActivatePane = React.useCallback(async (tabId: string) => {
+    paneFocusTargetRef.current = tabId
+    if (!(await activateTab(tabId))) paneFocusTargetRef.current = null
+  }, [activateTab])
+
+  const handleToggleSplit = React.useCallback(async () => {
+    if (!splitEnabled || !isSplitEnabled()) return
+    if (split) {
+      captureViewScrolls()
+      setSplit?.(null)
+      return
+    }
+    if (splitOpeningRef.current || pendingSplit || !activeTabId) return
+    const started = getSessionSnapshot?.()
+    if (!isCurrentSession(started)) return
+    const other = tabs.find((tab) => tab.id !== activeTabId && tab.note) ?? tabs.find((tab) => tab.id !== activeTabId)
+    if (other) {
+      setSplit?.({ leftTabId: activeTabId, rightTabId: other.id, focusedTabId: activeTabId })
+      return
+    }
+    splitOpeningRef.current = true
+    setSplitOpening(true)
+    try {
+      const rightTabId = await addTab(isSplitEnabled)
+      if (rightTabId && isSplitEnabled() && isCurrentSession(started)) setPendingSplit({ leftTabId: activeTabId, rightTabId, session: started })
+    } finally {
+      splitOpeningRef.current = false
+      setSplitOpening(false)
+    }
+  }, [activeTabId, addTab, captureViewScrolls, getSessionSnapshot, isCurrentSession, isSplitEnabled, pendingSplit, setSplit, split, splitEnabled, tabs])
+
+  const checkTagCoverageRef = React.useRef(checkTagCoverage)
+  React.useEffect(() => { checkTagCoverageRef.current = checkTagCoverage }, [checkTagCoverage])
+  React.useEffect(() => {
+    if (activeMainView === 'tags' && user?.id && workspaceHydrated) void checkTagCoverageRef.current?.()
+  }, [activeMainView, user?.id, workspaceHydrated])
 
   const refreshWordPressStatus = React.useCallback(async () => {
     try {
@@ -182,6 +411,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
   const showEditor = notePaneVisible ?? !!(selectedNote || isEditing)
   const handleOpenSearchPanel = React.useCallback(async () => {
+    if (tagMutationInProgress) return
     if (isMobile && showEditor && !(await hideNotePane())) return
     if (activeMainView !== "notes") {
       setActiveMainView("notes")
@@ -191,46 +421,54 @@ export function NotesShell({ controller }: NotesShellProps) {
       return
     }
     setIsSearchPanelOpen(true)
-  }, [activeMainView, hideNotePane, isMobile, isSearchPanelOpen, setActiveMainView, setIsSearchPanelOpen, showEditor])
+  }, [activeMainView, hideNotePane, isMobile, isSearchPanelOpen, setActiveMainView, setIsSearchPanelOpen, showEditor, tagMutationInProgress])
 
   const handleSelectMainView = React.useCallback(async (view: "notes" | "tags") => {
-    if (isMobile && showEditor && !(await hideNotePane())) return
+    if (tagMutationInProgress) return
+    if (view === "tags" && controller.prepareTagManagement && !(await controller.prepareTagManagement())) return
+    if (showEditor && (isMobile || view !== activeMainView) && !(await hideNotePane())) return
     if (isMobile && view === "notes") {
       setIsSearchPanelOpen(false)
       if (selectionMode) exitSelectionMode()
     }
     setActiveMainView(view)
-  }, [exitSelectionMode, hideNotePane, isMobile, selectionMode, setActiveMainView, setIsSearchPanelOpen, showEditor])
+  }, [activeMainView, controller, exitSelectionMode, hideNotePane, isMobile, selectionMode, setActiveMainView, setIsSearchPanelOpen, showEditor, tagMutationInProgress])
 
 
   const handlePendingChunkFocusApplied = React.useCallback((requestId: string) => {
     setPendingChunkFocus((current) => (current?.requestId === requestId ? null : current))
   }, [])
 
-  const handleOpenSettings = React.useCallback(async () => {
+  const handleOpenSettings = React.useCallback(async (destination = "/settings") => {
+    if (tagMutationInProgress || !controller.user?.id) return
+    const started = getSessionSnapshot?.()
     const notesUiState = await controller.captureSettingsReturnState()
+    if (!notesUiState || !isCurrentSession(started)) return
 
     if (typeof globalThis.location !== "undefined") {
       saveSettingsReturnState({
         returnPath: `${globalThis.location.pathname}${globalThis.location.search}${globalThis.location.hash}`,
         notesUiState,
-      })
+      }, controller.user.id)
     }
 
-    router.push("/settings")
-  }, [controller, router])
+    router.push(destination)
+  }, [controller, getSessionSnapshot, isCurrentSession, router, tagMutationInProgress])
 
   const handleBackFromNote = React.useCallback(async () => {
-    await noteEditorRef.current?.flushPendingSave()
-    const settingsReturnPath = consumeActiveSettingsNoteReturnPath()
+    const started = getSessionSnapshot?.()
+    const settingsReturnPath = controller.user?.id ? readActiveSettingsNoteReturnPath(controller.user.id) : null
     if (settingsReturnPath) {
+      if (!(await controller.captureSettingsReturnState()) || !isCurrentSession(started)) return
+      consumeActiveSettingsNoteReturnPath(controller.user!.id)
       router.push(settingsReturnPath)
       return
     }
     await handleSelectNote(null)
-  }, [handleSelectNote, router])
+  }, [controller, getSessionSnapshot, handleSelectNote, isCurrentSession, router])
 
   useAppBackHandler(APP_BACK_PRIORITY.navigation, async () => {
+    if (tagMutationInProgress) return true
     if (isMobile && showEditor) await handleBackFromNote()
     else if (isSearchPanelOpen) setIsSearchPanelOpen(false)
     else if (selectionMode) exitSelectionMode()
@@ -241,13 +479,27 @@ export function NotesShell({ controller }: NotesShellProps) {
   })
 
   const handleSelectTagFromTagsPage = React.useCallback((tag: string) => {
+    if (tagMutationInProgress) return
     // A tag chosen from the tag browser represents all notes with that tag,
     // rather than the intersection with an earlier unrelated search.
     if (isMobile) controller.handleSearch("")
     controller.handleTagClick(tag).catch(() => undefined)
     setIsSearchPanelOpen(true)
     setActiveMainView("notes")
-  }, [controller, isMobile, setActiveMainView, setIsSearchPanelOpen])
+  }, [controller, isMobile, setActiveMainView, setIsSearchPanelOpen, tagMutationInProgress])
+
+  // Derive the next pair during the same render as a tab switch, so the
+  // editor never disappears while the reconciliation effect catches up.
+  let displayedSplit = splitEnabled ? split : null
+  if (displayedSplit && (!tabs.some((tab) => tab.id === displayedSplit!.leftTabId) || !tabs.some((tab) => tab.id === displayedSplit!.rightTabId))) {
+    displayedSplit = null
+  } else if (displayedSplit && activeTabId !== displayedSplit.leftTabId && activeTabId !== displayedSplit.rightTabId) {
+    displayedSplit = displayedSplit.focusedTabId === displayedSplit.leftTabId
+      ? { ...displayedSplit, leftTabId: activeTabId, focusedTabId: activeTabId }
+      : { ...displayedSplit, rightTabId: activeTabId, focusedTabId: activeTabId }
+  }
+  const showBothPanes = Boolean(displayedSplit && !isMobile && workspaceWidth >= MIN_SPLIT_WORKSPACE_WIDTH)
+  const paneIds = displayedSplit ? [displayedSplit.leftTabId, displayedSplit.rightTabId] : [activeTabId]
 
   return (
     <MobileWorkspace
@@ -272,20 +524,28 @@ export function NotesShell({ controller }: NotesShellProps) {
 
       {activeMainView === "tags" ? (
         <main className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
+          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} localCleanupCount={localCleanupCount} onRetryLocalDeletion={() => void retryLocalDeletion?.()} restoredNoteCheck={restoredNoteCheck} onRetryRestoredNoteCheck={retryRestoredNoteCheck} onRetryLocalVerification={() => void retryLocalVerification?.()} />
           <TagsPage
             notes={notes}
             onSelectTag={handleSelectTagFromTagsPage}
             onRenameTag={handleRenameTag}
             onDeleteTag={handleDeleteTag}
+            managementBlockReason={tagManagementBlockReason}
+            managementNotice={tagCoverageNotice}
+            checkingNotes={checkingTagCoverage}
+            loadingMoreNotes={notesQuery.isFetchingNextPage}
+            onCheckNotes={!isOffline && checkTagCoverage ? () => void checkTagCoverage() : undefined}
+            onLoadMoreNotes={!isOffline && notesQuery.hasNextPage && loadMoreTagNotes ? () => void loadMoreTagNotes() : undefined}
           />
         </main>
       ) : (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} localCleanupCount={localCleanupCount} onRetryLocalDeletion={() => void retryLocalDeletion?.()} restoredNoteCheck={restoredNoteCheck} onRetryRestoredNoteCheck={retryRestoredNoteCheck} onRetryLocalVerification={() => void retryLocalVerification?.()} />
           <MobileNotesTabMenu
             tabs={tabs}
             activeTabId={activeTabId}
             showActiveTabTitle={showEditor}
-            addTabDisabled={!workspaceHydrated || !canAddTab}
+            addTabDisabled={!workspaceHydrated || !canAddTab || splitOpening || Boolean(pendingSplit)}
             addTabCapacityPending={!workspaceHydrated}
             maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
             onAddTab={() => void addTab?.()}
@@ -300,6 +560,14 @@ export function NotesShell({ controller }: NotesShellProps) {
               notesTotal={notesTotal}
               pendingCount={pendingCount}
               failedCount={failedCount}
+              syncStateReady={syncStateReady}
+              storageReadError={storageReadError}
+              legacyUnverifiedCount={legacyUnverifiedCount}
+              unqueuedLocalCount={unqueuedLocalCount}
+              unavailableRemoteEdits={unavailableRemoteEdits}
+              legacyClaimBlocked={legacyClaimBlocked}
+              localCleanupCount={localCleanupCount}
+              restoredNoteCheck={restoredNoteCheck}
               isOffline={isOffline}
               selectionMode={selectionMode}
               selectedCount={selectedCount}
@@ -315,7 +583,7 @@ export function NotesShell({ controller }: NotesShellProps) {
               noteListLayout={noteListLayout}
               onChangeNoteListLayout={handleChangeNoteListLayout}
               onOpenSearch={() => void handleOpenSearchPanel()}
-              className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full md:w-80")}
+              className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full")}
               data-testid="sidebar-container"
             >
               <ListPane controller={controller} layout={noteListLayout} />
@@ -327,6 +595,7 @@ export function NotesShell({ controller }: NotesShellProps) {
                 controller={controller}
                 hasGeminiApiKey={hasGeminiApiKey}
                 onOpenInContext={handleOpenInContext}
+                onOpenAIIndex={() => void handleOpenSettings("/settings?tab=ai-index")}
                 onClose={() => setIsSearchPanelOpen(false)}
                 className={cn(showEditor ? "hidden md:flex" : "w-full min-w-[300px] md:min-w-0")}
               />
@@ -342,22 +611,68 @@ export function NotesShell({ controller }: NotesShellProps) {
               <NotesTabStrip
                 tabs={tabs}
                 activeTabId={activeTabId}
-                addTabDisabled={!workspaceHydrated || !canAddTab}
+                addTabDisabled={!workspaceHydrated || !canAddTab || splitOpening || Boolean(pendingSplit)}
                 addTabCapacityPending={!workspaceHydrated}
                 maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
                 onAddTab={() => void addTab?.()}
                 onActivateTab={(tabId) => void activateTab?.(tabId)}
                 onCloseTab={(tabId) => void closeTab?.(tabId)}
+                onToggleSplit={splitEnabled ? () => void handleToggleSplit() : undefined}
+                splitView={Boolean(splitEnabled && split)}
+                splitDisabled={splitOpening || Boolean(pendingSplit) || (!split && (!workspaceHydrated || (!canAddTab && tabs.length < 2)))}
               />
-              <div className="flex-1 min-h-0 min-w-0 flex">
-                <EditorPane
-                  controller={controller}
-                  onBack={() => { void handleBackFromNote().catch(() => undefined) }}
-                  noteEditorRef={noteEditorRef}
-                  wordpressConfigured={wordpressConfigured}
-                  pendingChunkFocus={pendingChunkFocus}
-                  onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
-                />
+              {displayedSplit && !showBothPanes && !isMobile && (
+                <div className="border-b border-border/50 bg-muted/20 px-4 py-2 text-xs text-muted-foreground" role="status">
+                  Enlarge the workspace to show both notes.
+                </div>
+              )}
+              <div ref={workspaceRef} className="flex-1 min-h-0 min-w-0 flex">
+                {paneIds.map((tabId, index) => {
+                  const tab = tabs.find((item) => item.id === tabId)
+                  const active = tabId === activeTabId
+                  const label = index === 0 ? "left" : "right"
+                  return (
+                    <section
+                      key={tabId}
+                      aria-label={displayedSplit ? `${label === "left" ? "Left" : "Right"} note pane` : undefined}
+                      data-testid={displayedSplit ? `split-pane-${label}` : undefined}
+                      data-active-pane={active ? "true" : undefined}
+                      tabIndex={-1}
+                      className={cn("flex min-h-0 min-w-0 flex-1 flex-col", displayedSplit && index === 1 && showBothPanes && "border-l border-border", displayedSplit && !showBothPanes && !active && "hidden")}
+                    >
+                      {displayedSplit && showBothPanes && (
+                        <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-border/50 bg-muted/20 px-4">
+                          <span className="min-w-0 truncate text-xs font-medium text-muted-foreground">
+                            {label === "left" ? "Left" : "Right"} · {tab ? getTabLabel(tab) : "Note"}
+                          </span>
+                          {active ? (
+                            <span className="shrink-0 text-xs font-medium text-primary">Active</span>
+                          ) : (
+                            <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 text-xs" aria-label={`Activate ${tab ? getTabLabel(tab) : "note"}`} onClick={() => void handleActivatePane(tabId)}>
+                              Activate
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {active ? (
+                        displayedSplit && tab && !tab.note && tab.mode !== "editing" ? <SplitEmptyPane /> : (
+                          <EditorPane
+                            controller={controller}
+                            onBack={() => { void handleBackFromNote().catch(() => undefined) }}
+                            noteEditorRef={noteEditorRef}
+                            wordpressConfigured={wordpressConfigured}
+                            pendingChunkFocus={pendingChunkFocus}
+                            onPendingChunkFocusApplied={handlePendingChunkFocusApplied}
+                            onReaderScroll={(scrollTop, node) => recordViewScroll(tabId, tab?.noteId ?? null, scrollTop, node)}
+                            registerViewScrollSurface={registerViewScrollSurface}
+                          />
+                        )
+                      ) : tab && (
+                        <SplitNotePreview key={tab.noteId === null ? "empty" : `note:${tab.noteId}`} tab={tab} visible={showBothPanes} onViewSessionChange={(view) => handleTabViewSessionChange?.(tabId, tab.noteId, view)} onViewScrollCapture={(scrollTop, node) => recordViewScroll(tabId, tab.noteId, scrollTop, node)} registerViewScrollSurface={registerViewScrollSurface} />
+                      )}
+                    </section>
+                  )
+                })}
               </div>
             </main>
           </div>
@@ -366,6 +681,10 @@ export function NotesShell({ controller }: NotesShellProps) {
 
       <DeleteNoteDialog controller={controller} />
       <DiscardFailedSaveDialog controller={controller} />
+      <SignOutGuardDialog phase={controller.signOutPhase ?? 'idle'}
+        pendingSave={controller.hasPendingWorkspaceWrites}
+        onCancel={controller.cancelSignOut ?? (() => {})}
+        onDiscard={() => void controller.discardAndSignOut?.()} />
     </MobileWorkspace>
   )
 }
@@ -411,6 +730,8 @@ function EditorPane({
   wordpressConfigured,
   pendingChunkFocus,
   onPendingChunkFocusApplied,
+  onReaderScroll,
+  registerViewScrollSurface,
 }: {
   controller: NoteAppController
   onBack: () => void
@@ -418,6 +739,8 @@ function EditorPane({
   wordpressConfigured: boolean
   pendingChunkFocus: PendingChunkFocus | null
   onPendingChunkFocusApplied: (requestId: string) => void
+  onReaderScroll: (scrollTop: number, node: HTMLElement) => boolean | void
+  registerViewScrollSurface: RegisterViewScrollSurface
 }) {
   const {
     selectedNote,
@@ -435,7 +758,7 @@ function EditorPane({
     notes,
   } = controller
 
-  const { user } = useSupabase()
+  const { user, getSessionSnapshot } = useSupabase()
   const allTagsQuery = useAllTagsQuery({ userId: user?.id, enabled: !!user })
 
   const availableTags = React.useMemo(() => {
@@ -499,6 +822,7 @@ function EditorPane({
         onSave={handleSaveNote}
         onRead={handleReadNote}
         onAutoSave={controller.handleAutoSave}
+        getSessionSnapshot={getSessionSnapshot}
         isAutoSaving={autoSaving}
         lastSavedAt={lastSavedAt}
         wordpressConfigured={wordpressConfigured}
@@ -523,7 +847,10 @@ function EditorPane({
         wordpressConfigured={wordpressConfigured}
         initialScrollTop={activeTab.view.scrollTop}
         onRefresh={controller.refreshSelectedNote}
-        onViewSessionChange={controller.handleViewSessionChange}
+        onViewSessionChange={(view) => controller.handleTabViewSessionChange(activeTabId, activeTab.noteId, view)}
+        onViewScrollCapture={onReaderScroll}
+        viewTabId={activeTabId}
+        registerViewScrollSurface={registerViewScrollSurface}
       />
     )
   }
@@ -536,8 +863,7 @@ function EditorPane({
 }
 
 /**
- * Closing a tab whose save failed throws those edits away, so it confirms
- * first — in the app's own dialog, matching every other destructive action.
+ * Closing a tab with unsaved edits confirms before discarding them.
  */
 function DiscardFailedSaveDialog({ controller }: { controller: NoteAppController }) {
   const { tabPendingClose, confirmCloseTab, cancelCloseTab } = controller
@@ -553,7 +879,8 @@ function DiscardFailedSaveDialog({ controller }: { controller: NoteAppController
         <AlertDialogHeader>
           <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
           <AlertDialogDescription>
-            &quot;{tabPendingClose?.label}&quot; could not be saved. Closing this tab discards those changes.
+            &quot;{tabPendingClose?.label}&quot; has unsaved changes. Closing this tab discards them.
+            {tabPendingClose && controller.hasPendingWritesForTab?.(tabPendingClose.tabId) && ' A save has already started and may still finish; changes it saves will remain.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -578,9 +905,25 @@ function DeleteNoteDialog({ controller }: { controller: NoteAppController }) {
     confirmDeleteNote,
     noteToDelete,
   } = controller
+  const [deleting, setDeleting] = React.useState(false)
+  const deletingRef = React.useRef(false)
+
+  const handleConfirm = async () => {
+    if (deletingRef.current) return
+    deletingRef.current = true
+    setDeleting(true)
+    try {
+      await confirmDeleteNote()
+    } finally {
+      deletingRef.current = false
+      setDeleting(false)
+    }
+  }
 
   return (
-    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+    <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+      if (!deletingRef.current) setDeleteDialogOpen(open)
+    }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Note</AlertDialogTitle>
@@ -589,9 +932,12 @@ function DeleteNoteDialog({ controller }: { controller: NoteAppController }) {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDeleteNote} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Delete
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={(event) => {
+            event.preventDefault()
+            void handleConfirm()
+          }} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {deleting ? 'Deleting...' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

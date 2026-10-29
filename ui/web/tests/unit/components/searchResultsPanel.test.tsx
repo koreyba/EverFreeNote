@@ -7,7 +7,6 @@ import { useSearchMode } from '@ui/web/hooks/useSearchMode'
 import { useAIPaginatedSearch } from '@ui/web/hooks/useAIPaginatedSearch'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 
-const mockRouterPush = jest.fn()
 const mockGetStatus = jest.fn()
 const mockUpsert = jest.fn()
 const mockRegisterControls = jest.fn()
@@ -47,7 +46,6 @@ const mockAIState = {
   resetAIResults: jest.fn(),
 }
 
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push: mockRouterPush }) }))
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
   useSupabase: jest.fn(),
 }))
@@ -166,6 +164,7 @@ function renderPanel(controller = makeController(), props: { hasGeminiApiKey?: b
       controller={controller as never}
       hasGeminiApiKey={props.hasGeminiApiKey}
       onOpenInContext={jest.fn()}
+      onOpenAIIndex={jest.fn()}
       onClose={jest.fn()}
     />,
   )
@@ -196,7 +195,7 @@ describe('SearchResultsPanel', () => {
     const controller = makeController()
     const onClose = jest.fn()
     render(
-      <SearchResultsPanel controller={controller as never} hasGeminiApiKey={false} onOpenInContext={jest.fn()} onClose={onClose} />,
+      <SearchResultsPanel controller={controller as never} hasGeminiApiKey={false} onOpenInContext={jest.fn()} onOpenAIIndex={jest.fn()} onClose={onClose} />,
     )
     const input = screen.getByTestId('search-panel-input')
     expect(screen.getByText('Search your notes')).toBeTruthy()
@@ -286,13 +285,14 @@ describe('SearchResultsPanel', () => {
     mockAIState.error = 'Embeddings need rebuilding'
     mockAIState.errorCode = RAG_SEARCH_EMBEDDING_MODEL_MISMATCH_CODE
     const onClose = jest.fn()
+    const onOpenAIIndex = jest.fn()
     render(
-      <SearchResultsPanel controller={controller as never} onOpenInContext={jest.fn()} onClose={onClose} />,
+      <SearchResultsPanel controller={controller as never} onOpenInContext={jest.fn()} onOpenAIIndex={onOpenAIIndex} onClose={onClose} />,
     )
     expect(await screen.findByText('Embeddings need rebuilding')).toBeTruthy()
     fireEvent.click(screen.getByTestId('search-panel-ai-reindex'))
-    expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index')
-    expect(onClose).toHaveBeenCalled()
+    expect(onOpenAIIndex).toHaveBeenCalledTimes(1)
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('ignores a late settings response after unmount and still saves a live response', async () => {

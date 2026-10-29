@@ -61,6 +61,18 @@ describe('useAnimatedTabList', () => {
     expect(ids(result.current)).toEqual(['a', 'c'])
   })
 
+  it('finishes an exit even when another tab changes during the animation', () => {
+    const { result, rerender } = renderHook(({ tabs }) => useAnimatedTabList(tabs), {
+      initialProps: { tabs: [{ id: 'a' }, { id: 'b' }] as Tab[] },
+    })
+    rerender({ tabs: [{ id: 'a' }] })
+    act(() => { jest.advanceTimersByTime(TAB_TRANSITION_MS / 2) })
+    rerender({ tabs: [{ id: 'a' }, { id: 'c' }] })
+    expect(ids(result.current)).toEqual(['a', 'b:closing', 'c'])
+    act(() => { jest.advanceTimersByTime(TAB_TRANSITION_MS / 2) })
+    expect(ids(result.current)).toEqual(['a', 'c'])
+  })
+
   it('treats a tab that comes back as live rather than a leftover ghost', () => {
     const { result, rerender } = renderHook(({ tabs }) => useAnimatedTabList(tabs), {
       initialProps: { tabs: [{ id: 'a' }, { id: 'b' }] as Tab[] },
@@ -71,6 +83,20 @@ describe('useAnimatedTabList', () => {
 
     rerender({ tabs: [{ id: 'a' }, { id: 'b' }] })
     expect(ids(result.current)).toEqual(['a', 'b'])
+  })
+
+  it('lets a reopened and reclosed tab finish its own exit', () => {
+    const { result, rerender } = renderHook(({ tabs }) => useAnimatedTabList(tabs), {
+      initialProps: { tabs: [{ id: 'a' }, { id: 'b' }] as Tab[] },
+    })
+    rerender({ tabs: [{ id: 'a' }] })
+    act(() => { jest.advanceTimersByTime(TAB_TRANSITION_MS / 2) })
+    rerender({ tabs: [{ id: 'a' }, { id: 'b' }] })
+    rerender({ tabs: [{ id: 'a' }] })
+    act(() => { jest.advanceTimersByTime(TAB_TRANSITION_MS / 2) })
+    expect(ids(result.current)).toEqual(['a', 'b:closing'])
+    act(() => { jest.advanceTimersByTime(TAB_TRANSITION_MS / 2) })
+    expect(ids(result.current)).toEqual(['a'])
   })
 
   it('removes the tab immediately when the viewer asked for reduced motion', () => {

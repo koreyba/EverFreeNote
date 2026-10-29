@@ -39,9 +39,26 @@ ui/web/components/features/notes/NoteView.tsx
 - Use a deterministic initial tab ID for the server/client first render, then replace it with the hydrated session workspace.
 - Bound serialized workspace state and fall back to a blank tab when a persisted snapshot is malformed or exceeds the storage limit.
 - Hydrate once, then persist state changes through a guarded storage adapter.
+- Wait until the provider and auth hook agree on an account before reading or
+  writing that account's workspace. No user means an unhydrated, blank in-memory
+  view, not a new snapshot. A failed storage read disables workspace writes for
+  that session so a temporarily unreadable snapshot is not replaced; editors
+  remain usable in memory and show the existing persistence warning.
 - Capture the current editor before unmount, flush autosave first, and then apply tab transitions. `flushAndCaptureActiveTab` returns a success flag instead of rejecting; transitions abort when it reports failure.
 - Debounce per-keystroke draft and per-frame scroll notifications with `useDebouncedSessionCallback` (250 ms) so workspace state and `sessionStorage` are not written on every event. Draft updates cancel on unmount/manual save (the capture path reads the live editor); reading scroll flushes on unmount.
 - After a successful delete, call `resetTabsForNotes` with the deleted IDs so no tab keeps a deleted note; bulk delete reports the actually-deleted IDs through `onNotesDeleted`.
+- Before deleting, flush the active editor when its note is targeted, then wait
+  for outstanding local writes to every target (including an unchanged manual
+  save). A save failure cancels the whole operation; an unrelated active note
+  does not block deletion. Single-note confirmation stays modal while waiting.
+  This ordering applies within one running controller; cross-window writes and
+  durable queue compaction require separate safeguards.
+- Sign-out from Notes and Settings uses `useGuardedSignOut` and the same
+  accessible confirmation dialog. Notes flushes the live editor and waits for
+  local writes, while Settings inspects the account-scoped workspace snapshot.
+  Failed, dirty, saving, or unreadable drafts require an explicit discard; a
+  pending check can be cancelled, and a session change cancels the old request.
+  A sign-out error returned by the auth provider must not clear the workspace.
 - Use the active tab's draft as editor initial content; never use a server refresh to overwrite a dirty local field without existing reconciliation rules.
 - Keep tab indicators derived from explicit per-tab save state rather than global UI assumptions.
 - Keep the desktop Add control outside the scrolling tab viewport, and keep it
@@ -89,6 +106,9 @@ ui/web/components/features/notes/NoteView.tsx
 - Autosave errors set the active tab to `error`, retain the draft, and keep the existing toast/retry behavior.
 - Manual save errors are propagated from the save handler to the controller wrapper so the active tab remains in `error` instead of being reported as saved.
 - Failed-tab close requires explicit confirmation; canceling leaves the tab and draft intact.
+- Settings and AI Index navigation wait for local writes and read back each
+  unfinished tab; a missing, stale or unreadable snapshot blocks the route.
+  Closing an inactive dirty or saving tab also requires explicit discard.
 - Invalid note snapshots are ignored or revalidated through existing note status logic.
 
 ## Performance Considerations
@@ -103,3 +123,55 @@ ui/web/components/features/notes/NoteView.tsx
 - Workspace state contains note content in browser session storage, protected by the same-origin browser boundary; no auth/session tokens are stored.
 - Validate all hydrated values and discard unknown versions/shapes.
 - Existing HTML sanitization and editor input handling remain unchanged.
+
+## Desktop split view follow-up (2026-10-28)
+
+`NotesShell` uses the workspace controller's left/right pairing for selection,
+editing, and flushes. `SplitNotePreview` renders the
+inactive tab's sanitized snapshot and records its scroll position separately.
+The tab-creation call returns the new tab ID so a pending split cannot attach
+to a different concurrently created tab. Resizing hides, rather than closes,
+the inactive pane; entering Tags or Settings is blocked if the editor flush
+fails. Closing split does not remount the active editor or close either tab.
+Reader positions are captured before navigation and guarded by tab and note ID
+when deferred updates arrive; editor capture remains the path for unsaved new
+notes and their initial ID assignment.
+
+The workspace controller serializes the optional split pairing in the same
+owner-stamped snapshot as the tabs. Hydration validates both IDs and the note
+identities; closing either pane clears the pairing in the same state change.
+Pending split creation and tab creation check their initiating auth epoch
+after an asynchronous flush. The existing workspace memory also retains split
+state across same-document routes and account switches, including a close
+that could not be written to sessionStorage. Memory is discarded with its
+owner and cannot provide durability after a reload when storage is blocked.
+
+`SplitViewPreferenceProvider` reads and writes the browser-level opt-in flag
+and listens for localStorage changes in other tabs. It remains mounted across
+Settings and account changes. `NotesShell` gates the split control and both
+pane presentation without closing tabs or remounting the active editor; its
+pending creation passes a flag check to the asynchronous add-tab boundary.
+Failed preference reads or writes are surfaced in the Settings workspace
+panel, and no database migration is required.
+
+## Account-session isolation follow-up (2026-10-29)
+
+`SupabaseProvider` advances an identity epoch synchronously with auth events;
+`AccountSessionBoundary` gives each epoch an independent `QueryClient` and UI.
+Awaiting navigation callbacks recheck the epoch. Settings and AI Index bridge
+state carries an owner ID and rejects unowned or mismatched snapshots.
+
+`useNoteEditorAutoSave` flushes pending input when its owner session changes;
+confirmed discard cancels it. `ownerNoteWrites` orders same-owner, same-note
+writes across UI remounts within the current JavaScript context only. It does
+not cancel an existing network drain or coordinate other windows or devices.
+`useNoteSync` overlays an in-flight snapshot only for its owner and installs the
+completed local copy before removing that snapshot.
+
+### Tag batches across account changes
+
+Bulk tag checks and reconciliation retain the initiating account's session epoch. An account change stops further batches and prevents stale UI updates. An owner-scoped in-memory recovery marker records an in-flight or uncertain batch across workspace remounts; returning to that account blocks new tag changes until the previous work settles and the loaded notes are checked. The other account does not see this marker. This marker does not survive page reload or coordinate other browser contexts.
+
+### Manual save acknowledgements and created IDs
+
+After a successful local write the controller returns the saved note ID. The editor acknowledges only the submitted snapshot and only while its account and editor session still match. Pending input and newer autosaves remain independent. For a manual create, the confirmed ID bridges the null-to-ID transition without resetting the editor; the submitted snapshot remains the baseline even if a newer draft has already reached the workspace. Identical frozen initial props are not treated as a fresh remote update after this acknowledgement.

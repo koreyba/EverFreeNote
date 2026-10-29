@@ -110,7 +110,7 @@ Cypress.Commands.add('login', () => {
 
 Cypress.Commands.add('createNote', (title: string, content: string, tags = '') => {
   cy.contains('New Note').click()
-  cy.get('input[placeholder="Note title"]').type(title)
+  cy.get('[placeholder="Note title"]').type(title)
   cy.get('[data-cy="editor-content"] .tiptap').click().type(content)
 
   if (tags) {

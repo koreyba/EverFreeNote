@@ -3,6 +3,7 @@ import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { SanitizationService } from "@core/services/sanitizer"
 import type { PublicNote } from "@core/services/publicNoteShare"
 import { PublicPageHeader } from "@/components/features/public/PublicPageHeader"
+import { RenderedNoteContent } from "@/components/RenderedNoteContent"
 
 type PublicNotePageProps = Readonly<{
   note: PublicNote
@@ -19,7 +20,7 @@ export function PublicNotePage({ note }: PublicNotePageProps) {
       day: "numeric",
     })
     : "Unknown"
-  const sanitizedContent = SanitizationService.sanitize(note.description ?? "")
+  const sanitizedContent = SanitizationService.sanitizeForReading(note.description ?? "")
 
   return (
     <main className="min-h-[100dvh] bg-background text-foreground">
@@ -40,10 +41,9 @@ export function PublicNotePage({ note }: PublicNotePageProps) {
           ) : null}
         </header>
 
-        <div
+        <RenderedNoteContent
           className={`${NOTE_CONTENT_CLASS} mt-8`}
-          // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
-          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+          html={sanitizedContent}
         />
       </article>
     </main>

@@ -43,7 +43,7 @@ export default function App() {
   useEffect(() => {
     if (loading || !user) return
 
-    const returnState = consumeSettingsReturnState()
+    const returnState = consumeSettingsReturnState(user.id)
     if (!returnState) return
 
     clearActiveSettingsNoteReturnPath()
@@ -53,10 +53,10 @@ export default function App() {
   useEffect(() => {
     if (loading || !user) return
 
-    const pendingNoteState = consumeAIIndexPendingNoteState()
+    const pendingNoteState = consumeAIIndexPendingNoteState(user.id)
     if (!pendingNoteState) return
 
-    saveActiveSettingsNoteReturnPath(pendingNoteState.returnPath)
+    saveActiveSettingsNoteReturnPath(pendingNoteState.returnPath, user.id)
     restoreUiState({
       selectedNoteId: pendingNoteState.noteId,
       selectedNote: null,

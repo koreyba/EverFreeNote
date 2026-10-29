@@ -5,7 +5,9 @@ import type { ReactNode } from "react"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { QueryProvider } from "@/components/providers/QueryProvider"
 import { NativeShellProvider } from "@ui/shell/runtime/NativeShellProvider"
-import { SupabaseProvider } from "@ui/web/providers/SupabaseProvider"
+import { AccountSessionBoundary, SupabaseProvider } from "@ui/web/providers/SupabaseProvider"
+import { WorkspaceMemoryProvider } from "@ui/web/providers/WorkspaceMemoryProvider"
+import { SplitViewPreferenceProvider } from "@ui/web/providers/SplitViewPreferenceProvider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -31,20 +33,26 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <ErrorBoundary>
           <SupabaseProvider>
-            <NativeShellProvider>
-              <QueryProvider>
-                <ThemeProvider
-                  attribute="class"
-                  defaultTheme="light"
-                  enableSystem={false}
-                  storageKey="everfreenote-theme"
-                  disableTransitionOnChange={true}
-                >
-                  {children}
-                  <Toaster />
-                </ThemeProvider>
-              </QueryProvider>
-            </NativeShellProvider>
+            <WorkspaceMemoryProvider>
+              <SplitViewPreferenceProvider>
+                <NativeShellProvider>
+                  <AccountSessionBoundary>
+                    <QueryProvider>
+                      <ThemeProvider
+                        attribute="class"
+                        defaultTheme="light"
+                        enableSystem={false}
+                        storageKey="everfreenote-theme"
+                        disableTransitionOnChange={true}
+                      >
+                        {children}
+                        <Toaster />
+                      </ThemeProvider>
+                    </QueryProvider>
+                  </AccountSessionBoundary>
+                </NativeShellProvider>
+              </SplitViewPreferenceProvider>
+            </WorkspaceMemoryProvider>
           </SupabaseProvider>
         </ErrorBoundary>
       </body>

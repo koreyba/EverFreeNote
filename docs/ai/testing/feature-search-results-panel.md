@@ -65,4 +65,5 @@ Executed on 2026-03-04:
 ## Coverage Gaps
 **Outstanding gaps and rationale**
 
-- Cypress component execution is currently blocked by local Cypress runtime/binary incompatibility, so UI runtime assertions could not be completed in this environment.
+- The 2026-03-04 Cypress run was blocked by a local runtime/binary incompatibility.
+- Follow-up on 2026-10-28: component coverage exercises notes-sidebar pointer and keyboard resizing, bounds, width restoration, the adjacent search panel, and the mobile full-width layout. The desktop sidebar was also dragged in the local Docker app with search open.

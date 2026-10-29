@@ -66,7 +66,7 @@ function isAIIndexPendingNoteState(value: unknown): value is AIIndexPendingNoteS
   )
 }
 
-function readJson<T>(key: string, isValid: (value: unknown) => value is T): T | null {
+function readJson<T>(key: string, isValid: (value: unknown) => value is T, ownerUserId: string): T | null {
   const storage = getSessionStorage()
   if (!storage) return null
 
@@ -81,24 +81,24 @@ function readJson<T>(key: string, isValid: (value: unknown) => value is T): T | 
 
   try {
     const parsedValue: unknown = JSON.parse(rawValue)
-    if (!isValid(parsedValue)) {
+    if (!ownerUserId || !isRecord(parsedValue) || parsedValue.ownerUserId !== ownerUserId || !isValid(parsedValue.value)) {
       clearStorageKey(key, storage)
       return null
     }
 
-    return parsedValue
+    return parsedValue.value
   } catch {
     clearStorageKey(key, storage)
     return null
   }
 }
 
-function saveJson<T>(key: string, value: T): boolean {
+function saveJson<T>(key: string, value: T, ownerUserId: string): boolean {
   const storage = getSessionStorage()
-  if (!storage) return false
+  if (!storage || !ownerUserId) return false
 
   try {
-    storage.setItem(key, JSON.stringify(value))
+    storage.setItem(key, JSON.stringify({ ownerUserId, value }))
     return true
   } catch {
     clearStorageKey(key, storage)
@@ -106,21 +106,21 @@ function saveJson<T>(key: string, value: T): boolean {
   }
 }
 
-export function saveAIIndexViewState(state: AIIndexViewStateSnapshot): boolean {
+export function saveAIIndexViewState(state: AIIndexViewStateSnapshot, ownerUserId: string): boolean {
   if (!isAIIndexViewStateSnapshot(state)) return false
 
   return saveJson(AI_INDEX_VIEW_STATE_KEY, {
     ...state,
     scrollOffset: Math.max(0, state.scrollOffset),
-  })
+  }, ownerUserId)
 }
 
-export function readAIIndexViewState(): AIIndexViewStateSnapshot | null {
-  return readJson(AI_INDEX_VIEW_STATE_KEY, isAIIndexViewStateSnapshot)
+export function readAIIndexViewState(ownerUserId: string): AIIndexViewStateSnapshot | null {
+  return readJson(AI_INDEX_VIEW_STATE_KEY, isAIIndexViewStateSnapshot, ownerUserId)
 }
 
-export function consumeAIIndexViewState(): AIIndexViewStateSnapshot | null {
-  const state = readAIIndexViewState()
+export function consumeAIIndexViewState(ownerUserId: string): AIIndexViewStateSnapshot | null {
+  const state = readAIIndexViewState(ownerUserId)
   clearStorageKey(AI_INDEX_VIEW_STATE_KEY)
   return state
 }
@@ -129,7 +129,7 @@ export function clearAIIndexViewState(): void {
   clearStorageKey(AI_INDEX_VIEW_STATE_KEY)
 }
 
-export function saveAIIndexPendingNoteState(state: AIIndexPendingNoteState): boolean {
+export function saveAIIndexPendingNoteState(state: AIIndexPendingNoteState, ownerUserId: string): boolean {
   if (!isAIIndexPendingNoteState(state)) return false
 
   const safeReturnPath = sanitizeSettingsReturnPath(state.returnPath)
@@ -138,11 +138,11 @@ export function saveAIIndexPendingNoteState(state: AIIndexPendingNoteState): boo
   return saveJson(AI_INDEX_PENDING_NOTE_KEY, {
     noteId: state.noteId.trim(),
     returnPath: safeReturnPath,
-  })
+  }, ownerUserId)
 }
 
-export function readAIIndexPendingNoteState(): AIIndexPendingNoteState | null {
-  const state = readJson(AI_INDEX_PENDING_NOTE_KEY, isAIIndexPendingNoteState)
+export function readAIIndexPendingNoteState(ownerUserId: string): AIIndexPendingNoteState | null {
+  const state = readJson(AI_INDEX_PENDING_NOTE_KEY, isAIIndexPendingNoteState, ownerUserId)
   if (!state) return null
 
   const safeReturnPath = sanitizeSettingsReturnPath(state.returnPath)
@@ -157,8 +157,8 @@ export function readAIIndexPendingNoteState(): AIIndexPendingNoteState | null {
   }
 }
 
-export function consumeAIIndexPendingNoteState(): AIIndexPendingNoteState | null {
-  const state = readAIIndexPendingNoteState()
+export function consumeAIIndexPendingNoteState(ownerUserId: string): AIIndexPendingNoteState | null {
+  const state = readAIIndexPendingNoteState(ownerUserId)
   clearStorageKey(AI_INDEX_PENDING_NOTE_KEY)
   return state
 }
@@ -167,38 +167,19 @@ export function clearAIIndexPendingNoteState(): void {
   clearStorageKey(AI_INDEX_PENDING_NOTE_KEY)
 }
 
-export function saveActiveSettingsNoteReturnPath(path: string): boolean {
-  const storage = getSessionStorage()
-  if (!storage) return false
-
+export function saveActiveSettingsNoteReturnPath(path: string, ownerUserId: string): boolean {
   const safePath = sanitizeSettingsReturnPath(path)
   if (!safePath) return false
-
-  try {
-    storage.setItem(ACTIVE_SETTINGS_NOTE_RETURN_PATH_KEY, safePath)
-    return true
-  } catch {
-    clearStorageKey(ACTIVE_SETTINGS_NOTE_RETURN_PATH_KEY, storage)
-    return false
-  }
+  return saveJson(ACTIVE_SETTINGS_NOTE_RETURN_PATH_KEY, safePath, ownerUserId)
 }
 
-export function readActiveSettingsNoteReturnPath(): string | null {
-  const storage = getSessionStorage()
-  if (!storage) return null
-
-  let rawValue: string | null = null
-  try {
-    rawValue = storage.getItem(ACTIVE_SETTINGS_NOTE_RETURN_PATH_KEY)
-  } catch {
-    return null
-  }
-
+export function readActiveSettingsNoteReturnPath(ownerUserId: string): string | null {
+  const rawValue = readJson(ACTIVE_SETTINGS_NOTE_RETURN_PATH_KEY, (value): value is string => typeof value === 'string', ownerUserId)
   return sanitizeSettingsReturnPath(rawValue)
 }
 
-export function consumeActiveSettingsNoteReturnPath(): string | null {
-  const path = readActiveSettingsNoteReturnPath()
+export function consumeActiveSettingsNoteReturnPath(ownerUserId: string): string | null {
+  const path = readActiveSettingsNoteReturnPath(ownerUserId)
   clearStorageKey(ACTIVE_SETTINGS_NOTE_RETURN_PATH_KEY)
   return path
 }

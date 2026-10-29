@@ -38,15 +38,27 @@ export interface SyncState {
 }
 
 export interface OfflineStorageAdapter {
+  /** True only when tag patches update individual records transactionally. */
+  readonly atomicTagPatches?: boolean
   loadNotes(params?: { limit?: number; offset?: number }): Promise<CachedNote[]>
   saveNote(note: CachedNote): Promise<void>
   saveNotes(notes: CachedNote[]): Promise<void>
   deleteNote(noteId: string): Promise<void>
   /** Atomically remove unchanged synced snapshots with no queued writes. */
   removeSyncedNotes?(notes: CachedNote[], signal?: AbortSignal): Promise<string[]>
+  /** Remove unchanged, owned deletion tombstones when no operation remains for them. */
+  removeSyncedTombstones?(notes: CachedNote[], signal?: AbortSignal): Promise<string[]>
+  /** Persist proven ownership of an unchanged legacy snapshot before its operation is acknowledged. */
+  claimLegacySnapshot?(note: CachedNote, item: MutationQueueItem, ownerId: string, signal?: AbortSignal): Promise<boolean>
+  /** Return legacy snapshot IDs with a durable owner claim matching their current contents. */
+  getLegacyClaims?(ownerId: string, notes: CachedNote[]): Promise<string[]>
+  /** Atomically update tags only when each cached snapshot is still synced and unqueued. */
+  patchSyncedTags?(patches: Array<{ expected: CachedNote; tags: string[] }>): Promise<string[]>
   getQueue(): Promise<MutationQueueItem[]>
   upsertQueueItem(item: MutationQueueItem): Promise<void>
   upsertQueue(items: MutationQueueItem[]): Promise<void>
+  /** Add or replace these items without clearing other queue entries. */
+  appendQueueItems?(items: MutationQueueItem[]): Promise<void>
   /** @deprecated Use getPendingBatch + removeQueueItems instead */
   popQueueBatch(batchSize: number): Promise<MutationQueueItem[]>
   /** Get pending items without removing them from queue */

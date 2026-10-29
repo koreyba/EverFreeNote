@@ -14,6 +14,11 @@ describe('core/mcp/noteHtml - sanitizeNoteHtml', () => {
     expect(sanitizeNoteHtml(html)).toBe(html)
   })
 
+  it('preserves superscript and subscript while stripping unsafe attributes', () => {
+    expect(sanitizeNoteHtml('<p>x<sup onclick="steal()">2</sup> + H<sub>2</sub>O</p><script>bad()</script>'))
+      .toBe('<p>x<sup>2</sup> + H<sub>2</sub>O</p>')
+  })
+
   it('removes script elements together with their content', () => {
     expect(sanitizeNoteHtml('<p>safe</p><script>alert(1)</script>')).toBe('<p>safe</p>')
     expect(sanitizeNoteHtml('<style>p{color:red}</style><p>safe</p>')).toBe('<p>safe</p>')
@@ -36,6 +41,25 @@ describe('core/mcp/noteHtml - sanitizeNoteHtml', () => {
     const dataUri = 'data:image/png;base64,iVBORw0KGgo='
     expect(sanitizeNoteHtml(`<img src="${dataUri}" />`)).toContain(dataUri)
     expect(sanitizeNoteHtml(`<a href="${dataUri}">x</a>`)).toBe('<a>x</a>')
+  })
+
+  it('preserves valid dimensions only on images', () => {
+    const result = sanitizeNoteHtml('<p width="77">x<img src="https://e.com/a.png" width="0048" height="96" alt="photo" /></p>')
+    expect(result).toBe('<p>x<img src="https://e.com/a.png" width="0048" height="96" alt="photo" /></p>')
+  })
+
+  it.each([
+    ['empty', ''], ['zero', '0'], ['negative', '-1'], ['signed', '+48'], ['fraction', '1.5'],
+    ['unit', '48px'], ['percentage', '50%'], ['leading space', ' 48'], ['trailing space', '48 '],
+    ['NaN', 'NaN'], ['above limit', '16385'], ['huge', '999999999999999999999'], ['excessive padding', '00000000000000000000001'],
+  ])('removes invalid image dimension: %s', (_label, value) => {
+    const result = sanitizeNoteHtml(`<img src="https://e.com/a.png" width="${value}" height="${value}" />`)
+    expect(result).toBe('<img src="https://e.com/a.png" />')
+  })
+
+  it('continues to reject an injected event handler and script-bearing URL', () => {
+    const result = sanitizeNoteHtml('<img src="javascript:bad()" width="48&quot; onerror=bad()" height="96" onerror="bad()" />')
+    expect(result).toBe('<img height="96" />')
   })
 
   it('discards elements the editor cannot render', () => {

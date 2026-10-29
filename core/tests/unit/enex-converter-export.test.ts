@@ -1,7 +1,8 @@
-/** @jest-environment jsdom */
+/** @jest-environment allure-jest/jsdom */
 
 import { ContentConverter } from '../../enex/converter'
 import { ExportService } from '../../enex/export-service'
+import { ImageDownloader } from '../../enex/image-downloader'
 import type { EnexResource } from '../../enex/types'
 
 describe('ContentConverter', () => {
@@ -84,6 +85,133 @@ describe('ContentConverter', () => {
 })
 
 describe('ExportService', () => {
+  it('keeps mixed data images and URLs aligned with their own resources when a download fails', async () => {
+    const dataUri = 'data:image/png;base64,AQ=='
+    const original = `<p><img src="/unsupported.png" alt="relative"><img src="${dataUri}" width="48" height="48" alt="pasted"><img src="https://cdn.test/missing.jpg" width="90" height="60" alt="missing"><img src="https://cdn.test/ok.webp" width="120" height="80" alt="remote"></p>`
+    const noteService = {
+      getNotesByIds: jest.fn().mockResolvedValue([{ id: '1', title: 'Photos', description: original, created_at: '2026-01-01', updated_at: '2026-01-01', tags: [] }]),
+    }
+    const builder = { build: jest.fn().mockReturnValue('<enex/>') }
+    const downloader = new ImageDownloader()
+    const sourceOne = { data: 'AQ==', mime: 'image/png', hash: 'hash-first', fileName: 'first.png' }
+    const sourceThree = { data: 'Ag==', mime: 'image/webp', hash: 'hash-third', fileName: 'third.webp' }
+    jest.spyOn(downloader, 'downloadImage').mockImplementation(async (url) => url === dataUri ? sourceOne : url.endsWith('ok.webp') ? sourceThree : null)
+
+    const result = await new ExportService(noteService as never, builder as never, downloader).exportNotes(['1'], 'user')
+    const exported = builder.build.mock.calls[0][0][0]
+    expect(result.skippedImages).toBe(2)
+    expect(exported.resources).toEqual([sourceOne, sourceThree])
+    expect(exported.content).toContain('<img src="/unsupported.png" alt="relative">')
+    expect(exported.content).toContain('<en-media type="image/png" hash="hash-first" width="48" height="48" alt="pasted"/>')
+    expect(exported.content).toContain('<img src="https://cdn.test/missing.jpg" width="90" height="60" alt="missing">')
+    expect(exported.content).toContain('<en-media type="image/webp" hash="hash-third" width="120" height="80" alt="remote"/>')
+  })
+
+  it('leaves unsupported image sources unchanged and reports them as skipped', async () => {
+    const original = '<p><img src="/relative.png" width="48" height="48"></p>'
+    const noteService = {
+      getNotesByIds: jest.fn().mockResolvedValue([{ id: '1', title: 'Photos', description: original, created_at: '2026-01-01', updated_at: '2026-01-01', tags: [] }]),
+    }
+    const builder = { build: jest.fn().mockReturnValue('<enex/>') }
+    const downloader = new ImageDownloader()
+    const download = jest.spyOn(downloader, 'downloadImage')
+    const result = await new ExportService(noteService as never, builder as never, downloader).exportNotes(['1'], 'user')
+    expect(result.skippedImages).toBe(1)
+    expect(builder.build.mock.calls[0][0][0].content).toBe(original)
+    expect(download).not.toHaveBeenCalled()
+  })
+
+  it('removes invalid dimensions from an unsupported image in the exported copy only', async () => {
+    const original = '<p><img src="/relative.png" width="50%" height="48"></p>'
+    const noteService = {
+      getNotesByIds: jest.fn().mockResolvedValue([{ id: '1', title: 'Photos', description: original, created_at: '2026-01-01', updated_at: '2026-01-01', tags: [] }]),
+    }
+    const builder = { build: jest.fn().mockReturnValue('<enex/>') }
+    const result = await new ExportService(noteService as never, builder as never, new ImageDownloader()).exportNotes(['1'], 'user')
+    expect(result.skippedImages).toBe(1)
+    expect(builder.build.mock.calls[0][0][0].content).toBe('<p><img src="/relative.png" height="48"></p>')
+    await expect(noteService.getNotesByIds.mock.results[0].value).resolves.toEqual([expect.objectContaining({ description: original })])
+  })
+
+  it('keeps a failed inline image and does not attach the following URL resource to it', async () => {
+    const dataUri = 'data:image/png;base64,AQ=='
+    const original = `<p><img src="${dataUri}" width="48" height="48" alt="inline"><img src="https://cdn.test/ok.webp" width="96" height="64" alt="remote"></p>`
+    const noteService = {
+      getNotesByIds: jest.fn().mockResolvedValue([{ id: '1', title: 'Photos', description: original, created_at: '2026-01-01', updated_at: '2026-01-01', tags: [] }]),
+    }
+    const builder = { build: jest.fn().mockReturnValue('<enex/>') }
+    const downloader = new ImageDownloader()
+    const remote = { data: 'Ag==', mime: 'image/webp', hash: 'remote-hash', fileName: 'remote.webp' }
+    jest.spyOn(downloader, 'downloadImage').mockImplementation(async (url) => url === dataUri ? null : remote)
+    const result = await new ExportService(noteService as never, builder as never, downloader).exportNotes(['1'], 'user')
+    const exported = builder.build.mock.calls[0][0][0]
+    expect(result.skippedImages).toBe(1)
+    expect(exported.resources).toEqual([remote])
+    expect(exported.content).toContain(`<img src="${dataUri}" width="48" height="48" alt="inline">`)
+    expect(exported.content).toContain('<en-media type="image/webp" hash="remote-hash" width="96" height="64" alt="remote"/>')
+  })
+
+  it('retains image dimensions and description through ENEX export and import', async () => {
+    const noteService = {
+      getNotesByIds: jest.fn().mockResolvedValue([{
+        id: '1', title: 'Photo', description: '<p><img src="https://cdn.test/a.png" width="120" height="80" alt="A garden"></p>',
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', tags: ['photos'],
+      }]),
+    }
+    const builder = { build: jest.fn().mockReturnValue('<enex/>') }
+    const downloader = {
+      extractImageUrls: jest.fn().mockReturnValue(['https://cdn.test/a.png']),
+      downloadImage: jest.fn().mockResolvedValue({ data: 'AQ==', mime: 'image/png', hash: 'abc123', fileName: 'a.png', width: 192, height: 192 }),
+    }
+    await new ExportService(noteService as never, builder as never, downloader as never).exportNotes(['1'], 'user')
+    const exported = builder.build.mock.calls[0][0][0]
+    expect(exported.content).toContain('<en-media type="image/png" hash="abc123" width="120" height="80" alt="A garden"/>')
+    expect(exported.resources[0]).toMatchObject({ width: 192, height: 192 })
+    const converter = new ContentConverter({ upload: jest.fn().mockResolvedValue('https://cdn.test/a.png') } as never)
+    const imported = await converter.convert(exported.content, exported.resources, 'user', 'note')
+    expect(imported).toContain('width="120"')
+    expect(imported).toContain('height="80"')
+    expect(imported).toContain('alt="A garden"')
+  })
+
+  it('keeps quoted and greater-than characters in an image description through ENEX', async () => {
+    const original = '<p><img src="https://cdn.test/a.png" width="48" height="32" alt="A &gt; B &amp; &quot;tree&quot;"></p>'
+    const noteService = {
+      getNotesByIds: jest.fn().mockResolvedValue([{ id: '1', title: 'Photo', description: original, created_at: '2026-01-01', updated_at: '2026-01-01', tags: [] }]),
+    }
+    const builder = { build: jest.fn().mockReturnValue('<enex/>') }
+    const downloader = {
+      extractImageUrls: jest.fn().mockReturnValue(['https://cdn.test/a.png']),
+      downloadImage: jest.fn().mockResolvedValue({ data: 'AQ==', mime: 'image/png', hash: 'abc123', fileName: 'a.png' }),
+    }
+    await new ExportService(noteService as never, builder as never, downloader as never).exportNotes(['1'], 'user')
+    const exported = builder.build.mock.calls[0][0][0]
+    expect(exported.content).toContain('/>')
+    expect(exported.content).not.toContain('</en-media>')
+    const converter = new ContentConverter({ upload: jest.fn().mockResolvedValue('https://cdn.test/a.png') } as never)
+    const imported = await converter.convert(exported.content, exported.resources, 'user', 'note')
+    const image = new DOMParser().parseFromString(imported, 'text/html').querySelector('img')
+    expect(image?.getAttribute('alt')).toBe('A > B & "tree"')
+    expect(image?.getAttribute('width')).toBe('48')
+    expect(image?.getAttribute('height')).toBe('32')
+  })
+
+  it('omits invalid dimensions from ENEX image markup', async () => {
+    const noteService = {
+      getNotesByIds: jest.fn().mockResolvedValue([{
+        id: '1', title: 'Photo', description: '<img src="https://cdn.test/a.png" width="12px" height="0" onerror="bad()">',
+        created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', tags: [],
+      }]),
+    }
+    const builder = { build: jest.fn().mockReturnValue('<enex/>') }
+    const downloader = {
+      extractImageUrls: jest.fn().mockReturnValue(['https://cdn.test/a.png']),
+      downloadImage: jest.fn().mockResolvedValue({ data: 'AQ==', mime: 'image/png', hash: 'abc123', fileName: 'a.png' }),
+    }
+    await new ExportService(noteService as never, builder as never, downloader as never).exportNotes(['1'], 'user')
+    expect(builder.build.mock.calls[0][0][0].content).toBe('<en-media type="image/png" hash="abc123"/>')
+  })
+
   it('returns an empty ENEX file when no notes are selected', async () => {
     const noteService = { getNotesByIds: jest.fn() }
     const builder = { build: jest.fn().mockReturnValue('<en-export/>') }

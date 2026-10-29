@@ -194,3 +194,182 @@ re-reads the workspace.
 - Verify switching does not mount more than one editor or trigger duplicate fetches.
 - Verify rapid scroll/input changes do not write storage on every event without throttling.
 - Verify long drafts remain responsive and storage failure does not block typing.
+
+### Desktop split view follow-up (2026-10-28)
+
+`DesktopSplitView.cy.tsx` uses synthetic notes and a mocked backend while
+mounting the real controller, editor, and offline storage. It exercises two
+side-by-side panes, deduplication, exit/close/third-tab behavior, separate
+writes, failed save and recovery, navigation blocking, desktop/mobile resize,
+editor instance continuity, long-note scrolling in both directions, note-ID
+replacement, and the first save of an initially unsaved note. The focused
+Allure run passed 13/13: `/tmp/everfreenote-split-browser-final-2/index.md`.
+The focused workspace/controller/reader unit run passed 64/64 at
+`/tmp/everfreenote-split-unit-focus/index.md`; the existing mobile layout
+component suite passed 39/39 at `/tmp/everfreenote-split-mobile-focus/index.md`.
+`npm run type-check` and `npm run eslint` passed as well.
+
+An isolated Docker preview on port 3106 connected to the local synthetic
+editor-preview database. Manual browser checks opened two sample notes,
+activated a pane using Enter, and preserved a long note's 1266px scroll when
+switching it from preview to reading. Final integration and independent QA
+must also validate the combined editor design; no production data is used.
+
+### In-flight saves (2026-10-28)
+
+Independent QA reproduced on main and the split branch: an explicit flush
+could return after an older in-flight save while a newer draft remained only in
+memory. Regression cases hold local queue writes and check continued typing,
+split and ordinary tab transitions, closing a tab, failure/retry, and the first
+save of a new note. Core tests also cover reverting to the baseline, partial
+failure, and session reset; web unit tests cover concurrent manual saves,
+equal timestamps, different notes, and reopening with a pending queue.
+
+These tests exercise local persistence and mocked or local services. They do
+not establish cross-window/device ordering or real-device/remote sync behavior.
+
+### Deletion while saving (2026-10-29)
+
+`DeletePendingSave.cy.tsx` holds a split editor's queue write while deleting
+one note or a selection. It verifies the delete waits for autosave and an
+unchanged manual save, that failed saves cancel single and bulk deletion,
+that retry succeeds, and that deleting an unrelated note does not wait for
+the active editor. `useNoteBulkActions.test.tsx` also verifies a failed guard
+prevents online deletes. These tests use mocked network and controlled local
+storage writes; they do not prove ordering across browser windows or devices.
+Offline queue compaction and bulk queue persistence are tested separately.
+
+### Authentication and reload (2026-10-29)
+
+`useNoteWorkspaceHydration.test.tsx` covers a null-to-user transition with
+open, closed, dirty and failed tabs; account changes; sign-out and re-entry;
+and unavailable or unreadable storage. A controller regression checks the
+intermediate render where the provider has switched accounts but the auth
+hook has not caught up. `WorkspaceAuthHydration.cy.tsx` mounts the real app
+and controller with a delayed mocked provider and checks both restored tabs
+and the active note. A real Supabase session and browser reload require an
+independent runtime check; the component test does not model Google OAuth.
+
+### Safe sign-out (2026-10-29)
+
+`SignOutDraftSafety.cy.tsx` covers immediate save before logout, failed and
+restored dirty drafts, multiple tabs, deliberate discard, retry, cancellation
+during a slow write, account changes, offline writes and sign-out failure.
+`SettingsSignOutSafety.cy.tsx` exercises the mobile dialog and its initial
+focus; settings and auth unit tests cover unreadable storage and error return
+values. These tests use a mocked identity provider and controlled local I/O;
+they do not establish cross-window ordering or real Google OAuth behavior.
+
+The component suite also checks that a failed save blocks tag filtering and
+keeps the editor visible after a desktop-to-mobile resize; a subsequent
+successful retry saves the draft and applies the tag filter.
+
+Controller tests cover the 2 MB workspace limit evicting an unfinished tab,
+an older or unreadable snapshot, a recoverable snapshot, typing while another
+write is pending, and an account switch during navigation. A component test simulates a
+quota failure after eviction and checks that Settings stays closed and that
+discarding the tab requires confirmation. Shell tests exercise ordinary
+Settings, the AI Search reindex action and the AI Index return path. A real
+browser smoke on the earlier authentication candidate exercised Back, Forward
+and reload for a saved note; browser history and reload with an unrecoverable
+draft are not protected by the app-controlled route guard and still require
+independent validation.
+
+The final local run passed 1022 web unit tests and 101 component tests;
+type-check and ESLint passed. Allure reports are
+`/tmp/everfreenote-signout-final-web-unit-2/index.md` and
+`/tmp/everfreenote-signout-final-components-3/index.md`.
+
+### Account-session isolation (2026-10-29)
+
+`AccountSessionIsolation.cy.tsx` covers delayed and not-yet-started saves on
+account change, returning before a delayed write finishes (including a new
+note's create followed by an update with the same ID), same-account token
+refresh and explicit discard. Unit tests
+cover owner/note ordering across remounts, auth epoch and query-cache changes,
+late sign-out/navigation, and account-scoped Settings/AI return state.
+
+A separate local Supabase browser test uses two synthetic password accounts:
+A→B with a delayed IndexedDB operation, A→B→A with overlapping saves,
+pending input before autosave, and deliberate discard after a simulated local
+write error. It also checks B's server response and absence of A in B's UI.
+Offline state and local failures are simulated. These tests do not establish
+Google OAuth behavior, cross-window ordering, server sync, or durability when
+local storage is unavailable.
+
+The final local checks passed 732 core and 1,034 web unit tests; the combined
+account/settings/split/mobile component run passed 73 tests, and the final
+account-isolation suite passed 6. Type-check and ESLint passed. A broader
+150-test component run passed before the separate one-line overlay owner fix.
+
+### Combined tag and session boundary
+
+Controller regression tests delay the initial cache read or the first eight tag writes, change the session epoch, and check that no later write or reconciliation starts. An A→B→A test verifies the unfinished/uncertain marker is visible only to A and requests review after reconciliation. These are deterministic mocked boundary tests; independent integrated real-auth and IndexedDB coverage remains required.
+
+### Same-document history fallback
+
+Unit tests cover owner and epoch isolation, synchronous editor capture, the
+first-create identity, preserving the other tab on discard, and best-effort
+`beforeunload` registration for any owner's volatile draft without exposing its
+contents. The isolated local-Supabase browser scenarios
+exercise actual App Router Back/Forward with simulated IndexedDB and
+sessionStorage failures, Settings sign-out, A→B→A, a delayed first create,
+repeat save, continued typing, and a failed first create retried to the test
+server. Additional scenarios cover discarding before a queued write begins,
+signing back in while it remains pending, and warning when a write already
+inside the adapter may still finish. The browser tests use synthetic accounts and an isolated local API;
+they do not prove reload durability, cross-window behavior or mobile native
+dialog availability. Their Cypress runner currently has no Allure E2E adapter;
+use the raw Cypress output and treat the Allure no-tests finding as unresolved.
+
+The focused local run passed 175 unit and 57 component tests through Allure.
+The separate history and first-create browser suites each passed 6/6 in raw
+Cypress. Desktop Chrome also showed its native generic warning after A→B,
+without exposing A's draft, and did not warn for a clean editor. The browser
+checks used an isolated local Supabase instance and synthetic accounts.
+
+Autosave feedback also follows the account session: a controlled pending save
+cannot publish or dismiss a toast after its session changes, while a failure
+in the current session still reports an error. A Chromium test with synthetic
+accounts switches A→B→A after an offline local-save failure, checks that B
+sees neither A's draft nor its failure toast, then forces another failed write
+and verifies that A sees the new error. This does not cover cross-window UI.
+
+## Manual save and creation acknowledgement
+
+Component tests cover manual alt/title saves, unchanged HTML and clipboard, pending input, failed writes, account/note changes, older/newer autosave ordering, and a new note receiving an ID during typing. A local-API browser run with an isolated synthetic account also delays the local write with an IndexedDB lock, verifies the newest text reaches one created note, and checks saved/unsaved warnings and split-pane transitions. The synthetic account is removed after the test. Integrated-head CI and physical-device verification are separate.
+### Split layout restoration (2026-10-29)
+
+`noteWorkspaceSplitLayout.test.ts` covers old snapshots, owner stamps,
+malformed or missing panes, duplicate note IDs, an empty pane and tab eviction.
+`workspaceSplitMemory.test.tsx` covers A→B→A and a failed storage write after
+closing split. `SplitLayoutPersistence.cy.tsx` exercises the real shell and
+Settings page with synthetic notes and a mocked backend, including restored
+editing/saving, in-flight save across an account change, storage read/write
+failures, tab close and mobile→desktop. `WorkspaceAuthHydration.cy.tsx`
+checks that no split is shown before matching account hydration.
+
+The focused Allure run passed 162 unit and 70 component tests, including the
+existing desktop split and mobile suites. A separate Electron browser test
+against a production static export and synthetic intercepted backend passed
+one end-to-end scenario: actual reload, Settings→Close, mobile reload and
+desktop return, then explicit split close and another reload. A screenshot and
+the browser test are retained with the local QA evidence. These checks do not
+prove recovery after a reload when browser storage itself is unavailable.
+
+### Split view preference (2026-10-29)
+
+The focused browser component suite covers the default-off state, enabling and
+disabling via Settings, retained tabs and drafts, restoration, A→B→A with a
+shared browser preference, mobile and narrow desktop, storage failure, another
+browser tab disabling the flag during live editing, and cancellation during a
+pending editor flush. Existing desktop split, deletion, hydration and mobile
+component suites are run with the preference explicitly enabled where needed.
+The combined Allure component run passed 85/85 tests; the focused unit run
+passed 175/175, including five Settings tests covering persistence and
+read/write/storage-event failures. These
+checks use synthetic notes and mocked network responses. A separate Electron
+test against a production static export and an intercepted synthetic backend
+passed an actual reload after enabling split, then disabling and reloading
+again before re-enabling the retained layout. It does not validate Stage or a
+real Supabase backend.

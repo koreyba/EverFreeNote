@@ -127,6 +127,37 @@ describe('useNotesMutations', () => {
     expect(empty.queryClient.getQueryData(['notes'])).toBeUndefined()
   })
 
+  it('defers query changes during a batched tag write until its caller reconciles', async () => {
+    const previous = pageData()
+    const { result, queryClient } = renderMutation(() => useUpdateNote(), previous)
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+    const cancel = jest.spyOn(queryClient, 'cancelQueries')
+    await act(async () => {
+      await result.current.mutateAsync({ id: 'note-1', tags: ['renamed'], silent: true, deferCacheRefresh: true })
+    })
+    expect(mockNoteService.updateNote).toHaveBeenCalledWith('note-1', { tags: ['renamed'] })
+    expect(queryClient.getQueryData(['notes'])).toEqual(previous)
+    expect(invalidate).not.toHaveBeenCalled()
+    expect(cancel).not.toHaveBeenCalled()
+  })
+
+  it('still invalidates an unrelated ordinary save while a batch write is in flight', async () => {
+    let finishBatch!: (note: Note) => void
+    mockNoteService.updateNote.mockImplementation((id: string) => id === 'note-1'
+      ? new Promise<Note>(resolve => { finishBatch = resolve })
+      : Promise.resolve(makeNote({ id, title: 'Separate save' })))
+    const { result, queryClient } = renderMutation(() => useUpdateNote(), pageData())
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries')
+    let batch!: Promise<Note>
+    act(() => { batch = result.current.mutateAsync({ id: 'note-1', tags: ['new'], silent: true, deferCacheRefresh: true }) })
+    await waitFor(() => expect(mockNoteService.updateNote).toHaveBeenCalledWith('note-1', { tags: ['new'] }))
+    await act(async () => { await result.current.mutateAsync({ id: 'other', title: 'Separate save' }) })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['notes'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['tags', 'all-with-counts'] })
+    await act(async () => { finishBatch(makeNote({ tags: ['new'] })); await batch })
+    expect(invalidate).toHaveBeenCalledTimes(2)
+  })
+
   it('rolls back a failed update', async () => {
     const previous = pageData()
     mockNoteService.updateNote.mockRejectedValue(new Error('update failed'))
@@ -156,6 +187,37 @@ describe('useNotesMutations', () => {
     await expect(failed.result.current.mutateAsync({ id: 'note-1' })).rejects.toThrow('delete failed')
     expect(failed.queryClient.getQueryData(['notes'])).toEqual(previous)
     expect(onError).toHaveBeenCalledWith(expect.any(Error))
+  })
+
+  it('lets the caller report a silent delete failure once', async () => {
+    mockNoteService.deleteNote.mockRejectedValue(new Error('delete failed'))
+    const onError = jest.fn()
+    const { result } = renderMutation(() => useDeleteNote({ onError }))
+    await expect(result.current.mutateAsync({ id: 'note-1', silent: true })).rejects.toThrow('delete failed')
+    expect(onError).not.toHaveBeenCalled()
+  })
+
+  it('removes a confirmed delete only from the initiating account cache after account switch', async () => {
+    let finishDelete: (id: string) => void = () => {}
+    mockNoteService.deleteNote.mockReturnValue(new Promise<string>(resolve => { finishDelete = resolve }))
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user: { id: 'owner-a' } as never, loading: false })
+    const { result, queryClient, rerender } = renderMutation(() => useDeleteNote())
+    const ownerData = pageData([makeNote({ user_id: 'owner-a' }), makeNote({ id: 'keep', user_id: 'owner-a' })])
+    const otherData = pageData([makeNote({ user_id: 'owner-b' })])
+    queryClient.setQueryData(['notes', 'owner-a', '', null], ownerData)
+    queryClient.setQueryData(['notes', 'owner-b', '', null], otherData)
+
+    let deletion: Promise<string>
+    act(() => { deletion = result.current.mutateAsync({ id: 'note-1', silent: true }) })
+    await waitFor(() => expect(mockNoteService.deleteNote).toHaveBeenCalled())
+    jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user: { id: 'owner-b' } as never, loading: false })
+    rerender()
+    await act(async () => { finishDelete('note-1'); await deletion })
+
+    expect(queryClient.getQueryData(['notes', 'owner-a', '', null])).toEqual({
+      ...ownerData, pages: [expect.objectContaining({ notes: [expect.objectContaining({ id: 'keep' })], totalCount: 1 })],
+    })
+    expect(queryClient.getQueryData(['notes', 'owner-b', '', null])).toEqual(otherData)
   })
 
   it('removes tags optimistically and restores them on failure', async () => {
