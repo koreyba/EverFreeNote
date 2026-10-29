@@ -23,6 +23,65 @@ function selectionFrom(doc: Document) {
   return selection
 }
 
+function assertVisibleCaret($editor: JQuery<HTMLElement>) {
+  const editor = $editor[0]
+  const doc = editor.ownerDocument
+  const selection = selectionFrom(doc)
+  expect(doc.activeElement, 'keyboard focus is in the note').to.equal(editor)
+  expect(editor.matches(':focus-visible'), 'keyboard focus is visible').to.equal(true)
+  expect(selection.isCollapsed, 'the insertion point is a caret').to.equal(true)
+  expect(selection.anchorNode && editor.contains(selection.anchorNode), 'caret is in the note').to.equal(true)
+  expect(selection.rangeCount, 'caret has a range').to.be.greaterThan(0)
+  const caretRect = selection.getRangeAt(0).getBoundingClientRect()
+  const win = doc.defaultView
+  if (!win) throw new Error('Editor window is unavailable')
+  expect(caretRect.height, 'caret has a visible position').to.be.greaterThan(0)
+  expect(caretRect.left, 'caret is within the viewport').to.be.within(0, win.innerWidth)
+  expect(caretRect.top, 'caret top is within the viewport').to.be.at.least(0)
+  expect(caretRect.bottom, 'caret bottom is within the viewport').to.be.at.most(win.innerHeight)
+
+  // Canvas resolves modern CSS colors (including oklch) to sRGB before
+  // measuring the caret against the composed editor background.
+  const canvas = doc.createElement('canvas')
+  canvas.width = canvas.height = 1
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Canvas color conversion is unavailable')
+  const rgba = (color: string) => {
+    context.clearRect(0, 0, 1, 1)
+    context.fillStyle = color
+    context.fillRect(0, 0, 1, 1)
+    return Array.from(context.getImageData(0, 0, 1, 1).data)
+  }
+  const composite = (front: number[], back: number[]) => {
+    const alpha = front[3] / 255
+    return back.map((value, index) => alpha * front[index] + (1 - alpha) * value)
+  }
+  const backgrounds: number[][] = []
+  for (let node: HTMLElement | null = editor; node; node = node.parentElement) {
+    backgrounds.push(rgba(getComputedStyle(node).backgroundColor))
+  }
+  const background = backgrounds.reverse().reduce((back, front) => composite(front, back), [255, 255, 255])
+  const caret = composite(rgba(getComputedStyle(editor).caretColor), background)
+  const luminance = (color: number[]) => color.reduce((sum, channel, index) => {
+    const value = channel / 255
+    const linear = value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+    return sum + linear * [0.2126, 0.7152, 0.0722][index]
+  }, 0)
+  const values = [luminance(caret), luminance(background)].sort((a, b) => a - b)
+  expect((values[1] + 0.05) / (values[0] + 0.05), 'caret contrast against the editor').to.be.at.least(3)
+}
+
+function assertVisibleControlFocus($button: JQuery<HTMLElement>) {
+  const button = $button[0]
+  const style = getComputedStyle(button)
+  const hasOutline = style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0
+  const shadowSizes = style.boxShadow.match(/-?\d+(?:\.\d+)?px/g) ?? []
+  const hasShadow = shadowSizes.some(size => Number.parseFloat(size) > 0)
+  expect(button.tagName, 'next control is a button').to.equal('BUTTON')
+  expect(button.matches(':focus-visible'), 'button has keyboard focus').to.equal(true)
+  expect(hasOutline || hasShadow, 'button focus has a visible indicator').to.equal(true)
+}
+
 describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockUser = { id: 'test-user', email: 'test@example.com' } as any
@@ -498,10 +557,13 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     })
     cy.screenshot('editor-canvas-desktop-light')
     cy.get('html').invoke('addClass', 'dark')
-    cy.get('.tiptap').focus().should(($editor) => {
-      expect(getComputedStyle($editor[0]).boxShadow, 'desktop keyboard focus is visible').not.to.equal('none')
-    })
-    cy.screenshot('editor-canvas-desktop-dark')
+    cy.get('[data-cy="toggle-spellcheck-button"]').focus()
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('have.attr', 'aria-label', 'Note content')
+    cy.focused().should(assertVisibleCaret)
+    cy.screenshot('editor-canvas-desktop-dark', { capture: 'viewport' })
+    cy.focused().type(' edited')
+    cy.get('.tiptap').should('contain.text', 'edited')
     cy.get('html').invoke('removeClass', 'dark')
   })
 
@@ -548,19 +610,28 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap').should('contain.text', 'changed')
   })
 
-  it('keeps a visible keyboard focus indicator on the canvas in light and dark themes', () => {
+  it('shows a usable keyboard caret in the canvas in light and dark themes', () => {
     cy.viewport(390, 844)
     mountShortEditor()
-    cy.get('.tiptap').focus().should(($editor) => {
-      const style = getComputedStyle($editor[0])
-      expect(style.outlineStyle, 'focus does not frame the canvas').to.equal('none')
-      expect(style.boxShadow, 'focus stays visible').not.to.equal('none')
-    })
+    cy.get('input[aria-label="Add tags"]').focus()
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('have.attr', 'aria-label', 'Note content')
+    cy.focused().should(assertVisibleCaret)
+    cy.screenshot('editor-canvas-mobile-light-focus')
+    cy.focused().type(' light')
+    cy.get('.tiptap').should('contain.text', 'light')
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should(assertVisibleControlFocus)
     cy.get('html').invoke('addClass', 'dark')
-    cy.get('.tiptap').should(($editor) => {
-      expect(getComputedStyle($editor[0]).boxShadow, 'focus stays visible in dark mode').not.to.equal('none')
-    })
+    cy.get('input[aria-label="Add tags"]').focus()
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('have.attr', 'aria-label', 'Note content')
+    cy.focused().should(assertVisibleCaret)
     cy.screenshot('editor-canvas-mobile-dark-focus')
+    cy.focused().type(' dark')
+    cy.get('.tiptap').should('contain.text', 'dark')
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should(assertVisibleControlFocus)
     cy.get('html').invoke('removeClass', 'dark')
   })
 
