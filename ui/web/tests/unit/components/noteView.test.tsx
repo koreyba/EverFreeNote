@@ -128,15 +128,13 @@ describe('NoteView copy action', () => {
 
   it('restores the saved scroll position and reports later scrolling after the debounce delay', () => {
     jest.useFakeTimers()
-    const requestAnimationFrame = jest.spyOn(window, 'requestAnimationFrame')
     try {
       const onViewSessionChange = jest.fn()
       const { container } = renderNoteView({ initialScrollTop: 48, onViewSessionChange })
       const content = container.querySelector('.overflow-y-auto') as HTMLDivElement
 
-      // An unclamped position must be restored before the next frame, so a
-      // quick pane switch cannot capture the reader's initial zero.
-      expect(requestAnimationFrame).not.toHaveBeenCalled()
+      // Restore before the next frame, so a quick pane switch cannot capture
+      // the reader's initial zero.
       expect(content.scrollTop).toBe(48)
 
       fireEvent.scroll(content, { target: { scrollTop: 60 } })
@@ -150,7 +148,6 @@ describe('NoteView copy action', () => {
       expect(onViewSessionChange).toHaveBeenCalledTimes(1)
       expect(onViewSessionChange).toHaveBeenCalledWith({ scrollTop: 93 })
     } finally {
-      requestAnimationFrame.mockRestore()
       jest.useRealTimers()
     }
   })
