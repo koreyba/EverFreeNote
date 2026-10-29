@@ -1176,6 +1176,7 @@ export function useNoteAppController() {
     setTagCoverageMessage(null)
     try {
       await notesQuery.fetchNextPage({ throwOnError: true })
+      if (!isCurrentSession(started)) return
     } catch {
       if (!isCurrentSession(started)) return
       setTagCoverageMessage('Could not load more notes. Check your connection and try again.')
@@ -1228,8 +1229,9 @@ export function useNoteAppController() {
     const cachedIds = candidates.map((note) => note.id)
     const remoteCached = []
     for (let offset = 0; offset < cachedIds.length; offset += 100) {
-      remoteCached.push(...await noteService.getNotesByIds(cachedIds.slice(offset, offset + 100), user.id))
+      const batch = await noteService.getNotesByIds(cachedIds.slice(offset, offset + 100), user.id)
       assertTagSession(started)
+      remoteCached.push(...batch)
     }
     const remoteTags = new Map(remoteCached.map((note) => [note.id, note.tags ?? []]))
     const missing = candidates.filter((note) => !remoteTags.has(note.id))
@@ -1292,8 +1294,10 @@ export function useNoteAppController() {
         throw new Error('A previous tag change is still finishing. Wait, then check the loaded notes.')
       }
       await verifyTagSnapshot(started)
+      assertTagSession(started)
       if (recovery) {
         await refreshTagMutationState(recovery.change, started)
+        assertTagSession(started)
         await verifyTagSnapshot(started)
         assertTagSession(started)
         if (getTagMutationRecovery(user.id) === recovery) setTagMutationRecovery(user.id)
@@ -1324,9 +1328,11 @@ export function useNoteAppController() {
           throw new Error('A previous tag change is still finishing. Wait, then check the loaded notes.')
         }
         let snapshot = await verifyTagSnapshot(started)
+        assertTagSession(started)
         let recoveredPending = false
         if (pending) {
           await refreshTagMutationState(pending.change, started)
+          assertTagSession(started)
           snapshot = await verifyTagSnapshot(started)
           assertTagSession(started)
           if (getTagMutationRecovery(ownerId) === pending) setTagMutationRecovery(ownerId)
@@ -1346,6 +1352,7 @@ export function useNoteAppController() {
         marker = { change, phase: 'pending' }
         setTagMutationRecovery(ownerId, marker)
         await persistTagChanges(updated, current, started)
+        assertTagSession(started)
         await refreshTagMutationState(change, started)
         assertTagSession(started)
         if (getTagMutationRecovery(ownerId) === marker) setTagMutationRecovery(ownerId)
