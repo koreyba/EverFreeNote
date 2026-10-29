@@ -314,7 +314,6 @@ mark {
 
 .note-content strong,
 .note-content b {
-  color: var(--color-foreground);
   font-weight: 700;
 }
 

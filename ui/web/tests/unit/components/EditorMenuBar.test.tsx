@@ -40,6 +40,7 @@ function createMockEditor(options: MockEditorOptions = {}) {
   const chainObj: Record<string, jest.Mock> = {}
   const chainMethods = [
     "focus",
+    "command",
     "toggleBold",
     "toggleItalic",
     "toggleUnderline",
@@ -101,6 +102,7 @@ function createMockEditor(options: MockEditorOptions = {}) {
   const editor = {
     on: jest.fn(),
     off: jest.fn(),
+    view: { dom: document.createElement("div") },
     chain: jest.fn().mockReturnValue(chainObj),
     isActive: isActiveMock,
     getAttributes: getAttributesMock,
@@ -220,7 +222,7 @@ describe("EditorMenuBar", () => {
       const btn = container.querySelector('[data-cy="bold-button"]') as HTMLButtonElement
       fireEvent.click(btn)
       expect(editor.chain).toHaveBeenCalled()
-      expect(chainObj.focus).toHaveBeenCalled()
+      expect(chainObj.command).toHaveBeenCalledWith(expect.any(Function))
       expect(chainObj.toggleBold).toHaveBeenCalled()
       expect(runMock).toHaveBeenCalled()
     })

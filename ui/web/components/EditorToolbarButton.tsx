@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@ui/web/components/ui/t
 export type EditorToolbarButtonProps = {
   dataCy: string
   label: string
-  onClick: () => void
+  onClick: React.MouseEventHandler<HTMLButtonElement>
   active?: boolean
   disabled?: boolean
   ariaLabel?: string

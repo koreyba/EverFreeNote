@@ -9,6 +9,7 @@ import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvi
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 import { ThemeProvider } from '../../../../ui/web/components/theme-provider'
+import RichTextEditor from '@ui/web/components/RichTextEditor'
 
 
 function requireElement(root: ParentNode, selector: string) {
@@ -111,10 +112,13 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   let createMockController: (overrides?: Partial<NoteAppController>) => NoteAppController
   let mockSupabase: SupabaseClient
   let restoreViewport: (() => void) | undefined
+  let restoreNavigator: (() => void) | undefined
 
   afterEach(() => {
     restoreViewport?.()
     restoreViewport = undefined
+    restoreNavigator?.()
+    restoreNavigator = undefined
   })
 
   beforeEach(() => {
@@ -1201,4 +1205,550 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('[data-cy="discard-failed-save-confirm"]').click()
     cy.get('@confirmCloseTab').should('have.been.calledOnce')
   })
+  function selectFirstParagraph() {
+    cy.get('.tiptap p').first().click().then(($paragraph) => {
+      const doc = $paragraph[0].ownerDocument
+      const range = doc.createRange()
+      range.selectNodeContents($paragraph[0])
+      selectionFrom(doc).removeAllRanges()
+      selectionFrom(doc).addRange(range)
+      doc.dispatchEvent(new Event('selectionchange'))
+    })
+  }
+
+  function selectFormatWhileHoldingFrames(frames: FrameRequestCallback[], keyboard: boolean, label = 'Bold') {
+    cy.contains('[role="menuitemcheckbox"]', label).should('be.visible').then(($item) => {
+      const item = $item[0] as HTMLElement
+      const win = item.ownerDocument.defaultView!
+      const original = win.requestAnimationFrame
+      win.requestAnimationFrame = (callback) => {
+        frames.push(callback)
+        // Return a real, harmless handle; flushing is controlled below.
+        return original.call(win, () => {})
+      }
+      try {
+        if (keyboard) {
+          item.focus()
+          item.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+        } else item.click()
+      } finally {
+        win.requestAnimationFrame = original
+      }
+      expect(frames.length, 'the command queued at least one frame').to.be.greaterThan(0)
+    })
+    cy.get('[role="menu"]').should('not.exist')
+  }
+
+  function releaseFrames(frames: FrameRequestCallback[]) {
+    cy.window().then((win) => frames.forEach(callback => callback(win.performance.now())))
+  }
+
+  function chooseToolbarOptionWhileHoldingFrames(selector: string, text: string | null, frames: FrameRequestCallback[]) {
+    const target = text ? cy.contains(selector, text) : cy.get(selector).first()
+    target.scrollIntoView().should('be.visible').then(($item) => {
+      const item = $item[0] as HTMLElement
+      const win = item.ownerDocument.defaultView!
+      const original = win.requestAnimationFrame
+      win.requestAnimationFrame = callback => {
+        frames.push(callback)
+        return original.call(win, () => {})
+      }
+      try { item.click() } finally { win.requestAnimationFrame = original }
+      expect(frames.length, 'the command queued a focus frame').to.be.greaterThan(0)
+    })
+  }
+
+  function tap(selector: string) {
+    cy.get(selector).then(($button) => {
+      const button = $button[0] as HTMLElement
+      const win = button.ownerDocument.defaultView!
+      const rect = button.getBoundingClientRect()
+      const init = { bubbles: true, cancelable: true, pointerId: 42, pointerType: 'touch', isPrimary: true, button: 0, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 }
+      button.dispatchEvent(new win.PointerEvent('pointerdown', init))
+      button.dispatchEvent(new win.PointerEvent('pointerup', init))
+      button.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }))
+    })
+  }
+
+  it('keeps a different menu open when a previous command focus frame is late after touch', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    tap('[aria-label="Lists"]')
+    cy.get('[role="menu"]').should('be.visible')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+    releaseFrames(frames)
+    cy.get('[role="menu"]').should('be.visible')
+    cy.get('[aria-label="Lists"]').should('have.attr', 'aria-expanded', 'true')
+    cy.contains('[role="menuitemradio"]', 'Bullet list').should('be.visible')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+  })
+
+  it('keeps a different menu open when a previous keyboard command focus frame is late', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').focus()
+    cy.press(Cypress.Keyboard.Keys.ENTER)
+    cy.get('[role="menu"]').should('be.visible')
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, true)
+    cy.get('[aria-label="Lists"]').focus()
+    cy.press(Cypress.Keyboard.Keys.ENTER)
+    cy.get('[role="menu"]').should('be.visible')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+    releaseFrames(frames)
+    cy.get('[role="menu"]').should('be.visible')
+    cy.get('[aria-label="Lists"]').should('have.attr', 'aria-expanded', 'true')
+    cy.contains('[role="menuitemradio"]', 'Bullet list').should('be.visible')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+  })
+
+  it('restores the editor selection and allows typing after a single format command', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    cy.contains('[role="menuitemcheckbox"]', 'Bold').click()
+    cy.get('.tiptap').should('be.focused')
+    cy.window().should((win) => expect(win.getSelection()?.toString()).to.equal('Paragraph 0'))
+    cy.press('x')
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'x')
+  })
+
+  it('does not move focus after the editor has unmounted', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    cy.mount(<button type="button" data-cy="after-editor">Next control</button>)
+    cy.get('[data-cy="after-editor"]').focus().should('be.focused')
+    releaseFrames(frames)
+    cy.get('[data-cy="after-editor"]').should('be.focused')
+    cy.get('.tiptap').should('not.exist')
+  })
+
+  it('ignores the pending focus when only the toolbar unmounts', () => {
+    function ToolbarLifetimeEditor() {
+      const [visible, setVisible] = React.useState(true)
+      const [container, setContainer] = React.useState<HTMLDivElement | null>(null)
+      return <>
+        <button data-cy="hide-toolbar" onClick={() => setVisible(false)}>Hide toolbar</button>
+        <div ref={setContainer} />
+        <RichTextEditor initialContent="<p>Pane A text</p>" hideToolbar={!visible} mobileToolbarContainer={container} />
+      </>
+    }
+    cy.viewport(320, 740)
+    cy.mount(<ToolbarLifetimeEditor />)
+    cy.get('.tiptap').should('contain.text', 'Pane A text')
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    // Programmatic click omits pointerdown so cleanup, rather than another
+    // pointer interaction, must invalidate the editor's queued callback.
+    cy.get('[data-cy="hide-toolbar"]').then(($button) => $button[0].click())
+    cy.get('[aria-label="Text formatting"]').should('not.exist')
+    cy.get('.tiptap').then(($editor) => cy.spy($editor[0], 'focus').as('unmountedToolbarFocus'))
+    releaseFrames(frames)
+    cy.get('@unmountedToolbarFocus').should('not.have.been.called')
+    cy.get('.tiptap').focus().type('x').should('contain.text', 'x')
+  })
+
+  it('does not move focus back from a second mounted editor', () => {
+    function EditorPair() {
+      const [firstToolbar, setFirstToolbar] = React.useState<HTMLDivElement | null>(null)
+      const [secondToolbar, setSecondToolbar] = React.useState<HTMLDivElement | null>(null)
+      return <>
+        <section data-cy="first-pane"><div ref={setFirstToolbar} /><RichTextEditor initialContent="<p>Pane A text</p>" mobileToolbarContainer={firstToolbar} /></section>
+        <section data-cy="second-pane"><div ref={setSecondToolbar} /><RichTextEditor initialContent="<p>Pane B text</p>" mobileToolbarContainer={secondToolbar} /></section>
+      </>
+    }
+    cy.viewport(320, 740)
+    cy.mount(<EditorPair />)
+    cy.get('[data-cy="first-pane"] .tiptap').should('contain.text', 'Pane A text')
+    cy.get('[data-cy="second-pane"] .tiptap').should('contain.text', 'Pane B text')
+    selectFirstParagraph()
+    cy.get('[data-cy="first-pane"] [aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    cy.get('[data-cy="second-pane"] .tiptap').focus().should('be.focused')
+    releaseFrames(frames)
+    cy.get('[data-cy="second-pane"] .tiptap').should('be.focused').type('!').should('contain.text', '!')
+    cy.get('[data-cy="first-pane"] .tiptap').should('not.contain.text', '!')
+    cy.get('[data-cy="second-pane"] .tiptap p').first().click().then(($paragraph) => {
+      const doc = $paragraph[0].ownerDocument
+      const range = doc.createRange()
+      range.selectNodeContents($paragraph[0])
+      selectionFrom(doc).removeAllRanges()
+      selectionFrom(doc).addRange(range)
+      doc.dispatchEvent(new Event('selectionchange'))
+    })
+    cy.get('[data-cy="second-pane"] [data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.contains('[role="option"]', '14 pt').click()
+    cy.get('[data-cy="second-pane"] .tiptap').should('be.focused')
+    cy.press('?')
+    cy.get('[data-cy="second-pane"] .tiptap p').first().find('span[style*="font-size: 14pt"]').should('have.text', '?')
+    cy.get('[data-cy="first-pane"] .tiptap strong').should('have.text', 'Pane A text')
+  })
+
+  it('ignores an older command frame when a later command finishes first', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const firstFrames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(firstFrames, false)
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const secondFrames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(secondFrames, false, 'Italic')
+    cy.get('.tiptap').then(($editor) => cy.spy($editor[0], 'focus').as('reverseDeliveryFocus'))
+    releaseFrames(secondFrames)
+    cy.get('.tiptap').should('be.focused')
+    cy.get('@reverseDeliveryFocus').should('have.been.calledOnce')
+    releaseFrames(firstFrames)
+    cy.get('@reverseDeliveryFocus').should('have.been.calledOnce')
+    cy.press('z')
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'z')
+    cy.get('.tiptap p').first().find('em').should('have.text', 'z')
+  })
+
+  it('keeps the same menu open when an earlier focus frame is late', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    cy.get('[role="menu"]').should('be.visible')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+    releaseFrames(frames)
+    cy.get('[aria-label="Text formatting"]').should('have.attr', 'aria-expanded', 'true')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+  })
+
+  it('does not steal focus from another field after a formatting command', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    cy.get('[aria-label="Note title"]').focus().should('be.focused')
+    releaseFrames(frames)
+    cy.get('[aria-label="Note title"]').should('be.focused')
+  })
+
+  it('restores the editor when focus returns to the original menu trigger', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    cy.get('[aria-label="Text formatting"]').focus().should('be.focused')
+    releaseFrames(frames)
+    cy.get('.tiptap').should('be.focused')
+  })
+
+  it('still restores the editor after a printable key arrives before its focus frame', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    // A key on the closing menu's fallback focus must not cancel the pending
+    // return to the editor. This does not claim that the first key was typed.
+    cy.press('x')
+    releaseFrames(frames)
+    cy.get('.tiptap').should('be.focused')
+    cy.press('y')
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'y')
+  })
+
+  it('still restores the editor after a dead key arrives before its focus frame', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    cy.window().then((win) => {
+      win.document.activeElement?.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Dead', bubbles: true }))
+    })
+    releaseFrames(frames)
+    cy.get('.tiptap').should('be.focused')
+    cy.press('y')
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'y')
+  })
+
+  it('cancels a pending focus before an assistive click opens font size', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    cy.get('.tiptap').then(($editor) => cy.spy($editor[0], 'focus').as('editorRefocus'))
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().then(($button) => {
+      const win = $button[0].ownerDocument.defaultView!
+      $button[0].click()
+      frames.forEach(callback => callback(win.performance.now()))
+    })
+    cy.get('@editorRefocus').should('not.have.been.called')
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'true')
+    cy.get('[role="listbox"]').should('be.visible')
+  })
+
+  it('cancels a pending focus before an assistive click opens text color', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    cy.get('.tiptap').then(($editor) => cy.spy($editor[0], 'focus').as('editorRefocus'))
+    cy.get('[data-cy="color-button"]').scrollIntoView().then(($button) => {
+      const win = $button[0].ownerDocument.defaultView!
+      $button[0].click()
+      frames.forEach(callback => callback(win.performance.now()))
+    })
+    cy.get('@editorRefocus').should('not.have.been.called')
+    cy.get('[data-cy="color-button"]').should('have.attr', 'aria-expanded', 'true')
+    cy.get('[role="dialog"]').should('be.visible')
+  })
+
+  it('keeps focus in the new menu after a delayed font size selection', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    chooseToolbarOptionWhileHoldingFrames('[role="option"]', '14 pt', frames)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[aria-label="Lists"]').scrollIntoView()
+    tap('[aria-label="Lists"]')
+    cy.get('[role="menu"]').should('be.visible')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+    releaseFrames(frames)
+    cy.get('[aria-label="Lists"]').should('have.attr', 'aria-expanded', 'true')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+  })
+
+  it('keeps focus in the new menu after a delayed font family selection', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[data-cy="font-family-button"]').scrollIntoView().click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    chooseToolbarOptionWhileHoldingFrames('[role="option"]', 'Monospace', frames)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[aria-label="Lists"]').scrollIntoView()
+    tap('[aria-label="Lists"]')
+    cy.get('[role="menu"]').should('be.visible')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+    releaseFrames(frames)
+    cy.get('[aria-label="Lists"]').should('have.attr', 'aria-expanded', 'true')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+  })
+
+  it('keeps focus in the new menu after a delayed text color selection', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[data-cy="color-button"]').scrollIntoView().click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    chooseToolbarOptionWhileHoldingFrames('.twitter-picker [title]', null, frames)
+    cy.get('[aria-label="Lists"]').scrollIntoView()
+    tap('[aria-label="Lists"]')
+    cy.get('[role="menu"]').should('be.visible')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+    releaseFrames(frames)
+    cy.get('[aria-label="Lists"]').should('have.attr', 'aria-expanded', 'true')
+    cy.focused().should(($focused) => expect($focused.closest('[role="menu"]').length).to.equal(1))
+  })
+
+  it('restores the selection and allows typing after choosing a font size', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.contains('[role="option"]', '14 pt').click()
+    cy.get('.tiptap').should('be.focused')
+    cy.window().should((win) => expect(win.getSelection()?.toString()).to.equal('Paragraph 0'))
+    cy.press('x')
+    cy.get('.tiptap p').first().find('span[style*="font-size: 14pt"]').should('have.text', 'x')
+  })
+
+  it('keeps the editor focused when font size close autofocus arrives after the focus frame', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    const focusedBeforeClose: boolean[] = []
+    cy.get('[role="listbox"][data-state="open"]').should('be.visible').then(($listbox) => {
+      const listbox = $listbox[0]
+      const doc = listbox.ownerDocument
+      const win = doc.defaultView!
+      // Radix emits this event immediately before its close autofocus handler.
+      listbox.addEventListener('focusScope.autoFocusOnUnmount', () => {
+        frames.forEach(callback => callback(win.performance.now()))
+        focusedBeforeClose.push(doc.activeElement === doc.querySelector('.tiptap'))
+      }, { once: true })
+    })
+    chooseToolbarOptionWhileHoldingFrames('[role="option"]', '14 pt', frames)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.wrap(focusedBeforeClose).should('deep.equal', [true])
+    cy.get('.tiptap').should('be.focused')
+    cy.press('x')
+    cy.get('.tiptap p').first().find('span[style*="font-size: 14pt"]').should('have.text', 'x')
+  })
+
+  it('restores the editor when font size close autofocus arrives before the focus frame', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    const frames: FrameRequestCallback[] = []
+    const closeEvents: string[] = []
+    cy.get('[role="listbox"][data-state="open"]').should('be.visible').then(($listbox) => {
+      $listbox[0].addEventListener('focusScope.autoFocusOnUnmount', () => closeEvents.push('closed'), { once: true })
+    })
+    chooseToolbarOptionWhileHoldingFrames('[role="option"]', '14 pt', frames)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.wrap(closeEvents).should('deep.equal', ['closed'])
+    releaseFrames(frames)
+    cy.get('.tiptap').should('be.focused')
+    cy.press('x')
+    cy.get('.tiptap p').first().find('span[style*="font-size: 14pt"]').should('have.text', 'x')
+  })
+
+  it('returns focus to the font size trigger when dismissed without a choice', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.press(Cypress.Keyboard.Keys.ESC)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[data-cy="font-size-button"]').should('be.focused')
+  })
+
+  it('restores the selection and allows typing after choosing a text color', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[data-cy="color-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.get('.twitter-picker [title="#FF6900"]').click()
+    cy.get('.tiptap').should('be.focused')
+    cy.window().should((win) => expect(win.getSelection()?.toString()).to.equal('Paragraph 0'))
+    cy.press('x')
+    cy.get('.tiptap p').first().find('span[style*="color"]').should('have.text', 'x')
+  })
+
+  it('saves the chosen text color together with the font size', () => {
+    cy.viewport(320, 740)
+    mountShortEditor()
+    selectFirstParagraph()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.contains('[role="option"]', '14 pt').scrollIntoView().click()
+    cy.get('[data-cy="color-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.get('.twitter-picker [title="#FF6900"]').click()
+    cy.get('.tiptap').should(($editor) => {
+      const editor = $editor[0]
+      const doc = editor.ownerDocument
+      const active = doc.activeElement as HTMLElement | null
+      expect(active, `active=${active?.tagName}:${active?.getAttribute('aria-label')}, documentHasFocus=${doc.hasFocus()}, visibility=${doc.visibilityState}`).to.equal(editor)
+    })
+    cy.get('[data-cy="note-save-button"]').click()
+    cy.get('@saveNote').should('have.been.calledOnce')
+    cy.get('@saveNote').its('firstCall.args.0.description')
+      .should('contain', 'font-size: 14pt')
+      .and('match', /color:\s*(?:rgb\(255, 105, 0\)|#ff6900)/i)
+      .and('contain', 'Short text')
+  })
+
+  it('keeps a collapsed formatting mark when typing after the menu closes', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    cy.get('.tiptap p').first().click().then(($paragraph) => {
+      const doc = $paragraph[0].ownerDocument
+      const range = doc.createRange()
+      range.selectNodeContents($paragraph[0])
+      range.collapse(false)
+      selectionFrom(doc).removeAllRanges()
+      selectionFrom(doc).addRange(range)
+      doc.dispatchEvent(new Event('selectionchange'))
+    })
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    cy.contains('[role="menuitemcheckbox"]', 'Bold').click()
+    cy.get('.tiptap').should('be.focused')
+    cy.press('x')
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'x')
+  })
+
+  it('preserves an existing stored mark when adding another at a collapsed caret', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    cy.get('.tiptap p').first().click().then(($paragraph) => {
+      const doc = $paragraph[0].ownerDocument
+      const range = doc.createRange()
+      range.selectNodeContents($paragraph[0])
+      range.collapse(false)
+      selectionFrom(doc).removeAllRanges()
+      selectionFrom(doc).addRange(range)
+      doc.dispatchEvent(new Event('selectionchange'))
+    })
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    cy.contains('[role="menuitemcheckbox"]', 'Bold').click()
+    cy.get('.tiptap').should('be.focused')
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    cy.contains('[role="menuitemcheckbox"]', 'Italic').click()
+    cy.get('.tiptap').should('be.focused')
+    cy.press('x')
+    cy.get('.tiptap p').first().find('strong').should('have.text', 'x')
+    cy.get('.tiptap p').first().find('em').should('have.text', 'x')
+  })
+
+  it('returns focus to the trigger when a menu is dismissed with Escape', () => {
+    cy.viewport(320, 740)
+    mountLongEditor()
+    cy.get('[aria-label="Text formatting"]').focus()
+    cy.press(Cypress.Keyboard.Keys.ENTER)
+    cy.get('[role="menu"]').should('be.visible')
+    cy.press(Cypress.Keyboard.Keys.ESC)
+    cy.get('[role="menu"]').should('not.exist')
+    cy.get('[aria-label="Text formatting"]').should('be.focused')
+  })
+
+  it('focuses the editor synchronously for an emulated Android selection', () => {
+    cy.viewport(320, 740)
+    cy.window().then((win) => {
+      const original = Object.getOwnPropertyDescriptor(win.navigator, 'userAgent')
+      Object.defineProperty(win.navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36' })
+      restoreNavigator = () => {
+        if (original) Object.defineProperty(win.navigator, 'userAgent', original)
+        else Reflect.deleteProperty(win.navigator, 'userAgent')
+      }
+    })
+    mountLongEditor()
+    selectFirstParagraph()
+    cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
+    cy.get('.tiptap').then(($editor) => cy.spy($editor[0], 'focus').as('androidEditorFocus'))
+    const frames: FrameRequestCallback[] = []
+    selectFormatWhileHoldingFrames(frames, false)
+    // Native mobile keyboards require focus within the selection event, before
+    // the deferred animation frame has run.
+    cy.get('@androidEditorFocus').should('have.been.called')
+    releaseFrames(frames)
+    cy.get('.tiptap').should('be.focused')
+  })
+
 })
