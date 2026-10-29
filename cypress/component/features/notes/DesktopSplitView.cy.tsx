@@ -470,7 +470,9 @@ describe('Desktop split view', { retries: 0 }, () => {
 
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
     const releases: Array<() => Promise<unknown>> = []
+    const observedQueueWrites: Array<{ noteId: string; operation: string; title: string | undefined }> = []
     cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      observedQueueWrites.push({ noteId: item.noteId, operation: item.operation, title: item.payload?.title })
       if (item.payload?.title !== 'First version' && item.payload?.title !== 'Latest version') return original(item)
       return holdQueueWrite(item.noteId, () => original(item), release => releases.push(release))
     })
@@ -478,7 +480,7 @@ describe('Desktop split view', { retries: 0 }, () => {
 
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
     cy.tick(4000)
-    cy.wrap(null).should(() => expect(releases).to.have.length(1))
+    cy.wrap(null).should(() => expect(releases, `Observed synthetic queue writes: ${JSON.stringify(observedQueueWrites)}`).to.have.length(1))
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second version')
     cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
     cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
