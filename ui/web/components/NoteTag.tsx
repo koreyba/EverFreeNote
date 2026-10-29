@@ -29,7 +29,7 @@ export function NoteTag({ tag, onClick, onRemove, armed, variant = "reader" }: N
         </button>
       ) : <span className="relative flex min-w-0 items-center px-2.5" title={tag}><Tag className="mr-1 h-3 w-3 shrink-0 opacity-70" /><span className="truncate">{tag}</span></span>}
       {onRemove && (
-        <button type="button" className="relative flex h-11 w-7 shrink-0 items-center justify-center rounded-md hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        <button type="button" className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-md hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           title={`Remove tag "${tag}"`} aria-label={`Remove tag "${tag}"`}
           onMouseDown={(event) => event.preventDefault()}
           onClick={(event) => { event.stopPropagation(); onRemove(tag) }}>

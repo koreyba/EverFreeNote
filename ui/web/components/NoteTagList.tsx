@@ -49,11 +49,12 @@ export function NoteTagList({ tags, expanded, onExpandedChange, onTagClick, onRe
     }
     update()
     const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(update)
+    if (!observer) window.addEventListener("resize", update)
     observer?.observe(row)
     row.querySelectorAll<HTMLElement>(":scope > [data-note-tag-item]").forEach(item => observer?.observe(item))
     document.fonts?.addEventListener("loadingdone", update)
     void document.fonts?.ready.then(update)
-    return () => { active = false; observer?.disconnect(); document.fonts?.removeEventListener("loadingdone", update) }
+    return () => { active = false; observer?.disconnect(); window.removeEventListener("resize", update); document.fonts?.removeEventListener("loadingdone", update) }
   }, [tags, onRemoveTag, variant])
 
   const overflow = visibleCount < tags.length
