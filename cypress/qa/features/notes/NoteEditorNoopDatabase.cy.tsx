@@ -201,4 +201,31 @@ describe('unchanged note transitions against local Supabase', { retries: 0 }, ()
     cy.get('[data-cy="note-edit-button"]').click()
     cy.get('.ProseMirror').should(($editor) => expect($editor[0].innerText).to.equal(`${displayed}!`))
   })
+
+  it('shows a readable card preview after saving and reading a multiline note', () => {
+    const id = crypto.randomUUID()
+    const original = 'First 😀\r\n\r\nTail'
+    cy.then(async () => {
+      const result = await owner.from('notes').insert({ id, user_id: user.id, title: 'Preview database note', description: original, tags: [] })
+      if (result.error) throw result.error
+    })
+    cy.intercept({ method: 'PATCH', pathname: '/rest/v1/notes' }).as('patchNote')
+    cy.mount(<AuthHarness />)
+    login()
+    cy.contains('[data-testid="note-card"]', 'Preview database note').find('p').first().should('have.text', 'First 😀 Tail')
+    cy.contains('[data-testid="note-card"]', 'Preview database note').click()
+    cy.get('[data-cy="note-edit-button"]').click()
+    cy.get('.ProseMirror').click().type('{selectall}{rightarrow}!')
+    cy.get('[data-cy="note-read-button"]').click()
+    cy.get('[data-cy="note-edit-button"]').should('be.visible')
+    cy.get('.note-content:visible').should(($body) => expect($body[0].innerText).to.equal('First 😀\n\nTail!'))
+    cy.wait('@patchNote').its('response.statusCode').should('be.oneOf', [200, 204])
+    cy.then(async () => {
+      const result = await owner.from('notes').select('description').eq('id', id).single()
+      if (result.error) throw result.error
+      expect(result.data.description).to.equal('<p>First 😀<br><br>Tail!</p>')
+    })
+    cy.get('[data-cy="note-back-button"]').click()
+    cy.contains('[data-testid="note-card"]', 'Preview database note').find('p').first().should('have.text', 'First 😀 Tail!')
+  })
 })

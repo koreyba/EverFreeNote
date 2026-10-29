@@ -62,6 +62,58 @@ describe('NoteCard', () => {
     expect(onTagClick).toHaveBeenCalledWith('two')
   })
 
+  it('separates lines in a saved multiline note preview without changing its text', () => {
+    renderCard({ note: makeNote({ description: '<p>Привет 😀 &lt; 2 &amp; 7 &gt; 3<br><br><br>尾 строка!</p>' }) })
+
+    const preview = screen.getByTestId('note-card').querySelector('p')
+    expect(preview?.textContent).toBe('Привет 😀 &lt; 2 &amp; 7 &gt; 3 尾 строка!')
+    expect(preview?.querySelector('br')).toBeNull()
+  })
+
+  it('separates block elements while keeping inline formatting contiguous', () => {
+    renderCard({ note: makeNote({ description: '<p>First<strong>bold</strong>word</p><ul><li>Second</li><li><em>Third</em></li></ul><div>Fourth</div>' }) })
+
+    const preview = screen.getByTestId('note-card').querySelector('p')
+    expect(preview?.textContent).toBe('Firstboldword Second Third Fourth')
+    expect(preview?.querySelector('strong, em, ul')).toBeNull()
+  })
+
+  it('keeps legacy plain entity sequences literal', () => {
+    renderCard({ note: makeNote({ description: 'Literal &amp; &copy=2 and &#39;' }) })
+
+    const preview = screen.getByTestId('note-card').querySelector('p')
+    expect(preview?.textContent).toBe('Literal &amp; &copy=2 and &#39;')
+  })
+
+  it('keeps the existing interpretation of entities inside HTML', () => {
+    renderCard({ note: makeNote({ description: '<p>Original &amp;amp; &#39; &copy=2 &lt;X&gt;</p>' }) })
+
+    expect(screen.getByTestId('note-card').querySelector('p')?.textContent)
+      .toBe("Original &amp;amp; ' ©=2 &lt;X&gt;")
+  })
+
+  it('shows CRLF and empty lines as a readable separation in plain text', () => {
+    renderCard({ note: makeNote({ description: 'Начало 😀\r\n\r\n\r\n尾 строка' }) })
+
+    expect(screen.getByTestId('note-card').querySelector('p')?.textContent).toBe('Начало 😀 尾 строка')
+  })
+
+  it('ignores markup-looking text inside attributes and preserves inline words', () => {
+    renderCard({ note: makeNote({ description: '<p title="before > after &lt;br&gt;">A<strong>B</strong><span>C</span></p><p>D</p>' }) })
+
+    const preview = screen.getByTestId('note-card').querySelector('p')
+    expect(preview?.textContent).toBe('ABC D')
+    expect(preview?.querySelector('strong, span')).toBeNull()
+  })
+
+  it('omits dangerous content without merging adjacent lines', () => {
+    renderCard({ note: makeNote({ description: 'start<br>safe<script>bad()</script><style>bad</style>' }) })
+
+    const preview = screen.getByTestId('note-card').querySelector('p')
+    expect(preview?.textContent).toBe('start safe')
+    expect(preview?.querySelector('script, style')).toBeNull()
+  })
+
   it('uses the untitled and empty-description fallbacks', () => {
     renderCard({ note: makeNote({ title: '', description: '' }), onToggleSelect: undefined })
 

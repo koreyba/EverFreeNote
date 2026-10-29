@@ -5,7 +5,7 @@ import type { MouseEvent } from "react"
 import InteractiveTag from "@ui/web/components/InteractiveTag"
 import { Checkbox } from "@ui/web/components/ui/checkbox"
 import DOMPurify from "isomorphic-dompurify"
-import { SanitizationService } from "@core/services/sanitizer"
+import { notePreview } from "@core/services/notePreview"
 import type { Note, SearchResult } from "@core/types/domain"
 import { cn } from "@ui/web/lib/utils"
 import { useLongPress } from "@ui/web/hooks/useLongPress"
@@ -113,7 +113,7 @@ function CompactNoteCard({
             </button>
           </h2>
           <p className="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">
-            {note.description ? SanitizationService.stripHtml(note.description) : ""}
+            {note.description ? notePreview(note.description) : ""}
           </p>
           {note.tags && note.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2.5">
