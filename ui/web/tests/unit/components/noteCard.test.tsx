@@ -98,6 +98,12 @@ describe('NoteCard', () => {
     expect(screen.getByTestId('note-card').querySelector('p')?.textContent).toBe('Начало 😀 尾 строка')
   })
 
+  it('preserves nonbreaking spaces at the edges of the preview', () => {
+    renderCard({ note: makeNote({ description: ' \r\n\u00a0First\u00a0 \r\n' }) })
+
+    expect(screen.getByTestId('note-card').querySelector('p')?.textContent).toBe('\u00a0First\u00a0')
+  })
+
   it('ignores markup-looking text inside attributes and preserves inline words', () => {
     renderCard({ note: makeNote({ description: '<p title="before > after &lt;br&gt;">A<strong>B</strong><span>C</span></p><p>D</p>' }) })
 

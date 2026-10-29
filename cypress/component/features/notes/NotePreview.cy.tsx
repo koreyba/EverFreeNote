@@ -37,6 +37,11 @@ describe('note preview text in the browser', { retries: 0 }, () => {
     cy.get('[data-testid="note-card"] p').first().should('have.text', 'Literal &amp; &copy=2 and &#39; 尾 😀')
   })
 
+  it('preserves literal nonbreaking spaces at both preview edges', () => {
+    mountCard(' \r\n\u00a0First\u00a0 \r\n')
+    cy.get('[data-testid="note-card"] p').first().should('have.text', '\u00a0First\u00a0')
+  })
+
   it('keeps long inline text intact in the DOM and removes unsafe content', () => {
     const longText = 'long '.repeat(300)
     mountCard(`<p>${longText}<strong>tail</strong></p><p>next<script>unsafe()</script></p>`)

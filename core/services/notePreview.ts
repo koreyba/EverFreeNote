@@ -9,12 +9,13 @@ const BLOCK_ELEMENTS = [
 ]
 const BLOCK_SELECTOR = BLOCK_ELEMENTS.join(',')
 const POSSIBLE_BLOCK = new RegExp(`<\\/?(?:${BLOCK_ELEMENTS.join('|')})(?=[\\s/>])`, 'i')
+const normalizePreviewWhitespace = (text: string) => text.replace(/[ \t\r\n\f]+/g, ' ').replace(/^ +| +$/g, '')
 
 /** A safe, single-line preview without changing the meaning of inline markup. */
 export function notePreview(content: string): string {
   if (!POSSIBLE_BLOCK.test(content)) {
     // Preserve the existing interpretation of ambiguous legacy entity text.
-    return SanitizationService.stripHtml(content).replace(/[ \t\r\n\f]+/g, ' ').trim()
+    return normalizePreviewWhitespace(SanitizationService.stripHtml(content))
   }
 
   // Sanitize before adding separators so markup inside scripts and attributes
@@ -28,5 +29,5 @@ export function notePreview(content: string): string {
     element.before(element.ownerDocument.createTextNode(' '))
     element.after(element.ownerDocument.createTextNode(' '))
   }
-  return DOMPurify.sanitize(fragment, { ALLOWED_TAGS: [] }).replace(/[ \t\r\n\f]+/g, ' ').trim()
+  return normalizePreviewWhitespace(DOMPurify.sanitize(fragment, { ALLOWED_TAGS: [] }))
 }
