@@ -13,6 +13,7 @@ import {
   setWorkspaceSplit,
   updateWorkspaceTab,
   type NoteWorkspaceSplit,
+  type NoteWorkspaceTab,
   type NoteWorkspaceTabPatch,
 } from '@core/services/noteWorkspaceTabs'
 import type { NoteViewModel } from '@core/types/domain'
@@ -27,6 +28,7 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
   // tab ID is loaded from sessionStorage immediately after hydration.
   const [state, setState] = useState(() => createNoteWorkspaceState(() => INITIAL_TAB_ID))
   const [hydratedUserId, setHydratedUserId] = useState<string | null | undefined>(undefined)
+  const [restoredSession, setRestoredSession] = useState<{ userId: string; epoch?: number; tabs: NoteWorkspaceTab[] } | null>(null)
   const [readableUserId, setReadableUserId] = useState<string | null>(null)
   const persistedRef = useRef(false)
   const sessionRef = useRef({ userId, epoch })
@@ -44,20 +46,23 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
       // eslint-disable-next-line react-hooks/set-state-in-effect -- clear the outgoing account's in-memory state
       setState(emptyState)
       setHydratedUserId(undefined)
+      setRestoredSession(null)
       setReadableUserId(null)
       return
     }
     memory.activateOwner(userId, epoch)
     let storageReadable = true
     const restored = readNoteWorkspaceState({ userId, onStorageFailure: () => { storageReadable = false } })
-    setState(memory.read(userId) ?? restored)
+    const initial = memory.read(userId) ?? restored
+    setState(initial)
+    setRestoredSession({ userId, epoch, tabs: initial.tabs })
     setHydratedUserId(userId)
     setReadableUserId(storageReadable ? userId : null)
   }, [emptyState, epoch, memory, userId])
 
   // Only persist once the state belongs to the account currently signed in,
   // otherwise the outgoing account's tabs get rewritten under the new user.
-  const hydrated = userId !== null && hydratedUserId === userId && state.userId === userId
+  const hydrated = userId !== null && hydratedUserId === userId && state.userId === userId && restoredSession?.userId === userId && restoredSession.epoch === epoch
   // Never expose the outgoing account while the next account is hydrating.
   const visibleState = hydrated ? state : emptyState
   const visibleStateRef = useRef(visibleState)
@@ -191,6 +196,7 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
     ...visibleState,
     activeTab,
     hydrated,
+    restoredTabs: hydrated ? restoredSession.tabs : null,
     storageReadable: hydrated && readableUserId === userId,
     addTab,
     setSplit,

@@ -169,6 +169,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       legacyClaimBlocked: false,
       localCleanupCount: 0,
       retryLocalDeletion: cy.stub().resolves(),
+      restoredNoteCheck: 'idle',
+      retryRestoredNoteCheck: cy.stub(),
       retryLocalVerification: cy.stub().resolves(),
       handleAutoSave: cy.stub(),
       lastSavedAt: null,

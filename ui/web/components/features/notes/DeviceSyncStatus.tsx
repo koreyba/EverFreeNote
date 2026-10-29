@@ -15,11 +15,13 @@ type DeviceSyncStatusProps = Readonly<{
   onRetryLocalVerification?: () => void
   localCleanupCount?: number
   onRetryLocalDeletion?: () => void
+  restoredNoteCheck?: 'idle' | 'checking' | 'offline' | 'error'
+  onRetryRestoredNoteCheck?: () => void
 }>
 
 // Counts cover this account's local queue. navigator.onLine does not prove that
 // the server is reachable, so do not infer an individual note's sync state.
-export function describeDeviceSyncStatus({ isOffline, pendingCount, failedCount, syncStateReady = true, storageReadError = false, legacyUnverifiedCount = 0, unqueuedLocalCount = 0, unavailableRemoteEdits = false, legacyClaimBlocked = false, localCleanupCount = 0 }: DeviceSyncStatusProps) {
+export function describeDeviceSyncStatus({ isOffline, pendingCount, failedCount, syncStateReady = true, storageReadError = false, legacyUnverifiedCount = 0, unqueuedLocalCount = 0, unavailableRemoteEdits = false, legacyClaimBlocked = false, localCleanupCount = 0, restoredNoteCheck = 'idle' }: DeviceSyncStatusProps) {
   const parts: string[] = []
   if (!syncStateReady) parts.push("Checking local data")
   if (storageReadError) parts.push("Local data could not be read")
@@ -28,6 +30,9 @@ export function describeDeviceSyncStatus({ isOffline, pendingCount, failedCount,
   if (unavailableRemoteEdits) parts.push("A local note is unavailable on the server")
   if (legacyClaimBlocked) parts.push("Could not safely retain a local note's account")
   if (localCleanupCount > 0) parts.push("Server accepted deletion; check local cleanup")
+  if (restoredNoteCheck === 'checking') parts.push("Checking restored notes")
+  if (restoredNoteCheck === 'offline') parts.push("Restored notes have not been checked")
+  if (restoredNoteCheck === 'error') parts.push("Could not check restored notes")
   if (isOffline) parts.push("Device: Offline")
   const queued: string[] = []
   if (failedCount > 0) queued.push(`${failedCount} failed`)
@@ -37,7 +42,7 @@ export function describeDeviceSyncStatus({ isOffline, pendingCount, failedCount,
   return {
     text: parts.join(" · ") || "Sync status",
     hasIssue: parts.length > 0,
-    tone: failedCount > 0 || storageReadError || unqueuedLocalCount > 0 || legacyClaimBlocked || localCleanupCount > 0 ? "error" : isOffline || legacyUnverifiedCount > 0 || unavailableRemoteEdits ? "offline" : "neutral",
+    tone: failedCount > 0 || storageReadError || unqueuedLocalCount > 0 || legacyClaimBlocked || localCleanupCount > 0 || restoredNoteCheck === 'error' ? "error" : isOffline || legacyUnverifiedCount > 0 || unavailableRemoteEdits || restoredNoteCheck === 'offline' ? "offline" : "neutral",
   } as const
 }
 
@@ -58,7 +63,7 @@ export function DeviceSyncStatus(props: DeviceSyncStatusProps) {
         {status.hasIssue && <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-current" />}
         <span>{status.hasIssue ? status.text : "This account on this device: No waiting or failed changes reported"}</span>
       </div>
-      {(props.legacyUnverifiedCount || props.unqueuedLocalCount || props.unavailableRemoteEdits || props.storageReadError || props.legacyClaimBlocked || props.localCleanupCount) ? (
+      {(props.legacyUnverifiedCount || props.unqueuedLocalCount || props.unavailableRemoteEdits || props.storageReadError || props.legacyClaimBlocked || props.localCleanupCount || props.restoredNoteCheck === 'error' || props.restoredNoteCheck === 'offline') ? (
         <details className="mt-1">
           <summary className="cursor-pointer underline">What can I do?</summary>
           {Boolean(props.legacyUnverifiedCount) && <p className="mt-1">Sign in to the original account while online. Some older drafts cannot be verified automatically, so their contents stay hidden and remain on this device. Keep this site&apos;s data.</p>}
@@ -66,6 +71,9 @@ export function DeviceSyncStatus(props: DeviceSyncStatusProps) {
           {props.unavailableRemoteEdits && <p className="mt-1">Open the note and copy its contents into a new note to restore them.</p>}
           {props.storageReadError && <p className="mt-1">Keep this site&apos;s data and try again. Clearing browser data can remove local changes.</p>}
           {props.legacyClaimBlocked && <p className="mt-1">The local note was not sent. Keep this site&apos;s data, copy the note&apos;s contents and check device storage before trying again.</p>}
+          {props.restoredNoteCheck === 'offline' && <p className="mt-1">Restored notes remain available on this device. Their server status will be checked when you reconnect.</p>}
+          {props.restoredNoteCheck === 'error' && <p className="mt-1">Restored notes remain available on this device. Check your connection and device storage, then try again to verify their server status.</p>}
+          {props.restoredNoteCheck === 'error' && props.onRetryRestoredNoteCheck ? <button type="button" data-testid="retry-restored-note-check" className="mt-2 underline" onClick={props.onRetryRestoredNoteCheck}>Retry note check</button> : null}
           {Boolean(props.localCleanupCount) && <p className="mt-1">The server accepted the deletion, but a local copy may remain on this device. Keep this page open and retry local cleanup after checking device storage. Changed or unsynced copies are kept; copy their contents before continuing.</p>}
           {Boolean(props.localCleanupCount) && props.onRetryLocalDeletion ? (
             <button type="button" data-testid="retry-local-cleanup" className="mt-2 underline" onClick={props.onRetryLocalDeletion}>Retry local cleanup</button>

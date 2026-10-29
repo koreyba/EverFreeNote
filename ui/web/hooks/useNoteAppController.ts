@@ -14,6 +14,7 @@ import { useNoteSync } from './useNoteSync'
 import { getTagMutationRecovery, setTagMutationRecovery, subscribeTagMutationRecovery, type TagChange } from '@ui/web/lib/tagMutationRecovery'
 import { useNoteData } from './useNoteData'
 import { useNoteRefresh } from './useNoteRefresh'
+import { useRestoredNoteValidation } from './useRestoredNoteValidation'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
 import { useLocalDeletionRecovery } from './useLocalDeletionRecovery'
@@ -124,6 +125,7 @@ export function useNoteAppController() {
   const {
     activeTab,
     hydrated: workspaceHydrated,
+    restoredTabs,
     storageReadable: workspaceStorageReadable,
     tabs,
     activeTabId,
@@ -467,6 +469,27 @@ export function useNoteAppController() {
       await queryClient.invalidateQueries({ queryKey: ['notes', user?.id] })
       toast.info('This note was deleted on another device.')
     },
+  })
+
+  const restoredNoteValidation = useRestoredNoteValidation({
+    ownerId: workspaceUserId,
+    epoch: workspaceEpoch,
+    restoredTabs,
+    currentTabs: tabs,
+    offline: isOffline,
+    storageReady: syncStateReady,
+    storageError: storageReadError,
+    pendingCount,
+    failedCount,
+    hasPendingWorkspaceWrites,
+    hasPendingWritesForTab,
+    cache: offlineCache,
+    queue: offlineQueueRef.current,
+    noteService,
+    queryClient,
+    getSessionSnapshot,
+    onUnavailable: markLocalUnavailable,
+    onAvailable: clearAvailableOnRefresh,
   })
 
   const resolveOpenableNote = useCallback(async <T extends NoteViewModel | SearchResult>(note: T): Promise<T | null> => {
@@ -1657,6 +1680,8 @@ export function useNoteAppController() {
     legacyClaimBlocked,
     localCleanupCount: workspaceUserId ? localDeletion.recoveries.length : 0,
     retryLocalDeletion,
+    restoredNoteCheck: restoredNoteValidation.status,
+    retryRestoredNoteCheck: restoredNoteValidation.retry,
     retryLocalVerification,
     pendingCount,
     failedCount,
