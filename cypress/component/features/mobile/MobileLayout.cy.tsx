@@ -23,6 +23,43 @@ function selectionFrom(doc: Document) {
   return selection
 }
 
+function colorReader(doc: Document) {
+  const canvas = doc.createElement('canvas')
+  canvas.width = canvas.height = 1
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Canvas color conversion is unavailable')
+  return (color: string) => {
+    context.clearRect(0, 0, 1, 1)
+    context.fillStyle = 'transparent'
+    context.fillStyle = color
+    context.fillRect(0, 0, 1, 1)
+    return Array.from(context.getImageData(0, 0, 1, 1).data)
+  }
+}
+
+function compositeColor(front: number[], back: number[]) {
+  const alpha = front[3] / 255
+  return back.map((value, index) => alpha * front[index] + (1 - alpha) * value)
+}
+
+function composedBackground(element: HTMLElement, rgba: (color: string) => number[]) {
+  const backgrounds: number[][] = []
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    backgrounds.push(rgba(getComputedStyle(node).backgroundColor))
+  }
+  return backgrounds.reverse().reduce((back, front) => compositeColor(front, back), [255, 255, 255])
+}
+
+function contrastAgainstBackground(foreground: number[], background: number[]) {
+  const luminance = (color: number[]) => color.reduce((sum, channel, index) => {
+    const value = channel / 255
+    const linear = value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+    return sum + linear * [0.2126, 0.7152, 0.0722][index]
+  }, 0)
+  const values = [luminance(compositeColor(foreground, background)), luminance(background)].sort((a, b) => a - b)
+  return (values[1] + 0.05) / (values[0] + 0.05)
+}
+
 function assertVisibleCaret($editor: JQuery<HTMLElement>) {
   const editor = $editor[0]
   const doc = editor.ownerDocument
@@ -45,49 +82,17 @@ function assertVisibleCaret($editor: JQuery<HTMLElement>) {
 
   // Canvas resolves modern CSS colors (including oklch) to sRGB before
   // measuring the caret against the composed editor background.
-  const canvas = doc.createElement('canvas')
-  canvas.width = canvas.height = 1
-  const context = canvas.getContext('2d')
-  if (!context) throw new Error('Canvas color conversion is unavailable')
-  const rgba = (color: string) => {
-    context.clearRect(0, 0, 1, 1)
-    context.fillStyle = color
-    context.fillRect(0, 0, 1, 1)
-    return Array.from(context.getImageData(0, 0, 1, 1).data)
-  }
-  const composite = (front: number[], back: number[]) => {
-    const alpha = front[3] / 255
-    return back.map((value, index) => alpha * front[index] + (1 - alpha) * value)
-  }
-  const backgrounds: number[][] = []
-  for (let node: HTMLElement | null = editor; node; node = node.parentElement) {
-    backgrounds.push(rgba(getComputedStyle(node).backgroundColor))
-  }
-  const background = backgrounds.reverse().reduce((back, front) => composite(front, back), [255, 255, 255])
-  const caret = composite(rgba(style.caretColor), background)
-  const luminance = (color: number[]) => color.reduce((sum, channel, index) => {
-    const value = channel / 255
-    const linear = value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
-    return sum + linear * [0.2126, 0.7152, 0.0722][index]
-  }, 0)
-  const values = [luminance(caret), luminance(background)].sort((a, b) => a - b)
-  expect((values[1] + 0.05) / (values[0] + 0.05), 'caret contrast against the editor').to.be.at.least(3)
+  const rgba = colorReader(doc)
+  const background = composedBackground(editor, rgba)
+  expect(contrastAgainstBackground(rgba(style.caretColor), background), 'caret contrast against the editor').to.be.at.least(3)
 }
 
 function assertVisibleControlFocus($button: JQuery<HTMLElement>) {
   const button = $button[0]
   const style = getComputedStyle(button)
-  const canvas = button.ownerDocument.createElement('canvas')
-  canvas.width = canvas.height = 1
-  const context = canvas.getContext('2d')
-  if (!context) throw new Error('Canvas color conversion is unavailable')
-  const isVisibleColor = (color: string) => {
-    context.clearRect(0, 0, 1, 1)
-    context.fillStyle = 'transparent'
-    context.fillStyle = color
-    context.fillRect(0, 0, 1, 1)
-    return context.getImageData(0, 0, 1, 1).data[3] > 0
-  }
+  const rgba = colorReader(button.ownerDocument)
+  const background = composedBackground(button.parentElement ?? button, rgba)
+  const isVisibleColor = (color: string) => contrastAgainstBackground(rgba(color), background) >= 3
   const hasOutline = style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0 && isVisibleColor(style.outlineColor)
   const hasShadow = style.boxShadow.split(/,(?![^()]*\))/).some(layer => {
     const sizes = layer.match(/-?\d+(?:\.\d+)?px/g) ?? []
