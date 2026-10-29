@@ -11,10 +11,17 @@ describe('Note tag entry', { retries: 0 }, () => {
         availableTags={[]} isSaving={false} onSave={onSave} onRead={cy.stub()} />)
 
       cy.get('[data-note-tag-item]').should('have.length', 0)
+      cy.get('[aria-label="Add tag"]').should('contain.text', 'Add tag').then($button => {
+        cy.get('[data-testid="tag-input-container"]').then($row => {
+          expect($button[0].getBoundingClientRect().left - $row[0].getBoundingClientRect().left).to.be.lessThan(2)
+        })
+      })
+      cy.screenshot(`empty-tag-prompt-${width}`)
       cy.get('[aria-label="Add tag"]').click()
       cy.get('[aria-label="Add tags"]').should('be.visible').and('be.focused').type('first{enter}')
       cy.get('[aria-label="Add tags"]').should('not.be.visible')
       cy.get('[data-note-tag-item]').first().should('contain.text', 'first')
+      cy.get('[aria-label="Add tag"]').should('not.contain.text', 'Add tag')
 
       cy.get('[aria-label="Add tag"]').click()
       cy.get('[aria-label="Add tags"]').type('second{enter}')
@@ -76,6 +83,19 @@ describe('Note tag entry', { retries: 0 }, () => {
     cy.get('[data-note-tag-item]').should('have.length', 15)
     cy.get('[data-note-tag-item]').eq(0).should('contain.text', 'gamma')
     cy.get('[data-note-tag-item]').eq(1).should('contain.text', 'beta')
+  })
+
+  it('keeps the empty action legible and usable in dark mode', () => {
+    cy.viewport(320, 700)
+    cy.document().then(document => document.documentElement.classList.add('dark'))
+    cy.mount(<NoteEditor initialTitle="Empty tags" initialDescription="<p>Body</p>" initialTags=""
+      availableTags={[]} isSaving={false} onSave={cy.stub()} onRead={cy.stub()} />)
+    cy.get('[aria-label="Add tag"]').should('be.visible').and('contain.text', 'Add tag').focus().should('be.focused')
+    cy.screenshot('empty-tag-prompt-dark')
+    cy.get('[aria-label="Add tag"]').click()
+    cy.get('[aria-label="Add tags"]').should('be.visible').and('be.focused').type('{esc}')
+    cy.get('[aria-label="Add tag"]').should('be.focused')
+    cy.document().then(document => document.documentElement.classList.remove('dark'))
   })
 })
 
