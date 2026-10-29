@@ -156,14 +156,58 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   let restoreViewport: (() => void) | undefined
   let restoreNavigator: (() => void) | undefined
   let stopEscapeTrace: (() => void) | undefined
+  let cancelViewportResize: (() => void) | undefined
+  let stopResizeControl: (() => void) | undefined
+
+  function observeViewportResize(win: Window, width: number, height: number) {
+    let cancel = () => {}
+    const promise = new Cypress.Promise<void>(resolve => {
+      const onResize = () => {
+        if (win.innerWidth !== width || win.innerHeight !== height) return
+        win.removeEventListener('resize', onResize)
+        resolve()
+      }
+      win.addEventListener('resize', onResize, { passive: true })
+      cancel = () => win.removeEventListener('resize', onResize)
+    })
+    return { promise, cancel }
+  }
+
+  function changeViewportAndWait(width: number, height: number) {
+    let resized: PromiseLike<void> = Promise.resolve()
+    cy.window().then(win => {
+      // cy.viewport can finish before the browser delivers its resize event.
+      // Subscribe first, so an early event is retained by the promise as well.
+      const observation = observeViewportResize(win, width, height)
+      cancelViewportResize = observation.cancel
+      resized = observation.promise
+    })
+    cy.viewport(width, height)
+    cy.then(() => resized)
+  }
+
+  function viewportAfterResize(width: number, height: number) {
+    cy.window().then(win => {
+      // Ensure there is an actual change to observe even if a prior viewport
+      // is already the requested size.
+      if (win.innerWidth === width && win.innerHeight === height) changeViewportAndWait(width + 1, height)
+    })
+    changeViewportAndWait(width, height)
+  }
 
   afterEach(() => {
-    try { stopEscapeTrace?.() } finally {
-      stopEscapeTrace = undefined
-      restoreViewport?.()
-      restoreViewport = undefined
-      restoreNavigator?.()
-      restoreNavigator = undefined
+    try { stopResizeControl?.() } finally {
+      stopResizeControl = undefined
+      try { cancelViewportResize?.() } finally {
+        cancelViewportResize = undefined
+        try { stopEscapeTrace?.() } finally {
+          stopEscapeTrace = undefined
+          restoreViewport?.()
+          restoreViewport = undefined
+          restoreNavigator?.()
+          restoreNavigator = undefined
+        }
+      }
     }
   })
 
@@ -1014,7 +1058,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('uses a compact font icon while retaining the selected font in its menu', () => {
-    cy.viewport(390, 844)
+    viewportAfterResize(390, 844)
     mountLongEditor()
     cy.get('.tiptap p').first().click().then(($paragraph) => {
       const doc = $paragraph[0].ownerDocument
@@ -1055,7 +1099,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('drags the toolbar from a font selector without opening it or changing the note', () => {
-    cy.viewport(390, 844)
+    viewportAfterResize(390, 844)
     mountLongEditor()
     cy.get('[aria-label="Font family"]').scrollIntoView().as('font')
     cy.get('[data-editor-toolbar]').invoke('prop', 'scrollLeft').then((before) => {
@@ -1417,7 +1461,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
         <section data-cy="second-pane"><div ref={setSecondToolbar} /><RichTextEditor initialContent="<p>Pane B text</p>" mobileToolbarContainer={secondToolbar} /></section>
       </>
     }
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     cy.mount(<EditorPair />)
     cy.get('[data-cy="first-pane"] .tiptap').should('contain.text', 'Pane A text')
     cy.get('[data-cy="second-pane"] .tiptap').should('contain.text', 'Pane B text')
@@ -1538,7 +1582,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('cancels a pending focus before an assistive click opens font size', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
@@ -1574,7 +1618,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('keeps focus in the new menu after a delayed font size selection', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1591,7 +1635,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('keeps focus in the new menu after a delayed font family selection', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-family-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1624,7 +1668,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('restores the selection and allows typing after choosing a font size', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1636,7 +1680,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('keeps the editor focused when font size close autofocus arrives after the focus frame', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1661,7 +1705,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('restores the editor when font size close autofocus arrives before the focus frame', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1679,8 +1723,48 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap p').first().find('span[style*="font-size: 14pt"]').should('have.text', 'x')
   })
 
+  it('observes a viewport resize that arrives before the promise is awaited', () => {
+    cy.window().then(win => {
+      const observation = observeViewportResize(win, win.innerWidth, win.innerHeight)
+      win.dispatchEvent(new win.Event('resize'))
+      return observation.promise.then(() => {
+        expect(win.innerWidth).to.be.greaterThan(0)
+      }).finally(observation.cancel)
+    })
+  })
+
+  it('waits for viewport setup even when the requested size is already active', () => {
+    viewportAfterResize(320, 740)
+    const widths: number[] = []
+    cy.window().then(win => {
+      const onResize = () => widths.push(win.innerWidth)
+      win.addEventListener('resize', onResize, { passive: true })
+      stopResizeControl = () => win.removeEventListener('resize', onResize)
+    })
+    viewportAfterResize(320, 740)
+    cy.then(() => {
+      const intermediate = widths.indexOf(321)
+      expect(intermediate, 'intermediate viewport resize observed').to.be.at.least(0)
+      expect(widths.indexOf(320, intermediate + 1), 'requested viewport resize observed').to.be.greaterThan(intermediate)
+    })
+    mountLongEditor()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.get('[role="listbox"]').should('be.visible')
+  })
+
+  it('closes the font size menu when the viewport really changes', () => {
+    viewportAfterResize(320, 740)
+    mountLongEditor()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.get('[role="listbox"]').should('be.visible')
+    viewportAfterResize(360, 740)
+    cy.window().its('innerWidth').should('equal', 360)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'false')
+  })
+
   it('dismisses the font size menu when Escape follows a delayed tooltip', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     cy.get('[data-cy="font-size-button"]').scrollIntoView()
@@ -1689,6 +1773,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('[role="listbox"]').should('be.visible')
     // Allow the toolbar tooltip delay to elapse before dismissing the menu.
     cy.tick(250)
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.tick(1)
     cy.get('[role="listbox"]').should('not.exist')
@@ -1696,7 +1782,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('dismisses the font family menu when Escape follows a delayed tooltip', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     cy.get('[data-cy="font-family-button"]').scrollIntoView()
@@ -1704,6 +1790,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       .click({ scrollBehavior: false })
     cy.get('[role="listbox"]').should('be.visible')
     cy.tick(250)
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.get('[data-cy="font-family-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.tick(1)
     cy.get('[role="listbox"]').should('not.exist')
@@ -1711,7 +1799,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('dismisses the desktop font size menu after a hover with one Escape', () => {
-    cy.viewport(1440, 900)
+    viewportAfterResize(1440, 900)
     mountLongEditor()
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     cy.get('[data-cy="font-size-button"]')
@@ -1719,6 +1807,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       .click()
     cy.get('[role="listbox"]').should('be.visible')
     cy.tick(250)
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.tick(1)
     cy.get('[role="listbox"]').should('not.exist')
@@ -1726,7 +1816,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('exposes the font size tooltip to keyboard users and dismisses its menu', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     cy.get('[data-cy="font-family-button"]').scrollIntoView().focus()
     cy.press(Cypress.Keyboard.Keys.TAB)
@@ -1737,6 +1827,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     })
     cy.press(Cypress.Keyboard.Keys.ENTER)
     cy.get('[role="listbox"]').should('be.visible')
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.get('[role="listbox"]').should('not.exist')
     cy.get('[data-cy="font-size-button"]').should('be.focused')
@@ -1744,7 +1835,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
 
   it('returns focus to the font size trigger when dismissed without a choice', () => {
     const escapeTrace: EscapeTrace = { event: null, menu: null, capture: null, transitions: [] }
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
     cy.get('[role="listbox"]').should('be.visible').then(($listbox) => {
@@ -1783,6 +1874,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       observer.observe(trigger, { attributes: true, attributeFilter: ['aria-expanded'], attributeOldValue: true })
       observer.observe(menu, { attributes: true, attributeFilter: ['data-state'], attributeOldValue: true })
     })
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.get('body').should(($body) => {
       const doc = $body[0].ownerDocument
@@ -1804,7 +1896,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('saves the chosen text color together with the font size', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountShortEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
