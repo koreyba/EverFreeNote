@@ -1,0 +1,1 @@
+{"id":"d637cc8d9a1fd3525d8b9a4b1d9ca19c","fullName":"everfreenote:ui/web/tests/unit/hooks/useGuardedSignOut.test.tsx#guarded sign out cancels an old request when the same account has a new session epoch","name":"cancels an old request when the same account has a new session epoch","status":"passed","testResultsByEnv":{"default":"24b9e323995b96dfc9e98eecea8fe04e"}}

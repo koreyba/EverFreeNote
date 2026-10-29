@@ -1,0 +1,1 @@
+{"id":"2f8064e41d824100ca14db7688f9ef39","fullName":"everfreenote:ui/web/tests/unit/lib/noteFind.test.ts#findInNote preserves emoji boundaries and finds matches in the editable title","name":"preserves emoji boundaries and finds matches in the editable title","status":"passed","testResultsByEnv":{"default":"ce77b922eaf22eb3ecb248e6240be7ba"}}
