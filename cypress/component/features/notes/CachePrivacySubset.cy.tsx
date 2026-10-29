@@ -1,4 +1,5 @@
 import React from 'react'
+import axe from 'axe-core'
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 import { toast, Toaster } from 'sonner'
 import '../../../../app/globals.css'
@@ -24,6 +25,16 @@ async function waitForQueue(predicate: (statuses: string[]) => boolean) {
     await new Promise(resolve => setTimeout(resolve, 50))
   }
   throw new Error('Timed out waiting for queue state')
+}
+
+function checkAccountStatus(text: string) {
+  cy.get('[data-testid="device-sync-status"] [role="status"]')
+    .should('have.attr', 'aria-live', 'polite')
+    .and('have.attr', 'aria-atomic', 'true')
+    .and('contain.text', text)
+    .and('not.contain.text', 'Device-wide')
+    .then(element => axe.run(element[0], { runOnly: { type: 'rule', values: ['aria-allowed-role', 'aria-valid-attr', 'aria-valid-attr-value'] } }))
+    .then(result => expect(result.violations).to.deep.equal([]))
 }
 
 describe('Cache privacy subset', { retries: 0 }, () => {
@@ -94,6 +105,74 @@ describe('Cache privacy subset', { retries: 0 }, () => {
       expect((await webOfflineStorageAdapter.getQueue()).some(item => item.id === 'owner-a-create')).to.equal(true)
       expect((await webOfflineStorageAdapter.loadNotes()).find(item => item.id === id)?.title).to.equal('A private offline draft')
     })
+  })
+
+  it('announces an empty queue for B only while A still has pending work on this device', () => {
+    const bId = crypto.randomUUID()
+    const aId = crypto.randomUUID()
+    cy.then(async () => {
+      const inserted = await other.from('notes').insert({ id: bId, user_id: userB.id, title: 'B note', description: '<p>B body</p>', tags: [] })
+      if (inserted.error) throw inserted.error
+      await webOfflineStorageAdapter.saveNote({ id: aId, user_id: userA.id, title: 'A private title', description: 'A private body', tags: ['private'], status: 'pending', updatedAt: '2026-10-01T00:00:00.000Z' })
+      await webOfflineStorageAdapter.upsertQueueItem({ id: 'a-private-queue', noteId: aId, operation: 'create', payload: { user_id: userA.id, title: 'A private title', description: 'A private body', tags: ['private'] }, clientUpdatedAt: '2026-10-01T00:00:00.000Z', status: 'pending' })
+    })
+    cy.intercept({ method: 'POST', pathname: '/rest/v1/notes' }).as('unexpectedCreate')
+    cy.window().then(win => { Object.defineProperty(win.navigator, 'onLine', { configurable: true, value: true }); win.dispatchEvent(new win.Event('online')) })
+    cy.mount(<SupabaseTestProvider supabase={other} user={userB}><App /></SupabaseTestProvider>)
+    cy.contains('[data-testid="note-card"] button', 'B note', { timeout: 10000 }).click()
+    cy.get('[data-testid="device-sync-status"]').should('have.class', 'sr-only')
+    checkAccountStatus('This account on this device: No waiting or failed changes reported')
+    cy.get('[data-cy="note-edit-button"]').click()
+    cy.get('[data-testid="device-sync-status"]').should('have.class', 'sr-only')
+    checkAccountStatus('This account on this device: No waiting or failed changes reported')
+    cy.get('[data-testid="mobile-nav-tags"]').click()
+    cy.contains('Tag Management').should('be.visible')
+    cy.get('[data-testid="device-sync-status"]').should('have.class', 'sr-only')
+    checkAccountStatus('This account on this device: No waiting or failed changes reported')
+    cy.contains('A private title').should('not.exist')
+    cy.contains('A private body').should('not.exist')
+    cy.get('@unexpectedCreate.all').should('have.length', 0)
+    cy.then(async () => expect((await webOfflineStorageAdapter.getQueue()).some(item => item.id === 'a-private-queue')).to.equal(true))
+  })
+
+  it('shows B’s own counts and device offline separately in mobile reader, editor and Tags', () => {
+    const aId = crypto.randomUUID()
+    const bId = crypto.randomUUID()
+    cy.then(async () => {
+      const inserted = await other.from('notes').insert({ id: bId, user_id: userB.id, title: 'B note', description: '<p>B body</p>', tags: [] })
+      if (inserted.error) throw inserted.error
+      for (const [id, ownerId, title] of [[aId, userA.id, 'A private title'], [bId, userB.id, 'B note']]) {
+        await webOfflineStorageAdapter.saveNote({ id, user_id: ownerId, title, description: `<p>${title} body</p>`, tags: [], status: 'pending', updatedAt: '2026-10-01T00:00:00.000Z' })
+      }
+      const items: MutationQueueItem[] = [
+        { id: 'a-waiting', noteId: aId, operation: 'update', payload: { user_id: userA.id }, clientUpdatedAt: '2026-10-01T00:00:00.000Z', status: 'pending' },
+        { id: 'a-failed', noteId: aId, operation: 'update', payload: { user_id: userA.id }, clientUpdatedAt: '2026-10-01T00:00:01.000Z', status: 'failed' },
+        { id: 'b-waiting', noteId: bId, operation: 'update', payload: { user_id: userB.id }, clientUpdatedAt: '2026-10-01T00:00:00.000Z', status: 'pending' },
+        { id: 'b-failed-1', noteId: bId, operation: 'update', payload: { user_id: userB.id }, clientUpdatedAt: '2026-10-01T00:00:01.000Z', status: 'failed' },
+        { id: 'b-failed-2', noteId: bId, operation: 'update', payload: { user_id: userB.id }, clientUpdatedAt: '2026-10-01T00:00:02.000Z', status: 'failed' },
+      ]
+      for (const item of items) await webOfflineStorageAdapter.upsertQueueItem(item)
+    })
+    cy.mount(<SupabaseTestProvider supabase={other} user={userB}><App /></SupabaseTestProvider>)
+    cy.contains('[data-testid="note-card"] button', 'B note', { timeout: 10000 }).click()
+    cy.get('[data-testid="device-sync-status"]').should('be.visible').and('contain.text', 'Device: Offline')
+    checkAccountStatus('This account on this device: 2 failed · 1 waiting')
+    cy.screenshot('account-status-mobile-reading', { capture: 'viewport' })
+    cy.get('[data-cy="note-edit-button"]').click()
+    cy.get('[data-testid="device-sync-status"]').should('be.visible').and('contain.text', 'Device: Offline')
+    checkAccountStatus('This account on this device: 2 failed · 1 waiting')
+    cy.screenshot('account-status-mobile-editing', { capture: 'viewport' })
+    cy.get('[data-testid="mobile-nav-tags"]').click()
+    cy.contains('Tag Management').should('be.visible')
+    cy.get('[data-testid="device-sync-status"]').should('be.visible').and('contain.text', 'Device: Offline')
+    checkAccountStatus('This account on this device: 2 failed · 1 waiting')
+    cy.screenshot('account-status-mobile-tags', { capture: 'viewport' })
+    cy.contains('A private title').should('not.exist')
+    cy.mount(<SupabaseTestProvider supabase={owner} user={userA}><App /></SupabaseTestProvider>)
+    cy.get('[data-testid="device-sync-status"]').should('be.visible').and('contain.text', 'Device: Offline')
+    checkAccountStatus('This account on this device: 1 failed · 1 waiting')
+    cy.contains('B note').should('not.exist')
+    cy.then(async () => expect(await webOfflineStorageAdapter.getQueue()).to.have.length(5))
   })
 
   it('does not erase a newer IndexedDB edit when synced tombstone cleanup races it', () => {

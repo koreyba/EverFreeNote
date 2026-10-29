@@ -345,9 +345,12 @@ describe('NotesShell', () => {
 
     const status = screen.getByTestId('device-sync-status')
     expect(status.querySelector('[role="status"]')?.getAttribute('aria-live')).toBe('polite')
-    expect(status.textContent).toContain('Offline')
+    expect(status.querySelector('[role="status"]')?.getAttribute('aria-atomic')).toBe('true')
+    expect(status.textContent).toContain('Device: Offline')
+    expect(status.textContent).toContain('This account on this device:')
     expect(status.textContent).toContain('2 waiting')
     expect(status.textContent).toContain('1 failed')
+    expect(status.textContent).not.toContain('Device-wide')
   })
 
   it('requests a browser warning before leaving a failed draft and stays silent for saved notes', () => {
@@ -367,6 +370,7 @@ describe('NotesShell', () => {
     renderShell(makeController({ selectedNote: note, pendingCount: 3 }))
 
     const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).toContain('This account on this device:')
     expect(status.textContent).toContain('3 waiting')
     expect(status.textContent).not.toContain('Syncing')
     expect(status.textContent).not.toContain('Synchronized')
@@ -375,7 +379,8 @@ describe('NotesShell', () => {
   it('keeps sync failure visible on the tag page', () => {
     renderShell(makeController({ activeMainView: 'tags', failedCount: 2 }))
 
-    expect(screen.getByTestId('device-sync-status').textContent).toContain('2 failed')
+    expect(screen.getByTestId('device-sync-status').textContent).toContain('This account on this device: 2 failed')
+    expect(screen.getByTestId('device-sync-status').textContent).not.toMatch(/online|connected|synchronized/i)
   })
 
   it.each(['reading', 'editing', 'tags'])('shows unverified local data and recovery guidance in %s view', (view) => {
@@ -391,8 +396,24 @@ describe('NotesShell', () => {
 
     const status = screen.getByTestId('device-sync-status')
     expect(status.textContent).not.toContain('Synchronized')
-    expect(status.textContent).toContain('No waiting or failed changes reported')
+    expect(status.textContent).toContain('This account on this device: No waiting or failed changes reported')
+    expect(status.textContent).not.toContain('Device-wide')
     expect(status.className).toContain('sr-only')
+  })
+
+  it('reports the device offline without claiming the server is reachable', () => {
+    renderShell(makeController({ isOffline: true }))
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).toContain('Device: Offline')
+    expect(status.textContent).not.toContain('This account on this device:')
+    expect(status.textContent).not.toMatch(/online|connected|synchronized/i)
+  })
+
+  it('does not report an empty queue while local data is still loading', () => {
+    renderShell(makeController({ syncStateReady: false }))
+    const status = screen.getByTestId('device-sync-status')
+    expect(status.textContent).toContain('Checking local data')
+    expect(status.textContent).not.toContain('No waiting or failed changes reported')
   })
 
   it('renders the empty editor, registers the editor ref, and wires list actions', async () => {

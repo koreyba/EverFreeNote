@@ -82,7 +82,7 @@ describe("Sidebar", () => {
     it("renders Offline mode status dot when isOffline is true", () => {
       const { container } = render(<Sidebar {...defaultProps} isOffline={true} />)
 
-      const statusOutput = container.querySelector('[title="Offline"]')
+      const statusOutput = container.querySelector('[title="Device: Offline"]')
       expect(statusOutput).toBeTruthy()
       expect(statusOutput?.className).toContain("bg-amber-500")
     })
@@ -90,7 +90,7 @@ describe("Sidebar", () => {
     it("describes queued changes as waiting", () => {
       const { container } = render(<Sidebar {...defaultProps} pendingCount={3} />)
 
-      const statusOutput = container.querySelector('[title="3 waiting"]')
+      const statusOutput = container.querySelector('[title="This account on this device: 3 waiting"]')
       expect(statusOutput).toBeTruthy()
       expect(statusOutput?.className).toContain("bg-muted-foreground")
     })
@@ -98,7 +98,7 @@ describe("Sidebar", () => {
     it("renders Sync failed count status dot when failedCount > 0", () => {
       const { container } = render(<Sidebar {...defaultProps} failedCount={2} />)
 
-      const statusOutput = container.querySelector('[title="2 failed"]')
+      const statusOutput = container.querySelector('[title="This account on this device: 2 failed"]')
       expect(statusOutput).toBeTruthy()
       expect(statusOutput?.className).toContain("bg-destructive")
     })
@@ -132,7 +132,7 @@ describe("Sidebar", () => {
 
     it("renders fallback text when notes count props are omitted", () => {
       render(<Sidebar {...defaultProps} notesDisplayed={undefined} notesTotal={undefined} />)
-      expect(screen.getByText("- of unknown notes")).toBeTruthy()
+      expect(screen.getByText("- notes shown")).toBeTruthy()
     })
   })
 

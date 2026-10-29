@@ -15,8 +15,8 @@ type DeviceSyncStatusProps = Readonly<{
   onRetryLocalVerification?: () => void
 }>
 
-// Queue counts are device-wide and navigator.onLine does not prove that the
-// server is reachable. Do not infer the sync state of an individual note.
+// Counts cover this account's local queue. navigator.onLine does not prove that
+// the server is reachable, so do not infer an individual note's sync state.
 export function describeDeviceSyncStatus({ isOffline, pendingCount, failedCount, syncStateReady = true, storageReadError = false, legacyUnverifiedCount = 0, unqueuedLocalCount = 0, unavailableRemoteEdits = false, legacyClaimBlocked = false }: DeviceSyncStatusProps) {
   const parts: string[] = []
   if (!syncStateReady) parts.push("Checking local data")
@@ -25,9 +25,11 @@ export function describeDeviceSyncStatus({ isOffline, pendingCount, failedCount,
   if (unqueuedLocalCount > 0) parts.push("Some local changes are not queued")
   if (unavailableRemoteEdits) parts.push("A local note is unavailable on the server")
   if (legacyClaimBlocked) parts.push("Could not safely retain a local note's account")
-  if (isOffline) parts.push("Offline")
-  if (failedCount > 0) parts.push(`${failedCount} failed`)
-  if (pendingCount > 0) parts.push(`${pendingCount} waiting`)
+  if (isOffline) parts.push("Device: Offline")
+  const queued: string[] = []
+  if (failedCount > 0) queued.push(`${failedCount} failed`)
+  if (pendingCount > 0) queued.push(`${pendingCount} waiting`)
+  if (queued.length) parts.push(`This account on this device: ${queued.join(" · ")}`)
 
   return {
     text: parts.join(" · ") || "Sync status",
@@ -51,7 +53,7 @@ export function DeviceSyncStatus(props: DeviceSyncStatusProps) {
     >
       <div role="status" aria-live="polite" aria-atomic="true" className="flex items-center gap-2">
         {status.hasIssue && <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-current" />}
-        <span><span className="sr-only">Device-wide </span>{status.hasIssue ? `Sync: ${status.text}` : "No waiting or failed changes reported"}</span>
+        <span>{status.hasIssue ? status.text : "This account on this device: No waiting or failed changes reported"}</span>
       </div>
       {(props.legacyUnverifiedCount || props.unqueuedLocalCount || props.unavailableRemoteEdits || props.storageReadError || props.legacyClaimBlocked) ? (
         <details className="mt-1">
