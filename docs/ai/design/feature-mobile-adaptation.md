@@ -101,3 +101,5 @@ stateDiagram-v2
 The controller retains the workspace tab while hiding its pane. The mobile tab switcher uses a neutral heading on the list or search screen, and shows the active note title only when its pane is visible. Mobile navigation waits for the editor flush and aborts if it fails. Explicit navigation from Settings clears its return snapshot; Back still restores that snapshot. The mobile tag browser clears an unrelated prior search before opening the tag.
 
 The swipe action is separate from vertical scrolling and long-press selection, and it reuses single-note confirmation and deletion. Find-in-note scans title and text ranges, paints transient highlights without editing the document, and scrolls to the selected match. Browsers without custom highlights use a visual overlay; the editor title uses an outline when it is the selected match.
+
+The notes list stores the chosen layout locally. List view retains the existing dynamic virtual rows; grid view virtualizes pairs of notes with a fixed row height and translates the visible-row index back into a note index for pagination. Both layouts use the same card, selection and swipe actions.

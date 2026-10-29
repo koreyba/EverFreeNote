@@ -67,4 +67,5 @@ description: Clarify the problem space, gather requirements, and define success 
 - Settings must survive a browser reload for an authenticated user and keep the selected mobile tab visible after navigation or resizing.
 - A left swipe on a note in the mobile list or regular search exposes Delete; deletion uses the existing confirmation. Vertical scrolling and long-press selection must remain usable.
 - Reading and editing expose an in-note search across the title and body, with match counts, highlighting and previous/next navigation. Expanded editing searches the visible body. Searching must not change the draft.
+- The notes list offers a remembered list or two-column tile view. Tiles retain note opening, selection and swipe-to-delete; hidden tags are counted.
 - Maintain the established desktop layout and functionality. Native apps are outside this change.

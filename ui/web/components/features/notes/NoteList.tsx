@@ -15,6 +15,8 @@ import type { Note, SearchResult } from "@core/types/domain"
 import AutoSizer from "react-virtualized-auto-sizer"
 import * as ReactWindow from "react-window"
 
+export type NoteListLayout = "list" | "grid"
+
 // react-window v2 uses different API (rowCount, rowHeight, rowComponent, rowProps)
 // and exports useDynamicRowHeight hook. TypeScript may cache old v1 types.
 // Cast to any to use v2 API correctly.
@@ -45,6 +47,7 @@ type NoteRecord = Note & {
 interface NoteListProps {
   notes: NoteRecord[]
   isLoading: boolean
+  layout?: NoteListLayout
   selectedNoteId?: string
   selectionMode?: boolean
   selectedIds?: Set<string>
@@ -78,6 +81,7 @@ interface NoteListProps {
 
 interface ItemData {
   items: NoteRecord[]
+  layout: NoteListLayout
   selectedNoteId?: string
   selectionMode: boolean
   selectedIds: Set<string>
@@ -114,6 +118,7 @@ interface SearchItemData {
 const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentProps<ItemData>) => {
   const {
     items,
+    layout,
     selectedNoteId,
     selectionMode,
     selectedIds,
@@ -129,8 +134,11 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
     onLoadMore,
   } = props as unknown as ItemData
 
+  const columns = layout === "grid" ? 2 : 1
+  const firstIndex = index * columns
+
   // Render Load More / Loading indicator at the end
-  if (index === items.length) {
+  if (firstIndex >= items.length) {
     return (
       <div style={style} className="px-2 py-2 flex justify-center items-center" {...ariaAttributes}>
         {isLoadingMore ? (
@@ -149,11 +157,7 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
     )
   }
 
-  const note = items[index]
-  if (!note) return null
-
-  return (
-    <div style={style} className="px-2 py-1" {...ariaAttributes}>
+  const renderNote = (note: NoteRecord) => (
       <SwipeableNoteRow
         title={note.title}
         enabled={isMobile && !selectionMode && !!onDeleteNote}
@@ -164,6 +168,7 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
         <NoteCard
           note={note}
           variant="compact"
+          layout={layout}
           isSelected={selectionMode ? selectedIds.has(note.id) : selectedNoteId === note.id}
           selectionMode={selectionMode}
           onToggleSelect={() => onToggleSelect?.(note)}
@@ -175,6 +180,25 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
           onTagClick={onTagClick}
         />
       </SwipeableNoteRow>
+  )
+
+  if (layout === "grid") {
+    return (
+      <div style={style} className="grid grid-cols-2 gap-2 px-2 py-1" role="presentation">
+        {items.slice(firstIndex, firstIndex + columns).map((note, offset) => (
+          <div key={note.id} className="min-w-0" role="listitem" aria-posinset={firstIndex + offset + 1} aria-setsize={items.length}>
+            {renderNote(note)}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const note = items[firstIndex]
+  if (!note) return null
+  return (
+    <div style={style} className="px-2 py-1" {...ariaAttributes}>
+      {renderNote(note)}
     </div>
   )
 })
@@ -274,6 +298,7 @@ const Sizer = ({
 export const NoteList = memo(function NoteList({
   notes,
   isLoading,
+  layout = "list",
   selectedNoteId,
   selectionMode = false,
   selectedIds = new Set(),
@@ -302,12 +327,16 @@ export const NoteList = memo(function NoteList({
     if (isMobile && !selectionMode) return
     setOpenSwipeId(null)
   }, [isMobile, selectionMode])
+  useEffect(() => {
+    setOpenSwipeId(null)
+  }, [layout])
   const isInitialFtsLoading = ftsQuery.length >= 3 && ftsLoading && !ftsData
   const isSearch = showFTSResults && !!ftsData
   const searchResultCount = ftsData?.results.length ?? 0
   const handleNoteRowsRendered = useCallback(({ stopIndex }: { stopIndex: number }) => {
-    if (hasMore && !isFetchingNextPage && stopIndex >= notes.length - 5) onLoadMore()
-  }, [hasMore, isFetchingNextPage, notes.length, onLoadMore])
+    const lastNoteIndex = layout === "grid" ? stopIndex * 2 + 1 : stopIndex
+    if (hasMore && !isFetchingNextPage && lastNoteIndex >= notes.length - 5) onLoadMore()
+  }, [hasMore, isFetchingNextPage, layout, notes.length, onLoadMore])
   const handleSearchRowsRendered = useCallback(({ stopIndex }: { stopIndex: number }) => {
     if (ftsHasMore && !ftsLoadingMore && stopIndex >= searchResultCount - 3) onLoadMoreFts?.()
   }, [ftsHasMore, ftsLoadingMore, onLoadMoreFts, searchResultCount])
@@ -319,6 +348,7 @@ export const NoteList = memo(function NoteList({
   // Memoize item data for virtualized list (notes only)
   const itemData = useMemo(() => ({
     items: notes,
+    layout,
     selectedNoteId,
     selectionMode,
     selectedIds,
@@ -334,6 +364,7 @@ export const NoteList = memo(function NoteList({
     onLoadMore,
   }), [
     notes,
+    layout,
     selectedNoteId,
     selectionMode,
     selectedIds,
@@ -475,8 +506,8 @@ export const NoteList = memo(function NoteList({
             <VirtualList
               height={height}
               width={width}
-              rowCount={notes.length + (hasMore ? 1 : 0)}
-              rowHeight={dynamicRowHeight}
+              rowCount={(layout === "grid" ? Math.ceil(notes.length / 2) : notes.length) + (hasMore ? 1 : 0)}
+              rowHeight={layout === "grid" ? 200 : dynamicRowHeight}
               rowProps={itemData}
               overscanCount={5}
               onRowsRendered={handleNoteRowsRendered}
