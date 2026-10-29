@@ -1,0 +1,1 @@
+{"id":"a2975209fe0d717a58a3f72079f3b1ea","fullName":"everfreenote:cypress/component/features/notes/LocalDeletionRecovery.cy.tsx#Local cleanup after server deletion exposes the local-only retry on desktop","name":"exposes the local-only retry on desktop","status":"passed","testResultsByEnv":{"default":"41a2dc914f0b08dd424f341f1941980a"}}
