@@ -22,7 +22,7 @@ describe('note preview text in the browser', { retries: 0 }, () => {
     mountCard(note.description)
     cy.get('[data-testid="note-card"]').should('be.visible').screenshot('multiline-note-card')
     cy.get('[data-testid="note-card"] p').first()
-      .should('have.text', 'Привет 😀 &lt; 2 &amp; 7 &gt; 3 尾 строка!')
+      .should('have.text', 'Привет 😀 < 2 & 7 > 3 尾 строка!')
       .find('br').should('not.exist')
   })
 
@@ -35,6 +35,40 @@ describe('note preview text in the browser', { retries: 0 }, () => {
   it('retains ambiguous legacy entities and collapses plain CRLF for display', () => {
     mountCard('Literal &amp; &copy=2 and &#39;\r\n\r\n尾 😀')
     cy.get('[data-testid="note-card"] p').first().should('have.text', 'Literal &amp; &copy=2 and &#39; 尾 😀')
+  })
+
+  it('decodes one HTML layer while displaying escaped markup as text', () => {
+    mountCard('<p>&nbsp;Fish &amp; chips &gt; 10<br>&amp;amp; &lt;img src=x onerror=bad()&gt;&nbsp;</p>')
+    cy.get('[data-testid="note-card"] p').first()
+      .should('have.text', '\u00a0Fish & chips > 10 &amp; <img src=x onerror=bad()>\u00a0')
+      .find('img, br').should('not.exist')
+  })
+
+  it('does not load remote resources or construct custom elements in note markup', () => {
+    let requests = 0
+    let constructed = 0
+    cy.intercept('https://preview-network.invalid/**', (request) => {
+      requests++
+      request.reply({ statusCode: 204 })
+    })
+    cy.window().then((win) => {
+      win.customElements.define('preview-load-probe', class extends win.HTMLElement {
+        constructor() {
+          super()
+          constructed++
+        }
+      })
+    })
+    mountCard('<p>Safe &amp; visible<img src="https://preview-network.invalid/img" srcset="https://preview-network.invalid/srcset 1x"><preview-load-probe> text</preview-load-probe><iframe src="https://preview-network.invalid/frame"></iframe><video poster="https://preview-network.invalid/poster"><source src="https://preview-network.invalid/source"></video><svg><image href="https://preview-network.invalid/svg"></image></svg><style>body{background:url(https://preview-network.invalid/style)}</style><script>window.previewScriptRan = true</script></p>')
+    cy.get('[data-testid="note-card"] p').first().should('have.text', 'Safe & visible text')
+      .find('img, iframe, script, preview-load-probe').should('not.exist')
+    cy.wait(700).then(() => {
+      expect(requests).to.equal(0)
+      expect(constructed).to.equal(0)
+    })
+    cy.window().then((win) => {
+      expect((win as Window & { previewScriptRan?: boolean }).previewScriptRan).to.be.undefined
+    })
   })
 
   it('preserves literal nonbreaking spaces at both preview edges', () => {

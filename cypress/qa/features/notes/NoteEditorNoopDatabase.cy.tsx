@@ -228,4 +228,68 @@ describe('unchanged note transitions against local Supabase', { retries: 0 }, ()
     cy.get('[data-cy="note-back-button"]').click()
     cy.contains('[data-testid="note-card"]', 'Preview database note').find('p').first().should('have.text', 'First 😀 Tail!')
   })
+
+  it('shows decoded characters after editing and saving plain text with line breaks', () => {
+    const id = crypto.randomUUID()
+    cy.then(async () => {
+      const result = await owner.from('notes').insert({
+        id, user_id: user.id, title: 'Preview characters',
+        description: 'Fish & chips > 10\r\n\r\n尾 😀', tags: [],
+      })
+      if (result.error) throw result.error
+    })
+    cy.intercept({ method: 'PATCH', pathname: '/rest/v1/notes' }).as('patchNote')
+    cy.mount(<AuthHarness />)
+    login()
+    cy.contains('[data-testid="note-card"]', 'Preview characters').find('p').first()
+      .should('have.text', 'Fish & chips > 10 尾 😀')
+    cy.contains('[data-testid="note-card"]', 'Preview characters').click()
+    cy.get('[data-cy="note-edit-button"]').click()
+    cy.get('.ProseMirror').click().type('{selectall}{rightarrow}!')
+    cy.get('[data-cy="note-read-button"]').click()
+    cy.get('[data-cy="note-edit-button"]').should('be.visible')
+    cy.get('.note-content:visible').should(($body) => expect($body[0].innerText).to.equal('Fish & chips > 10\n\n尾 😀!'))
+    cy.wait('@patchNote').its('response.statusCode').should('be.oneOf', [200, 204])
+    cy.then(async () => {
+      const result = await owner.from('notes').select('description').eq('id', id).single()
+      if (result.error) throw result.error
+      expect(result.data.description).to.equal('<p>Fish &amp; chips &gt; 10<br><br>尾 😀!</p>')
+    })
+    cy.get('[data-cy="note-back-button"]').click()
+    cy.contains('[data-testid="note-card"]', 'Preview characters').find('p').first()
+      .should('have.text', 'Fish & chips > 10 尾 😀!')
+    cy.screenshot('edited-note-readable-preview')
+  })
+
+  it('keeps a literal entity in HTML after editing, reading, and returning to the list', () => {
+    const id = crypto.randomUUID()
+    cy.then(async () => {
+      const result = await owner.from('notes').insert({
+        id, user_id: user.id, title: 'Literal entity',
+        description: '<p>Literal &amp;amp; &amp;copy=2</p>', tags: [],
+      })
+      if (result.error) throw result.error
+    })
+    cy.intercept({ method: 'PATCH', pathname: '/rest/v1/notes' }).as('patchNote')
+    cy.mount(<AuthHarness />)
+    login()
+    cy.contains('[data-testid="note-card"]', 'Literal entity').find('p').first()
+      .should('have.text', 'Literal &amp; &copy=2')
+    cy.contains('[data-testid="note-card"]', 'Literal entity').click()
+    cy.get('.note-content:visible').should('have.text', 'Literal &amp; &copy=2')
+    cy.get('[data-cy="note-edit-button"]').click()
+    cy.get('.ProseMirror').click().type('{selectall}{rightarrow}!')
+    cy.get('[data-cy="note-read-button"]').click()
+    cy.get('[data-cy="note-edit-button"]').should('be.visible')
+    cy.get('.note-content:visible').should('have.text', 'Literal &amp; &copy=2!')
+    cy.wait('@patchNote').its('response.statusCode').should('be.oneOf', [200, 204])
+    cy.then(async () => {
+      const result = await owner.from('notes').select('description').eq('id', id).single()
+      if (result.error) throw result.error
+      expect(result.data.description).to.equal('<p>Literal &amp;amp; &amp;copy=2!</p>')
+    })
+    cy.get('[data-cy="note-back-button"]').click()
+    cy.contains('[data-testid="note-card"]', 'Literal entity').find('p').first()
+      .should('have.text', 'Literal &amp; &copy=2!')
+  })
 })
