@@ -46,7 +46,7 @@ type UseNoteEditorAutoSaveParams = {
   onNoteSwitch?: () => void
   /** Cancels the debounced tag query (owned by NoteEditor) on note switch */
   cancelDebouncedTagQuery: () => void
-  /** Finish pending local work if an external account switch unmounts the editor. */
+  /** Reports an account session change; pending local work must then finish on unmount. */
   shouldFlushOnUnmount?: () => boolean
 }
 
@@ -88,6 +88,8 @@ export function useNoteEditorAutoSave({
   useEffect(() => {
     onAutoSaveRef.current = onAutoSave
   }, [onAutoSave])
+  const shouldFlushOnUnmountRef = useRef(shouldFlushOnUnmount)
+  useEffect(() => { shouldFlushOnUnmountRef.current = shouldFlushOnUnmount }, [shouldFlushOnUnmount])
 
   const [editorSessionKey, setEditorSessionKey] = useState(0)
   const getIncomingSnapshot = useCallback((): NoteEditorSnapshot => ({
@@ -134,13 +136,15 @@ export function useNoteEditorAutoSave({
     if (creating) setCreateInFlight(true)
     try {
       const result = await onAutoSaveRef.current(resolvedPayload)
-      toast.dismiss('note-autosave-failed')
+      // The account may have changed while this save was in flight. Its
+      // feedback must not create or clear a notification in the new session.
+      if (!shouldFlushOnUnmountRef.current?.()) toast.dismiss('note-autosave-failed')
       if (creating) {
         assignedCreateNoteIdRef.current = result?.noteId ?? null
         setPendingCreateAssignedNoteId(assignedCreateNoteIdRef.current)
       }
     } catch (error) {
-      if (!(error instanceof Error && error.name === 'AbortError')) {
+      if (!(error instanceof Error && error.name === 'AbortError') && !shouldFlushOnUnmountRef.current?.()) {
         toast.error('Auto-save failed. Your changes will retry.', { id: 'note-autosave-failed' })
       }
       throw error
@@ -160,8 +164,6 @@ export function useNoteEditorAutoSave({
   }), [autosaveDelayMs, flushAutoSave])
 
   const previousDebouncedAutoSaveRef = useRef<typeof debouncedAutoSave | null>(null)
-  const shouldFlushOnUnmountRef = useRef(shouldFlushOnUnmount)
-  useEffect(() => { shouldFlushOnUnmountRef.current = shouldFlushOnUnmount }, [shouldFlushOnUnmount])
   useEffect(() => {
     const finishOrCancel = () => {
       if (shouldFlushOnUnmountRef.current?.()) {

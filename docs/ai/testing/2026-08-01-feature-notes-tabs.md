@@ -327,3 +327,10 @@ The separate history and first-create browser suites each passed 6/6 in raw
 Cypress. Desktop Chrome also showed its native generic warning after A→B,
 without exposing A's draft, and did not warn for a clean editor. The browser
 checks used an isolated local Supabase instance and synthetic accounts.
+
+Autosave feedback also follows the account session: a controlled pending save
+cannot publish or dismiss a toast after its session changes, while a failure
+in the current session still reports an error. A Chromium test with synthetic
+accounts switches A→B→A after an offline local-save failure, checks that B
+sees neither A's draft nor its failure toast, then forces another failed write
+and verifies that A sees the new error. This does not cover cross-window UI.
