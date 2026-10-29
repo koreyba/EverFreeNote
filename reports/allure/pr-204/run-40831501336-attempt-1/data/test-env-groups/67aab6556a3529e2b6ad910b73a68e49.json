@@ -1,0 +1,1 @@
+{"id":"67aab6556a3529e2b6ad910b73a68e49","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML drops the invalid dimension: leading space","name":"drops the invalid dimension: leading space","status":"passed","testResultsByEnv":{"default":"ce32129969536aa75bc4c23eb8a2fb1c"}}
