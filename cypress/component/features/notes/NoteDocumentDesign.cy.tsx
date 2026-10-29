@@ -112,7 +112,7 @@ describe('Note document design', { retries: 0 }, () => {
     cy.get('[aria-label="Add tag"]').click()
     cy.get('[aria-label="Add tags"]').type('новый{enter}')
     cy.get('[data-cy="note-save-button"]').click()
-    cy.get('@save').should('have.been.calledWithMatch', { tags: [...tags.slice(0, -1), 'новый'].join(', ') })
+    cy.get('@save').should('have.been.calledWithMatch', { tags: ['новый', ...tags.slice(0, -1)].join(', ') })
   })
 
   it('shows the same complete title and expandable tags in reading mode', () => {
