@@ -1,0 +1,1 @@
+{"id":"7bc4808e7cddc9e604174ba5f47b9a1d","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml preserves superscript and subscript while stripping unsafe attributes","name":"preserves superscript and subscript while stripping unsafe attributes","status":"passed","testResultsByEnv":{"default":"a78c5147c69fd5b48f487d804f7b7206"}}

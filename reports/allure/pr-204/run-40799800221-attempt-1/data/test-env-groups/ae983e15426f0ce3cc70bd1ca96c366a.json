@@ -1,0 +1,1 @@
+{"id":"ae983e15426f0ce3cc70bd1ca96c366a","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteBulkActions.test.tsx#useNoteBulkActions does not send any online deletes when preparation fails","name":"does not send any online deletes when preparation fails","status":"passed","testResultsByEnv":{"default":"57ee739bd1108831e6ad5352d3d83d29"}}
