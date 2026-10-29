@@ -1,1 +1,0 @@
-{"id":"20201e1bd20b045f84813c0bf2f5b213","fullName":"everfreenote:cypress/component/features/notes/SplitLayoutPersistence.cy.tsx#Restoring a split workspace ignores a pending split from A after switching to B during save","name":"ignores a pending split from A after switching to B during save","status":"passed","testResultsByEnv":{"default":"ca540ddc7b817ba57531d27ddcda1af0"}}

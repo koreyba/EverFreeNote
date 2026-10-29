@@ -1,1 +1,0 @@
-{"id":"5e9812e6db92c09be4a9a476ac5322a6","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSync.test.tsx#starts draining only after authentication is restored, including remount effects","name":"starts draining only after authentication is restored, including remount effects","status":"passed","testResultsByEnv":{"default":"eecf8e9d1d413fa55afab0482f1e96d4"}}
