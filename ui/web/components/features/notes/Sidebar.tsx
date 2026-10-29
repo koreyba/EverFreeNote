@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { SignOut as LogOut, Plus, MagnifyingGlass as Search, Gear as Settings } from "@phosphor-icons/react"
+import { SignOut as LogOut, Plus, MagnifyingGlass as Search, Gear as Settings, ListBullets, SquaresFour } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BrandLogo } from "@/components/BrandLogo"
@@ -12,6 +12,7 @@ import { useResizableNotesSidebar } from "@ui/web/hooks/useResizableNotesSidebar
 import { cn } from "@ui/web/lib/utils"
 import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm"
 import { describeDeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
+import type { NoteListLayout } from "./NoteList"
 
 interface SidebarProps {
   user: User
@@ -41,6 +42,8 @@ interface SidebarProps {
   onOpenSettings: () => void
   onCreateNote: () => void
   onSignOut: () => void
+  noteListLayout?: NoteListLayout
+  onChangeNoteListLayout?: (layout: NoteListLayout) => void
   children: React.ReactNode // For the NoteList
   className?: string
   "data-testid"?: string
@@ -72,6 +75,8 @@ export function Sidebar({
   onOpenSettings,
   onCreateNote,
   onSignOut,
+  noteListLayout = "list",
+  onChangeNoteListLayout,
   children,
   className,
   "data-testid": dataTestId
@@ -187,9 +192,25 @@ export function Sidebar({
               New Note
             </Button>
           </div>
-          <p className="notes-sidebar-count text-[11px] text-muted-foreground md:text-center tracking-wide uppercase font-semibold">
-            {notesCountText}
-          </p>
+          <div className="notes-sidebar-count flex items-center justify-between gap-3">
+            <p className="min-w-0 text-[11px] text-muted-foreground tracking-wide uppercase font-semibold">
+              {notesCountText}
+            </p>
+            {onChangeNoteListLayout && (
+              <div role="group" aria-label="Note layout" className="flex shrink-0 items-center rounded-full bg-muted/70 p-0.5">
+                <Button type="button" variant="ghost" size="icon" aria-label="List view" aria-pressed={noteListLayout === "list"}
+                  onClick={() => onChangeNoteListLayout("list")}
+                  className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "list" && "bg-background text-foreground shadow-sm")}>
+                  <ListBullets className="h-4 w-4" aria-hidden="true" />
+                </Button>
+                <Button type="button" variant="ghost" size="icon" aria-label="Grid view" aria-pressed={noteListLayout === "grid"}
+                  onClick={() => onChangeNoteListLayout("grid")}
+                  className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "grid" && "bg-background text-foreground shadow-sm")}>
+                  <SquaresFour className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+            )}
+          </div>
           {selectionMode && (
             <SelectionModeActions
               className="notes-sidebar-selection"

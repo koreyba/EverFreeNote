@@ -19,7 +19,7 @@ import {
 import { cn } from "@ui/web/lib/utils"
 import { PullToRefresh } from "@/components/PullToRefresh"
 import { Sidebar } from "@/components/features/notes/Sidebar"
-import { NoteList } from "@/components/features/notes/NoteList"
+import { NoteList, type NoteListLayout } from "@/components/features/notes/NoteList"
 import { NoteEditor, type NoteEditorHandle, type PendingChunkFocus } from "@/components/features/notes/NoteEditor"
 import { NoteView } from "@/components/features/notes/NoteView"
 import { EmptyState } from "@/components/features/notes/EmptyState"
@@ -67,6 +67,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   const router = useRouter()
   const isMobile = useIsMobile()
   const { supabase, getSessionSnapshot } = useSupabase()
+  const [noteListLayout, setNoteListLayout] = React.useState<NoteListLayout>("list")
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
   const preserveWorkspaceRef = React.useRef(controller.preserveWorkspaceForNavigation)
   React.useLayoutEffect(() => {
@@ -100,6 +101,20 @@ export function NotesShell({ controller }: NotesShellProps) {
   const splitOpeningRef = React.useRef(false)
   const paneFocusTargetRef = React.useRef<string | null>(null)
   const viewScrollsRef = React.useRef(new Map<string, { noteId: string | null, scrollTop: number }>())
+
+  React.useEffect(() => {
+    try {
+      if (window.localStorage.getItem("everfreenote:note-list-layout") === "grid") {
+        // Restore the preference after hydration to keep the server and client markup consistent.
+        setNoteListLayout("grid")
+      }
+    } catch { /* Local storage can be unavailable in private browsing. */ }
+  }, [])
+
+  const handleChangeNoteListLayout = React.useCallback((layout: NoteListLayout) => {
+    setNoteListLayout(layout)
+    try { window.localStorage.setItem("everfreenote:note-list-layout", layout) } catch { /* Keep the choice for this session. */ }
+  }, [])
 
   React.useEffect(() => {
     controller.registerNoteEditorRef(noteEditorRef)
@@ -524,11 +539,13 @@ export function NotesShell({ controller }: NotesShellProps) {
               onOpenSettings={() => void handleOpenSettings()}
               onCreateNote={handleCreateNote}
               onSignOut={handleSignOut}
+              noteListLayout={noteListLayout}
+              onChangeNoteListLayout={handleChangeNoteListLayout}
               onOpenSearch={() => void handleOpenSearchPanel()}
               className={cn((showEditor || isSearchPanelOpen) ? "hidden md:flex" : "w-full")}
               data-testid="sidebar-container"
             >
-              <ListPane controller={controller} />
+              <ListPane controller={controller} layout={noteListLayout} />
             </Sidebar>
 
             {isSearchPanelOpen && (
@@ -631,7 +648,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 }
 
 
-function ListPane({ controller }: { controller: NoteAppController }) {
+function ListPane({ controller, layout }: { controller: NoteAppController; layout: NoteListLayout }) {
   const {
     notes,
     notesQuery,
@@ -646,6 +663,7 @@ function ListPane({ controller }: { controller: NoteAppController }) {
   return (
     <PullToRefresh onRefresh={controller.refreshNotes}>
       <NoteList
+        layout={layout}
         notes={notes as NoteRecord[]}
         isLoading={notesQuery.isLoading}
         selectedNoteId={selectedNote?.id}

@@ -20,6 +20,7 @@ type NoteRecord = Note & {
 type NoteCardProps = {
   note: NoteRecord | SearchResult
   variant: "compact" | "search"
+  layout?: "list" | "grid"
   isSelected?: boolean
   selectionMode?: boolean
   onClick: () => void
@@ -61,6 +62,7 @@ type CardInternalProps = NoteCardProps & {
 
 function CompactNoteCard({
   note,
+  layout,
   isSelected,
   selectionMode,
   onToggleSelect,
@@ -76,7 +78,8 @@ function CompactNoteCard({
       onClick={handleCardClick}
       role="none"
       className={cn(
-        "group p-3.5 rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm active:scale-[0.98]",
+        "group rounded-xl cursor-pointer transition-all duration-200 border h-full select-none hover:shadow-sm active:scale-[0.98]",
+        layout === "grid" ? "overflow-hidden p-3" : "p-3.5",
         isSelected ? selectableSurfaceStateClasses.active : selectableSurfaceStateClasses.idleCard
       )}
       {...longPressHandlers}
@@ -107,25 +110,30 @@ function CompactNoteCard({
                 e.stopPropagation();
                 handleCardClick(e);
               }}
-              className="font-semibold text-sm leading-snug text-foreground truncate outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer"
+              className={cn("font-semibold text-sm leading-snug text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 -mx-1 text-left w-full cursor-pointer", layout === "grid" ? "line-clamp-2" : "truncate")}
             >
               {note.title || "Untitled"}
             </button>
           </h2>
-          <p className="text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal line-clamp-2 mt-1.5">
+          <p className={cn("text-[13px] text-muted-foreground dark:text-zinc-400 leading-normal mt-1.5", layout === "grid" ? "line-clamp-3" : "line-clamp-2")}>
             {note.description ? notePreview(note.description) : ""}
           </p>
           {note.tags && note.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2.5">
-              {note.tags.slice(0, 3).map((tag) => (
+            <div className={cn("flex gap-1 mt-2.5", layout === "grid" ? "items-center overflow-hidden" : "flex-wrap")}>
+              {note.tags.slice(0, layout === "grid" ? 2 : 3).map((tag) => (
                 <InteractiveTag
                   key={tag}
                   tag={tag}
                   onClick={onTagClick || (() => { })}
                   showIcon={false}
-                  className="text-[11px] px-2 py-0.5 rounded-full"
+                  className={cn("truncate text-[11px] px-2 py-0.5 rounded-full", layout === "grid" ? "min-w-0 max-w-[42%]" : "max-w-full")}
                 />
               ))}
+              {layout === "grid" && note.tags.length > 2 && (
+                <span className="shrink-0 text-[10px] font-medium text-muted-foreground" aria-label={`${note.tags.length - 2} more tags`}>
+                  +{note.tags.length - 2}
+                </span>
+              )}
             </div>
           )}
           <div className="flex-1" />

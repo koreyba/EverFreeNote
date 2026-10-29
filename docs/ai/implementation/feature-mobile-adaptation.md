@@ -71,3 +71,4 @@ description: Technical implementation notes, patterns, and code guidelines for m
 - Phone note actions use 44×44 px targets; desktop action sizes remain unchanged.
 - `SwipeableNoteRow` reveals the existing single-note delete confirmation after a left swipe. A list allows one open swipe action; vertical gestures and selection mode do not reveal it.
 - `NoteFindBar` searches title and body in reading and editing views, including matches across inline formatting. The expanded editor exposes Find in its toolbar and searches the visible body. It uses browser text highlights with a non-mutating overlay fallback, and refreshes matches when the draft changes.
+- The notes sidebar switches between a list and a two-column grid, remembers the choice locally, and shows a count when a tile has additional tags. Grid rows remain virtualized and use the existing note actions.
