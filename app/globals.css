@@ -46,6 +46,22 @@ button,
   color-scheme: dark;
 }
 
+/* Preserve room for the virtualized list in unusually short desktop windows.
+   The outer scroll is a fallback when even this compact layout cannot fit. */
+@media (min-width: 768px) and (max-height: 480px) {
+  .notes-sidebar-content { overflow-y: auto; }
+  .notes-sidebar-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem; }
+  .notes-sidebar-brand-row { flex: 1; min-width: 0; margin-bottom: 0; }
+  .notes-sidebar-search { width: 2.5rem; flex: none; }
+  .notes-sidebar-search > div { padding: 0; font-size: 0; }
+  .notes-sidebar-controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.25rem; }
+  .notes-sidebar-create { flex: 1; min-width: 0; }
+  .notes-sidebar-count { flex: none; max-width: 45%; }
+  .notes-sidebar-selection { flex-basis: 100%; }
+  .notes-sidebar-list { min-height: 8rem; flex-shrink: 0; }
+  .notes-sidebar-profile { padding: 0.25rem; }
+}
+
 @media (max-width: 767px) {
   .mobile-workspace {
     position: fixed;

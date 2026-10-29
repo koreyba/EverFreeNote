@@ -21,7 +21,7 @@ function App() {
   return <NotesShell controller={useNoteAppController()} />
 }
 
-function mountNotes() {
+function mountNotes(requireVisible = true) {
   const client = createClient('https://sidebar-viewport.invalid', 'test-public-key', {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   })
@@ -40,7 +40,7 @@ function mountNotes() {
   cy.window().then(win => win.sessionStorage.clear())
   cy.then(() => webOfflineStorageAdapter.clearAll())
   cy.mount(<SupabaseTestProvider supabase={client} user={user}><App /></SupabaseTestProvider>)
-  cy.contains('[data-testid="note-card"]', 'Sidebar note 01').should('be.visible')
+  cy.contains('[data-testid="note-card"]', 'Sidebar note 01').should(requireVisible ? 'be.visible' : 'exist')
 }
 
 function goOffline() {
@@ -65,6 +65,17 @@ function assertFooterWithinViewport() {
     })
 }
 
+function assertFirstNoteFullyVisible() {
+  cy.contains('[data-testid="note-card"]', 'Sidebar note 01').should($card => {
+    const card = $card[0].getBoundingClientRect()
+    const list = $card[0].closest('[role="list"]')!.getBoundingClientRect()
+    const sidebar = $card[0].closest('#notes-sidebar')!.getBoundingClientRect()
+    const win = $card[0].ownerDocument.defaultView!
+    expect(card.top, 'first note starts inside the visible list').to.be.at.least(Math.max(list.top, sidebar.top))
+    expect(card.bottom, 'first note ends inside the visible list').to.be.at.most(Math.min(list.bottom, sidebar.bottom, win.innerHeight))
+  })
+}
+
 describe('Sidebar viewport layout', { retries: 0 }, () => {
   afterEach(() => {
     cy.window().then(win => {
@@ -72,6 +83,77 @@ describe('Sidebar viewport layout', { retries: 0 }, () => {
       win.dispatchEvent(new win.Event('online'))
     })
     cy.document().then(doc => doc.documentElement.classList.remove('dark'))
+  })
+
+  it('shows a complete note and the profile actions in a very short offline desktop window', () => {
+    cy.viewport(1280, 320)
+    mountNotes(false)
+    goOffline()
+    assertFirstNoteFullyVisible()
+    cy.get('[data-testid="sidebar-search-trigger"]').should('be.visible')
+    cy.contains('#notes-sidebar button', 'New Note').should('be.visible')
+    assertFooterWithinViewport()
+    cy.screenshot('sidebar-very-short-offline', { capture: 'viewport' })
+    cy.get('#notes-list-container [role="list"]').scrollTo('bottom')
+    cy.contains('[data-testid="note-card"]', 'Sidebar note 30').should('be.visible')
+    cy.get('#notes-list-container [role="list"]').scrollTo('bottom')
+    cy.contains('[data-testid="note-card"]', 'Sidebar note 30').should($card => {
+      const list = $card[0].closest('[role="list"]')!.getBoundingClientRect()
+      expect($card[0].getBoundingClientRect().bottom, 'last note is fully reachable in the short list')
+        .to.be.at.most(list.bottom + 1)
+    })
+    cy.get('#notes-list-container [role="list"]').scrollTo('top')
+    cy.viewport(1280, 400)
+    assertFirstNoteFullyVisible()
+    assertFooterWithinViewport()
+    cy.viewport(768, 320)
+    cy.get('[role="separator"][aria-label="Resize notes sidebar"]').trigger('keydown', { key: 'Home' })
+      .should('have.attr', 'aria-valuenow', '280')
+    assertFirstNoteFullyVisible()
+    assertFooterWithinViewport()
+    cy.screenshot('sidebar-minimum-width-offline', { capture: 'viewport' })
+    cy.viewport(1280, 320)
+    cy.get('[aria-label="Add note tab"]').should('not.be.disabled')
+    cy.get('[data-testid="sidebar-search-trigger"]').focus()
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('contain.text', 'New Note')
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('contain.text', 'Sidebar note 01')
+    // Electron component tests do not activate even a plain button on Enter;
+    // Tab focus is checked here; native activation requires separate browser QA.
+    cy.focused().click()
+    cy.contains('[data-testid="editor-container"]', 'Sidebar note 01').should('be.visible')
+  })
+
+  it('keeps controls reachable by keyboard when the window is too short to fit the sidebar', () => {
+    cy.viewport(1024, 220)
+    mountNotes(false)
+    cy.document().then(doc => doc.documentElement.classList.add('dark'))
+    goOffline()
+    cy.get('[data-testid="sidebar-search-trigger"]').focus()
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('contain.text', 'New Note')
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('contain.text', 'Sidebar note 01').should($button => {
+      const rect = $button[0].getBoundingClientRect()
+      const sidebar = $button[0].closest('#notes-sidebar')!.getBoundingClientRect()
+      expect(rect.top, 'focused note title starts inside the sidebar').to.be.at.least(sidebar.top)
+      expect(rect.bottom, 'focused note title remains on screen').to.be.at.most(220)
+    })
+    cy.get('#notes-sidebar [aria-label="Open settings page"]').focus().should('have.focus')
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('have.attr', 'aria-label', 'Sign out')
+    assertFooterWithinViewport()
+    cy.get('.notes-sidebar-content').should($content => {
+      expect($content[0].scrollTop, 'sidebar scrolls to the profile').to.be.greaterThan(0)
+    })
+    cy.get('[role="separator"][aria-label="Resize notes sidebar"]').should($resizer => {
+      const rect = $resizer[0].getBoundingClientRect()
+      const sidebar = $resizer[0].closest('#notes-sidebar')!.getBoundingClientRect()
+      expect(rect.top, 'resize handle remains at the top of the sidebar').to.equal(sidebar.top)
+      expect(rect.bottom, 'resize handle remains at the bottom of the sidebar').to.equal(sidebar.bottom)
+    })
+    cy.screenshot('sidebar-extremely-short-dark', { capture: 'viewport' })
   })
 
   it('keeps the desktop profile visible when a sync warning appears', () => {
