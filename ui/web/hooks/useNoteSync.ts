@@ -5,6 +5,7 @@ import { OfflineCacheService } from '@core/services/offlineCache'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
 import { webNetworkStatus } from '@ui/web/adapters/networkStatus'
 import { isPostgrestNoRowsError } from '@core/utils/postgrest'
+import { getPendingOwnerNotes, subscribeOwnerNoteWrites } from '@ui/web/lib/ownerNoteWrites'
 import type { MutationQueueItemInput, CachedNote } from '@core/types/offline'
 import type { NoteInsert, NoteUpdate } from '@core/types/domain'
 import type { User } from '@supabase/supabase-js'
@@ -25,7 +26,17 @@ export function useNoteSync({
     updateNoteMutation,
     deleteNoteMutation
 }: UseNoteSyncProps) {
+    const userId = user?.id
     const [offlineOverlay, setOfflineOverlay] = useState<CachedNote[]>([])
+    const [pendingOwnerNotes, setPendingOwnerNotes] = useState<CachedNote[]>(() => userId ? getPendingOwnerNotes(userId) : [])
+    const pendingOwnerNotesRef = useRef(pendingOwnerNotes)
+    const visibleOfflineOverlay = useMemo(() => {
+        const ownPendingNotes = pendingOwnerNotes.filter(note => note.user_id === userId)
+        if (!ownPendingNotes.length) return offlineOverlay
+        const byId = new Map(offlineOverlay.map(note => [note.id, note]))
+        ownPendingNotes.forEach(note => byId.set(note.id, note))
+        return Array.from(byId.values())
+    }, [offlineOverlay, pendingOwnerNotes, userId])
     const [pendingCount, setPendingCount] = useState(0)
     const [failedCount, setFailedCount] = useState(0)
     const [isOffline, setIsOffline] = useState<boolean>(typeof window !== 'undefined' ? !navigator.onLine : false)
@@ -44,13 +55,13 @@ export function useNoteSync({
     const queueStateBarrier = useRef<Promise<void>>(Promise.resolve())
 
     // Only serialize local queue/cache reconciliation; network requests never hold this lock.
-    const withQueueStateUpdate = useCallback(async (action: () => Promise<void>) => {
+    const withQueueStateUpdate = useCallback(async <T,>(action: () => Promise<T>): Promise<T> => {
         const previous = queueStateBarrier.current
         let release = () => {}
         queueStateBarrier.current = new Promise<void>((resolve) => { release = resolve })
         await previous
         try {
-            await action()
+            return await action()
         } finally {
             release()
         }
@@ -136,7 +147,6 @@ export function useNoteSync({
     // Create syncManager effect to avoid reading refs during render
     const syncManagerRef = useRef<OfflineSyncManager | null>(null)
 
-    const userId = user?.id
     useEffect(() => {
         if (!userId) return
         const manager = new OfflineSyncManager(
@@ -184,25 +194,31 @@ export function useNoteSync({
         [offlineQueue, isOffline, withQueueStateUpdate]
     )
 
-    const refreshQueueState = useCallback((onPendingZero?: () => void) => withQueueStateUpdate(async () => {
-        const queue = await offlineQueue.getQueue()
-        let cached = await offlineCache.loadNotes()
-        if (!queue.length && cached.length) {
-            const idsToRemove = cached.filter((c) => c.status === 'synced' && c.deleted).map((c) => c.id)
-            if (idsToRemove.length) {
-                for (const id of idsToRemove) {
-                    await offlineCache.deleteNote(id)
+    const refreshRevisionRef = useRef(0)
+    const refreshQueueState = useCallback((onPendingZero?: () => void) => {
+        const revision = ++refreshRevisionRef.current
+        return withQueueStateUpdate(async () => {
+            const queue = await offlineQueue.getQueue()
+            let cached = await offlineCache.loadNotes()
+            if (!queue.length && cached.length) {
+                const idsToRemove = cached.filter((c) => c.status === 'synced' && c.deleted).map((c) => c.id)
+                if (idsToRemove.length) {
+                    for (const id of idsToRemove) {
+                        await offlineCache.deleteNote(id)
+                    }
+                    cached = await offlineCache.loadNotes()
                 }
-                cached = await offlineCache.loadNotes()
             }
-        }
-        setOfflineOverlay(cached.filter((note) => !note.user_id || note.user_id === userRef.current?.id))
-        const pending = queue.filter((q) => q.status === 'pending').length
-        const failed = queue.filter((q) => q.status === 'failed').length
-        setPendingCount(pending)
-        setFailedCount(failed)
-        if (pending === 0) onPendingZero?.()
-    }), [offlineQueue, offlineCache, withQueueStateUpdate])
+            if (revision !== refreshRevisionRef.current) return false
+            setOfflineOverlay(cached.filter((note) => !note.user_id || note.user_id === userRef.current?.id))
+            const pending = queue.filter((q) => q.status === 'pending').length
+            const failed = queue.filter((q) => q.status === 'failed').length
+            setPendingCount(pending)
+            setFailedCount(failed)
+            if (pending === 0) onPendingZero?.()
+            return true
+        })
+    }, [offlineQueue, offlineCache, withQueueStateUpdate])
 
     useEffect(() => {
         if (!userId) return
@@ -228,7 +244,40 @@ export function useNoteSync({
     }, [refreshQueueState, userId])
 
     useEffect(() => {
-        void refreshQueueState()
+        let active = true
+        if (!userId) {
+            pendingOwnerNotesRef.current = []
+            return
+        }
+        const readPending = () => {
+            const notes = getPendingOwnerNotes(userId)
+            pendingOwnerNotesRef.current = notes
+            setPendingOwnerNotes(notes)
+        }
+        const unsubscribe = subscribeOwnerNoteWrites(userId, saved => {
+            if (saved) {
+                // Install the completed write before removing its in-memory
+                // snapshot, so the new session cannot briefly show stale data.
+                refreshRevisionRef.current += 1
+                setOfflineOverlay(previous => [...previous.filter(note => note.id !== saved.id), saved])
+                void refreshQueueState().catch(() => {})
+            }
+            readPending()
+        })
+        const current = getPendingOwnerNotes(userId)
+        const missedCompletion = pendingOwnerNotesRef.current.some(note => !current.some(pending => pending.id === note.id))
+        if (missedCompletion) {
+            const catchUp = async () => {
+                while (active) {
+                    if (await refreshQueueState()) { if (active) readPending(); return }
+                }
+            }
+            void catchUp().catch(() => {})
+        } else {
+            readPending()
+            void refreshQueueState().catch(() => {})
+        }
+        return () => { active = false; unsubscribe() }
     }, [refreshQueueState, userId])
 
 
@@ -276,7 +325,7 @@ export function useNoteSync({
     }, [refreshQueueState, userId])
 
     return {
-        offlineOverlay,
+        offlineOverlay: visibleOfflineOverlay,
         setOfflineOverlay,
         pendingCount,
         setPendingCount,

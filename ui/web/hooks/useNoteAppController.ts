@@ -11,6 +11,7 @@ import { useNoteAuth } from './useNoteAuth'
 import { useNoteSearch } from './useNoteSearch'
 import { useNoteSelection } from './useNoteSelection'
 import { useNoteSync } from './useNoteSync'
+import { getTagMutationRecovery, setTagMutationRecovery, subscribeTagMutationRecovery, type TagChange } from '@ui/web/lib/tagMutationRecovery'
 import { useNoteData } from './useNoteData'
 import { useNoteRefresh } from './useNoteRefresh'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
@@ -44,7 +45,7 @@ type AIPaginationControls = {
   loadMoreAI: () => void
 }
 
-type TagChange = <T extends { tags?: string[] }>(notes: T[]) => T[]
+type SessionSnapshot = { userId: string | null; epoch: number } | undefined
 
 const ownerlessNotice = 'Some cached notes have an unknown account and could not be reconciled. They are kept locally; changes affecting them are blocked.'
 const ownerlessBlock = 'Some cached notes with an unknown account would be changed. They were kept for safety.'
@@ -61,7 +62,13 @@ function hasUnsyncedCachedNotes(notes: CachedNote[], userId: string): boolean {
 }
 
 export function useNoteAppController() {
-  const { supabase, user: providerUser } = useSupabase()
+  const { supabase, user: providerUser, getSessionSnapshot } = useSupabase()
+  const isCurrentSession = useCallback((started?: { userId: string | null; epoch: number }) => {
+    if (!started || !getSessionSnapshot) return true
+    const current = getSessionSnapshot()
+    return current.epoch === started.epoch && current.userId === started.userId
+      && started.userId === (providerUser?.id ?? null)
+  }, [getSessionSnapshot, providerUser?.id])
 
   // -- Auth --
   const {
@@ -367,12 +374,14 @@ export function useNoteAppController() {
   })
 
   const resolveOpenableNote = useCallback(async <T extends NoteViewModel | SearchResult>(note: T): Promise<T | null> => {
+    const started = getSessionSnapshot?.()
     if (isOffline || hasPendingLocalWrites(note.id)) {
       return note
     }
 
     try {
       const remoteResult = await noteService.getNoteStatus(note.id)
+      if (!isCurrentSession(started)) return null
       if (remoteResult.status === 'found') {
         return pickLatestNote([
           mergeNoteFields(note, remoteResult.note),
@@ -382,6 +391,7 @@ export function useNoteAppController() {
 
       if (remoteResult.status === 'not_found') {
         await offlineCache.deleteNote(note.id)
+        if (!isCurrentSession(started)) return null
         setOfflineOverlay((current) => current.filter((cachedNote) => cachedNote.id !== note.id))
         toast.error('This note was deleted on another device.')
         queryClient.invalidateQueries({ queryKey: ['notes'] }).catch(() => {})
@@ -391,11 +401,12 @@ export function useNoteAppController() {
 
       console.warn('Transient error checking note status, using local version:', remoteResult.error)
     } catch (error) {
+      if (!isCurrentSession(started)) return null
       console.warn('Failed to check note status, using local version:', error)
     }
 
     return note
-  }, [hasPendingLocalWrites, isOffline, noteService, offlineCache, setOfflineOverlay, queryClient])
+  }, [getSessionSnapshot, hasPendingLocalWrites, isCurrentSession, isOffline, noteService, offlineCache, setOfflineOverlay, queryClient])
 
   // -- Save handlers --
   const {
@@ -433,6 +444,8 @@ export function useNoteAppController() {
   })
 
   const prepareNotesForDeletion = useCallback(async (noteIds: readonly string[]) => {
+    const started = getSessionSnapshot?.()
+    if (!isCurrentSession(started)) throw new Error('Account changed before deletion.')
     // The only mounted editor belongs to the active tab, even in split view.
     // Keep its live draft and finish autosave before touching its delete.
     if (activeTab.noteId && noteIds.includes(activeTab.noteId)) {
@@ -445,7 +458,8 @@ export function useNoteAppController() {
     } catch {
       throw new Error('Could not save the selected note. Retry before deleting.')
     }
-  }, [activeTab.noteId, flushAndCaptureActiveTab, waitForPendingNoteWrites])
+    if (!isCurrentSession(started)) throw new Error('Account changed before deletion.')
+  }, [activeTab.noteId, flushAndCaptureActiveTab, getSessionSnapshot, isCurrentSession, waitForPendingNoteWrites])
 
   const confirmDeleteNoteWithWorkspace = useCallback(async () => {
     const deletedNoteId = noteToDelete?.id ?? null
@@ -580,7 +594,13 @@ export function useNoteAppController() {
     const activeSavedDuringCheck = (savedTabRevisionRef.current.get(activeTabId) ?? 0) > revision
     return workspaceStorageReadable && tabs.every(tab => tab.saveState === 'saved' || (tab.id === activeTabId && activeSavedDuringCheck))
   }, [activeTabId, flushAndCaptureActiveTab, tabs, waitForPendingNoteWrites, workspaceHydrated, workspaceStorageReadable])
-  const signOutGuard = useGuardedSignOut(workspaceUserId, prepareSignOut, performSignOut)
+  const signOutGuard = useGuardedSignOut(workspaceUserId, prepareSignOut, performSignOut, getSessionSnapshot)
+  const discardGuardedSignOut = signOutGuard.discardAndSignOut
+  const discardAndSignOut = useCallback(async () => {
+    // The explicit discard choice must not start a new save during unmount.
+    noteEditorRef.current?.current?.cancelPendingSave?.()
+    await discardGuardedSignOut()
+  }, [discardGuardedSignOut])
 
   // -- Bulk actions --
   const { selectAllVisible, deleteSelectedNotes, deleteNotesByIds } = useNoteBulkActions({
@@ -604,25 +624,27 @@ export function useNoteAppController() {
 
   // -- Nav wrappers: flush pending editor save before any navigation --
   const hideNotePane = useCallback(async (): Promise<boolean> => {
+    const started = getSessionSnapshot?.()
     const requestId = ++latestSelectRequestRef.current
     const flushed = await flushAndCaptureActiveTab()
-    if (!flushed || requestId !== latestSelectRequestRef.current) return false
+    if (!flushed || !isCurrentSession(started) || requestId !== latestSelectRequestRef.current) return false
     clearActiveSettingsNoteReturnPath()
     // Hiding the pane retains the tab and its draft for later use.
     handleSelectNoteLegacy(null)
     setNotePaneVisible(false)
     setLastSavedAt(null)
     return true
-  }, [flushAndCaptureActiveTab, handleSelectNoteLegacy, setLastSavedAt])
+  }, [flushAndCaptureActiveTab, getSessionSnapshot, handleSelectNoteLegacy, isCurrentSession, setLastSavedAt])
 
   const wrappedHandleSelectNote = useCallback(async (note: NoteViewModel | null) => {
     if (!note) {
       await hideNotePane()
       return
     }
+    const started = getSessionSnapshot?.()
     const requestId = ++latestSelectRequestRef.current
     const flushed = await flushAndCaptureActiveTab()
-    if (!flushed || requestId !== latestSelectRequestRef.current) return
+    if (!flushed || !isCurrentSession(started) || requestId !== latestSelectRequestRef.current) return
     clearActiveSettingsNoteReturnPath()
 
     const existingTab = findTabByNoteId(note.id)
@@ -638,7 +660,7 @@ export function useNoteAppController() {
     }
 
     const openableNote = await resolveOpenableNote(note)
-    if (requestId !== latestSelectRequestRef.current) return
+    if (!isCurrentSession(started) || requestId !== latestSelectRequestRef.current) return
     if (!openableNote) return
     openNote(openableNote)
     handleSelectNoteLegacy(openableNote)
@@ -646,6 +668,8 @@ export function useNoteAppController() {
     setLastSavedAt(null)
   }, [
     flushAndCaptureActiveTab,
+    getSessionSnapshot,
+    isCurrentSession,
     resolveOpenableNote,
     setIsEditing,
     setLastSavedAt,
@@ -659,7 +683,8 @@ export function useNoteAppController() {
   ])
 
   const wrappedHandleCreateNote = useCallback(async () => {
-    if (!(await flushAndCaptureActiveTab())) return
+    const started = getSessionSnapshot?.()
+    if (!(await flushAndCaptureActiveTab()) || !isCurrentSession(started)) return
     clearActiveSettingsNoteReturnPath()
     updateTab(activeTabId, {
       note: null,
@@ -673,14 +698,15 @@ export function useNoteAppController() {
     handleCreateNote()
     setNotePaneVisible(true)
     setLastSavedAt(null)
-  }, [activeTabId, flushAndCaptureActiveTab, handleCreateNote, setLastSavedAt, updateTab])
+  }, [activeTabId, flushAndCaptureActiveTab, getSessionSnapshot, handleCreateNote, isCurrentSession, setLastSavedAt, updateTab])
 
   const wrappedHandleEditNote = useCallback(async (note: NoteViewModel) => {
+    const started = getSessionSnapshot?.()
     const requestId = ++latestEditRequestRef.current
     const flushed = await flushAndCaptureActiveTab()
-    if (!flushed || requestId !== latestEditRequestRef.current) return
+    if (!flushed || !isCurrentSession(started) || requestId !== latestEditRequestRef.current) return
     const openableNote = await resolveOpenableNote(note)
-    if (requestId !== latestEditRequestRef.current) return
+    if (!isCurrentSession(started) || requestId !== latestEditRequestRef.current) return
     if (!openableNote) {
       handleSelectNoteLegacy(null)
       setNotePaneVisible(false)
@@ -703,6 +729,8 @@ export function useNoteAppController() {
     setLastSavedAt(null)
   }, [
     flushAndCaptureActiveTab,
+    getSessionSnapshot,
+    isCurrentSession,
     resolveOpenableNote,
     setLastSavedAt,
     activeTabId,
@@ -715,19 +743,21 @@ export function useNoteAppController() {
   ])
 
   const handleTagClick = useCallback(async (tag: string) => {
-    if (!(await flushAndCaptureActiveTab())) return
+    const started = getSessionSnapshot?.()
+    if (!(await flushAndCaptureActiveTab()) || !isCurrentSession(started)) return
     clearActiveSettingsNoteReturnPath()
     onTagClick(tag)
     setLegacySelectedNote(null)
     setLegacyIsEditing(false)
     setNotePaneVisible(false)
     setLastSavedAt(null)
-  }, [flushAndCaptureActiveTab, onTagClick, setLastSavedAt, setLegacySelectedNote, setLegacyIsEditing])
+  }, [flushAndCaptureActiveTab, getSessionSnapshot, isCurrentSession, onTagClick, setLastSavedAt, setLegacySelectedNote, setLegacyIsEditing])
 
   const wrappedHandleSearchResultClick = useCallback(async (note: SearchResult) => {
+    const started = getSessionSnapshot?.()
     const requestId = ++latestSearchClickRequestRef.current
     const flushed = await flushAndCaptureActiveTab()
-    if (!flushed || requestId !== latestSearchClickRequestRef.current) return
+    if (!flushed || !isCurrentSession(started) || requestId !== latestSearchClickRequestRef.current) return
     clearActiveSettingsNoteReturnPath()
     const resolvedSearchNote = resolveSearchResult(note)
     const existingTab = findTabByNoteId(resolvedSearchNote.id)
@@ -739,7 +769,7 @@ export function useNoteAppController() {
       return
     }
     const openableNote = await resolveOpenableNote(resolvedSearchNote)
-    if (requestId !== latestSearchClickRequestRef.current) return
+    if (!isCurrentSession(started) || requestId !== latestSearchClickRequestRef.current) return
     if (!openableNote) return
     openNote(openableNote)
     handleSearchResultClickLegacy(openableNote)
@@ -747,6 +777,8 @@ export function useNoteAppController() {
     setLastSavedAt(null)
   }, [
     flushAndCaptureActiveTab,
+    getSessionSnapshot,
+    isCurrentSession,
     resolveOpenableNote,
     resolveSearchResult,
     setLastSavedAt,
@@ -1045,7 +1077,16 @@ export function useNoteAppController() {
   const [checkingTagCoverage, setCheckingTagCoverage] = useState(false)
   const [tagMutationInProgress, setTagMutationInProgress] = useState(false)
   const tagMutationQueueRef = useRef<Promise<void>>(Promise.resolve())
-  const tagRecoveryPendingRef = useRef<TagChange | null>(null)
+  const [tagRecovery, setTagRecovery] = useState(() => getTagMutationRecovery(user?.id))
+  useEffect(() => {
+    const refresh = () => setTagRecovery(getTagMutationRecovery(user?.id))
+    refresh()
+    return subscribeTagMutationRecovery(refresh)
+  }, [user?.id])
+
+  const assertTagSession = useCallback((started: SessionSnapshot) => {
+    if (!isCurrentSession(started)) throw new Error('Account changed while updating tags.')
+  }, [isCurrentSession])
 
   const localTagBlockReason = !workspaceHydrated
     ? 'Restoring open notes. Please wait before managing tags.'
@@ -1057,13 +1098,17 @@ export function useNoteAppController() {
         ? 'Save changes in open notes before managing tags.'
         : null
 
-  const tagManagementBlockReason = localTagBlockReason ?? tagCoverageMessage ?? (
+  const tagRecoveryReason = tagRecovery?.phase === 'pending'
+    ? 'A previous tag change is still finishing. Wait, then check the loaded notes.'
+    : tagRecovery ? 'A previous tag change may be incomplete. Check the loaded notes and review them.' : null
+  const tagManagementBlockReason = localTagBlockReason ?? tagRecoveryReason ?? tagCoverageMessage ?? (
     !tagCoveragePages || tagCoveragePages !== notesQuery.data?.pages
       ? 'Check the loaded notes before managing tags.'
       : null
   )
 
-  const verifyTagSnapshot = useCallback(async (): Promise<{ notes: NoteViewModel[]; ownerless: CachedNote[] }> => {
+  const verifyTagSnapshot = useCallback(async (started: SessionSnapshot): Promise<{ notes: NoteViewModel[]; ownerless: CachedNote[] }> => {
+    assertTagSession(started)
     if (!user) throw new Error('Sign in to manage tags.')
     if (!workspaceHydrated) throw new Error('Restoring open notes. Please wait before managing tags.')
     if (isOffline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
@@ -1073,12 +1118,15 @@ export function useNoteAppController() {
       throw new Error('Save changes in open notes before managing tags.')
     }
     const queue = await offlineQueueRef.current.getQueue()
+    assertTagSession(started)
     const cached = await offlineCache.loadNotes()
+    assertTagSession(started)
     if (queue.length || hasUnsyncedCachedNotes(cached, user.id)) {
       throw new Error('Finish syncing your notes before managing tags.')
     }
 
     const refreshed = await notesQuery.refetch({ throwOnError: true })
+    assertTagSession(started)
     const pages = refreshed.data?.pages
     if (!pages?.length || pages.some((page) => !Number.isInteger(page.totalCount))) {
       throw new Error('Could not verify the loaded notes. Try again.')
@@ -1088,6 +1136,7 @@ export function useNoteAppController() {
     const loadedCount = new Set(ids).size
     const { count, error } = await supabase.from('notes')
       .select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+    assertTagSession(started)
     if (error || count === null) throw new Error('Could not verify the total number of notes. Try again.')
     if (loadedCount !== ids.length) {
       throw new Error('Some notes appeared more than once. Refresh and check again.')
@@ -1099,6 +1148,7 @@ export function useNoteAppController() {
       throw new Error('Notes changed while loading. Refresh and check again.')
     }
     const existingIds = await noteService.getExistingNoteIds(ids, user.id)
+    assertTagSession(started)
     if (existingIds.length !== count) throw new Error('Notes changed while checking. Refresh and check again.')
     const verifiedIds = new Set(existingIds)
     if (tabs.some((tab) => tab.noteId && !verifiedIds.has(tab.noteId))) {
@@ -1106,7 +1156,9 @@ export function useNoteAppController() {
     }
     // A draft or ownerless cache entry could have arrived during the server reads.
     const latestCached = await offlineCache.loadNotes()
+    assertTagSession(started)
     const latestQueue = await offlineQueueRef.current.getQueue()
+    assertTagSession(started)
     if (latestQueue.length || hasUnsyncedCachedNotes(latestCached, user.id)) {
       throw new Error('Finish syncing your notes before managing tags.')
     }
@@ -1115,48 +1167,58 @@ export function useNoteAppController() {
     setTagCoveragePages(pages)
     setTagCoverageMessage(null)
     return { notes: loadedNotes as NoteViewModel[], ownerless }
-  }, [user, workspaceHydrated, isOffline, saving, autoSaving, tabs, offlineQueueRef, offlineCache, notesQuery, supabase, noteService])
+  }, [assertTagSession, user, workspaceHydrated, isOffline, saving, autoSaving, tabs, offlineQueueRef, offlineCache, notesQuery, supabase, noteService])
 
   const loadMoreTagNotes = useCallback(async () => {
+    const started = getSessionSnapshot?.()
+    if (!isCurrentSession(started)) return
     setTagCoveragePages(null)
     setTagCoverageMessage(null)
     try {
       await notesQuery.fetchNextPage({ throwOnError: true })
     } catch {
+      if (!isCurrentSession(started)) return
       setTagCoverageMessage('Could not load more notes. Check your connection and try again.')
     }
-  }, [notesQuery])
+  }, [getSessionSnapshot, isCurrentSession, notesQuery])
 
-  const persistTagChanges = useCallback(async (updated: NoteViewModel[], original: NoteViewModel[]) => {
+  const persistTagChanges = useCallback(async (updated: NoteViewModel[], original: NoteViewModel[], started: SessionSnapshot) => {
     const changed = updated.filter((note, index) => note !== original[index])
     // Limit simultaneous requests and stop issuing more after a failure.
     for (let offset = 0; offset < changed.length; offset += 8) {
+      assertTagSession(started)
       const results = await Promise.allSettled(changed.slice(offset, offset + 8).map((note) => (
         updateNoteMutation.mutateAsync({ id: note.id, tags: note.tags, silent: true, deferCacheRefresh: true })
       )))
+      assertTagSession(started)
       if (results.some((result) => result.status === 'rejected')) {
         // A response may be lost after the server applied it. A compensating
         // update cannot safely undo an unknown outcome or a concurrent edit.
         throw new Error('The tag change may be incomplete.')
       }
     }
-  }, [updateNoteMutation])
+  }, [assertTagSession, updateNoteMutation])
 
-  const refreshTagMutationState = useCallback(async (change: TagChange) => {
+  const refreshTagMutationState = useCallback(async (change: TagChange, started: SessionSnapshot) => {
+    assertTagSession(started)
     if (!user) throw new Error('Sign in to refresh notes.')
     const open = tabs.filter((tab) => tab.noteId && tab.note && tab.saveState === 'saved')
     const openIds = open.map((tab) => tab.noteId!)
     const refreshedOpen = await noteService.getNotesByIds(openIds, user.id)
+    assertTagSession(started)
     const refreshedOpenIds = new Set(refreshedOpen.map((note) => note.id))
     const missingOpenIds = openIds.filter((id) => !refreshedOpenIds.has(id))
     if (missingOpenIds.length) {
       const existing = await noteService.getExistingNoteIds(missingOpenIds, user.id)
+      assertTagSession(started)
       if (existing.length) throw new Error('Some open notes could not be refreshed. Try again.')
       // Keep even saved tabs: a late editor update may contain a local draft.
       throw new Error('An open note is no longer available. Close its tab and check again.')
     }
     const cached = await offlineCache.loadNotes()
+    assertTagSession(started)
     const queue = await offlineQueueRef.current.getQueue()
+    assertTagSession(started)
     if (queue.length || hasUnsyncedCachedNotes(cached, user.id)) {
       throw new Error('Finish syncing your notes before managing tags.')
     }
@@ -1167,6 +1229,7 @@ export function useNoteAppController() {
     const remoteCached = []
     for (let offset = 0; offset < cachedIds.length; offset += 100) {
       remoteCached.push(...await noteService.getNotesByIds(cachedIds.slice(offset, offset + 100), user.id))
+      assertTagSession(started)
     }
     const remoteTags = new Map(remoteCached.map((note) => [note.id, note.tags ?? []]))
     const missing = candidates.filter((note) => !remoteTags.has(note.id))
@@ -1174,6 +1237,7 @@ export function useNoteAppController() {
       // An incomplete response is not evidence of deletion. The exact count
       // also prevents a server row limit or temporary error from removing data.
       const existing = await noteService.getExistingNoteIds(missing.map((note) => note.id), user.id)
+      assertTagSession(started)
       if (existing.length) throw new Error('Some cached notes could not be refreshed. Try again.')
     }
     const ownerless = missing.filter((note) => !note.user_id)
@@ -1182,10 +1246,12 @@ export function useNoteAppController() {
     const patches = candidates.filter((note) => remoteTags.has(note.id))
       .map((expected) => ({ expected, tags: remoteTags.get(expected.id)! }))
     const updated = await offlineCache.patchSyncedTags(patches)
+    assertTagSession(started)
     if (updated.length !== patches.length) throw new Error('Some cached notes could not be refreshed safely.')
     // This conditional transaction checks the cache snapshot and queue again,
     // protecting a draft or queued write that arrived during the server reads.
     const removed = missingOwned.length ? await offlineCache.removeSyncedNotes(missingOwned) : []
+    assertTagSession(started)
     const updatedSet = new Set(updated)
     const removedSet = new Set(removed)
     const snapshots = new Map(candidates.map((note) => [note.id, note]))
@@ -1198,52 +1264,72 @@ export function useNoteAppController() {
     if (removed.length !== missingOwned.length) throw new Error('Some cached notes changed while refreshing. Try again.')
     updateSavedTags(refreshedOpen.map((note) => ({ id: note.id, tags: note.tags ?? [] })))
     await notesQuery.refetch({ throwOnError: true })
+    assertTagSession(started)
     await queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+    assertTagSession(started)
     // The cache and queue can change during those reads. Do not claim success
     // if a new draft arrived or an unverified ownerless note now matches.
     const finalCached = await offlineCache.loadNotes()
+    assertTagSession(started)
     const finalQueue = await offlineQueueRef.current.getQueue()
+    assertTagSession(started)
     if (finalQueue.length || hasUnsyncedCachedNotes(finalCached, user.id)) {
       throw new Error('Finish syncing your notes before managing tags.')
     }
     const unverifiedOwnerless = finalCached.filter((note) => !note.user_id && !note.deleted && !remoteTags.has(note.id))
     if (changeTouchesCachedNotes(change, unverifiedOwnerless)) throw new Error(ownerlessBlock)
     setTagCoverageNotice(unverifiedOwnerless.length ? ownerlessNotice : null)
-  }, [user, tabs, noteService, offlineCache, offlineQueueRef, setOfflineOverlay, updateSavedTags, notesQuery, queryClient])
+  }, [assertTagSession, user, tabs, noteService, offlineCache, offlineQueueRef, setOfflineOverlay, updateSavedTags, notesQuery, queryClient])
 
   const checkTagCoverage = useCallback(async () => {
+    const started = getSessionSnapshot?.()
+    if (!isCurrentSession(started) || !user) return
     setCheckingTagCoverage(true)
     setTagCoveragePages(null)
     try {
-      await verifyTagSnapshot()
-      const pendingChange = tagRecoveryPendingRef.current
-      if (pendingChange) {
-        await refreshTagMutationState(pendingChange)
-        tagRecoveryPendingRef.current = null
-        await verifyTagSnapshot()
+      const recovery = getTagMutationRecovery(user.id)
+      if (recovery?.phase === 'pending') {
+        throw new Error('A previous tag change is still finishing. Wait, then check the loaded notes.')
+      }
+      await verifyTagSnapshot(started)
+      if (recovery) {
+        await refreshTagMutationState(recovery.change, started)
+        await verifyTagSnapshot(started)
+        assertTagSession(started)
+        if (getTagMutationRecovery(user.id) === recovery) setTagMutationRecovery(user.id)
+        setTagCoverageNotice((previous) => [previous, 'The previous tag change may have been incomplete. Review the refreshed notes.'].filter(Boolean).join(' '))
       }
     } catch (error) {
+      if (!isCurrentSession(started)) return
       setTagCoveragePages(null)
       setTagCoverageMessage(error instanceof Error ? error.message : 'Could not verify the loaded notes. Try again.')
     } finally {
-      setCheckingTagCoverage(false)
+      if (isCurrentSession(started)) setCheckingTagCoverage(false)
     }
-  }, [verifyTagSnapshot, refreshTagMutationState])
+  }, [assertTagSession, getSessionSnapshot, isCurrentSession, user, verifyTagSnapshot, refreshTagMutationState])
 
   const runTagMutation = useCallback((change: TagChange, success: string) => {
+    const started = getSessionSnapshot?.()
+    const ownerId = user?.id
     const run = async (): Promise<boolean | string> => {
+      if (!ownerId || !isCurrentSession(started)) return false
       tagMutationInProgressRef.current = true
       setTagMutationInProgress(true)
       setTagCoveragePages(null)
       let writeStarted = false
+      let marker: ReturnType<typeof getTagMutationRecovery>
       try {
-        let snapshot = await verifyTagSnapshot()
+        const pending = getTagMutationRecovery(ownerId)
+        if (pending?.phase === 'pending') {
+          throw new Error('A previous tag change is still finishing. Wait, then check the loaded notes.')
+        }
+        let snapshot = await verifyTagSnapshot(started)
         let recoveredPending = false
-        const pendingChange = tagRecoveryPendingRef.current
-        if (pendingChange) {
-          await refreshTagMutationState(pendingChange)
-          tagRecoveryPendingRef.current = null
-          snapshot = await verifyTagSnapshot()
+        if (pending) {
+          await refreshTagMutationState(pending.change, started)
+          snapshot = await verifyTagSnapshot(started)
+          assertTagSession(started)
+          if (getTagMutationRecovery(ownerId) === pending) setTagMutationRecovery(ownerId)
           recoveredPending = true
         }
         if (changeTouchesCachedNotes(change, snapshot.ownerless)) throw new Error(ownerlessBlock)
@@ -1255,51 +1341,67 @@ export function useNoteAppController() {
           const previous = recoveredPending ? ' Review the refreshed notes to confirm the previous change.' : ''
           return `No tag changes were sent by this attempt. ${message}${previous}`
         }
+        assertTagSession(started)
         writeStarted = true
-        await persistTagChanges(updated, current)
-        await refreshTagMutationState(change)
+        marker = { change, phase: 'pending' }
+        setTagMutationRecovery(ownerId, marker)
+        await persistTagChanges(updated, current, started)
+        await refreshTagMutationState(change, started)
+        assertTagSession(started)
+        if (getTagMutationRecovery(ownerId) === marker) setTagMutationRecovery(ownerId)
         setTagCoveragePages(null)
         toast.success(success)
         return true
       } catch (error) {
+        if (!isCurrentSession(started)) {
+          if (writeStarted && marker && getTagMutationRecovery(ownerId) === marker) {
+            setTagMutationRecovery(ownerId, { change, phase: 'uncertain' })
+          }
+          return false
+        }
         setTagCoveragePages(null)
         if (!writeStarted) {
           const message = error instanceof Error ? error.message : 'Could not verify the loaded notes.'
           setTagCoverageMessage(message)
           toast.error(message)
           return `No tag changes were sent by this attempt. ${message}`
-        } else {
-          try {
-            await refreshTagMutationState(change)
-            tagRecoveryPendingRef.current = null
-            toast.error('The tag change may be incomplete. Notes were refreshed; review them before retrying.')
-          } catch {
-            tagRecoveryPendingRef.current = change
-            // Even when a tab or cached snapshot cannot be reconciled, refresh
-            // the list independently if the server is reachable. This is not
-            // enough to clear recovery or claim the batch succeeded.
-            await Promise.allSettled([
-              notesQuery.refetch({ throwOnError: true }),
-              queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] }),
-            ])
-            toast.error('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
-          }
-          setTagCoverageMessage('Refresh and check the notes before managing tags again.')
         }
+        try {
+          await refreshTagMutationState(change, started)
+          assertTagSession(started)
+          if (getTagMutationRecovery(ownerId) === marker) setTagMutationRecovery(ownerId)
+          toast.error('The tag change may be incomplete. Notes were refreshed; review them before retrying.')
+        } catch {
+          if (marker && getTagMutationRecovery(ownerId) === marker) {
+            setTagMutationRecovery(ownerId, { change, phase: 'uncertain' })
+          }
+          if (!isCurrentSession(started)) return false
+          // Refresh the list independently when the server is reachable; this
+          // does not clear recovery or confirm that the batch succeeded.
+          await Promise.allSettled([
+            notesQuery.refetch({ throwOnError: true }),
+            queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] }),
+          ])
+          if (!isCurrentSession(started)) return false
+          toast.error('The tag change could not be confirmed. Reconnect and refresh your notes before retrying.')
+        }
+        setTagCoverageMessage('Refresh and check the notes before managing tags again.')
         return false
       } finally {
         tagMutationInProgressRef.current = false
-        setTagMutationInProgress(false)
-        if (deferredTagNavigationRef.current) {
-          deferredTagNavigationRef.current = false
-          syncNavigationFromUrl()
+        if (isCurrentSession(started)) {
+          setTagMutationInProgress(false)
+          if (deferredTagNavigationRef.current) {
+            deferredTagNavigationRef.current = false
+            syncNavigationFromUrl()
+          }
         }
       }
     }
     const queued = tagMutationQueueRef.current.then(run, run)
     tagMutationQueueRef.current = queued.then(() => undefined, () => undefined)
     return queued
-  }, [verifyTagSnapshot, persistTagChanges, refreshTagMutationState, syncNavigationFromUrl, notesQuery, queryClient])
+  }, [assertTagSession, getSessionSnapshot, isCurrentSession, user?.id, verifyTagSnapshot, persistTagChanges, refreshTagMutationState, syncNavigationFromUrl, notesQuery, queryClient])
 
   const handleRenameTag = useCallback((oldTag: string, newTag: string) => (
     runTagMutation((current) => renameTagInNotes(current, oldTag, newTag), `Tag "${oldTag}" renamed to "${newTag}"`)
@@ -1391,7 +1493,7 @@ export function useNoteAppController() {
     handleSignOut: signOutGuard.request,
     signOutPhase: signOutGuard.phase,
     cancelSignOut: signOutGuard.cancel,
-    discardAndSignOut: signOutGuard.discardAndSignOut,
+    discardAndSignOut,
     handleDeleteAccount,
     handleCreateNote: wrappedHandleCreateNote,
     handleEditNote: wrappedHandleEditNote,

@@ -32,7 +32,7 @@ const runtimeNoteAuthConfig: NoteAuthConfig = {
 }
 
 export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
-    const { supabase, user: providerUser, loading: providerLoading } = useSupabase()
+    const { supabase, user: providerUser, loading: providerLoading, getSessionSnapshot } = useSupabase()
     const queryClient = useQueryClient()
 
     // -- State --
@@ -151,14 +151,26 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
     }
 
     const handleSignOut = async (callback?: () => void) => {
+        const started = getSessionSnapshot?.()
+        const ownsCleanup = () => {
+            if (!started || !getSessionSnapshot) return true
+            const current = getSessionSnapshot()
+            // The expected SIGNED_OUT event changes A to null once. A newer
+            // account or a second session must never be cleared by this call.
+            return (current.epoch === started.epoch && current.userId === started.userId)
+                || (current.epoch === started.epoch + 1 && current.userId === null)
+        }
+        if (started && started.userId !== (user?.id ?? null)) return
         try {
             const { error } = await authService.signOut()
             if (error) throw error
+            if (!ownsCleanup()) return
             try {
                 await webStorageAdapter.removeItem('testUser')
             } catch (error) {
                 console.error('Error clearing legacy test session:', error)
             }
+            if (!ownsCleanup()) return
             // Workspace tabs cache the notes they show, in storage that
             // outlives the session. Drop them here so nothing is left behind
             // for the next account signing in on this browser tab.

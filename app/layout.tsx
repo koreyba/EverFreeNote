@@ -5,7 +5,7 @@ import type { ReactNode } from "react"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { QueryProvider } from "@/components/providers/QueryProvider"
 import { NativeShellProvider } from "@ui/shell/runtime/NativeShellProvider"
-import { SupabaseProvider } from "@ui/web/providers/SupabaseProvider"
+import { AccountSessionBoundary, SupabaseProvider } from "@ui/web/providers/SupabaseProvider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -32,7 +32,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <SupabaseProvider>
             <NativeShellProvider>
-              <QueryProvider>
+              <AccountSessionBoundary><QueryProvider>
                 <ThemeProvider
                   attribute="class"
                   defaultTheme="light"
@@ -43,7 +43,7 @@ export default function RootLayout({
                   {children}
                   <Toaster />
                 </ThemeProvider>
-              </QueryProvider>
+              </QueryProvider></AccountSessionBoundary>
             </NativeShellProvider>
           </SupabaseProvider>
         </ErrorBoundary>

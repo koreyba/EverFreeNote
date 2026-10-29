@@ -235,11 +235,11 @@ describe("AIIndexTab", () => {
       searchDraft: "outdated note",
       searchQuery: "outdated note",
       scrollOffset: 144,
-    })
+    }, 'user-1')
     expect(saveAIIndexPendingNoteState).toHaveBeenCalledWith({
       noteId: "note-7",
       returnPath: "/settings?tab=ai-index",
-    })
+    }, 'user-1')
     expect(mockPush).toHaveBeenCalledWith("/")
   })
 

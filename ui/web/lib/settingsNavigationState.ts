@@ -81,10 +81,11 @@ function isNotesUiStateSnapshot(value: unknown): value is NotesUiStateSnapshot {
   )
 }
 
-function isSettingsReturnState(value: unknown): value is SettingsReturnState {
+function isSettingsReturnState(value: unknown): value is SettingsReturnState & { ownerUserId: string } {
   if (!isRecord(value)) return false
 
-  return typeof value.returnPath === 'string' && isNotesUiStateSnapshot(value.notesUiState)
+  return typeof value.ownerUserId === 'string' && value.ownerUserId.length > 0
+    && typeof value.returnPath === 'string' && isNotesUiStateSnapshot(value.notesUiState)
 }
 
 export function sanitizeSettingsReturnPath(path: string | null | undefined): string | null {
@@ -112,10 +113,11 @@ export function sanitizeSettingsReturnPath(path: string | null | undefined): str
   }
 }
 
-export function saveSettingsReturnState(state: SettingsReturnState): boolean {
+export function saveSettingsReturnState(state: SettingsReturnState, ownerUserId: string): boolean {
   const storage = getSessionStorage()
   if (!storage) return false
-  if (!isNotesUiStateSnapshot(state.notesUiState)) return false
+  if (!ownerUserId || !isNotesUiStateSnapshot(state.notesUiState)) return false
+  if (state.notesUiState.selectedNote && state.notesUiState.selectedNote.user_id !== ownerUserId) return false
 
   const safeState: SettingsReturnState = {
     returnPath: sanitizeSettingsReturnPath(state.returnPath) ?? FALLBACK_RETURN_PATH,
@@ -123,7 +125,7 @@ export function saveSettingsReturnState(state: SettingsReturnState): boolean {
   }
 
   try {
-    storage.setItem(SETTINGS_RETURN_STATE_KEY, JSON.stringify(safeState))
+    storage.setItem(SETTINGS_RETURN_STATE_KEY, JSON.stringify({ ...safeState, ownerUserId }))
     return true
   } catch {
     clearStoredReturnState(storage)
@@ -131,7 +133,7 @@ export function saveSettingsReturnState(state: SettingsReturnState): boolean {
   }
 }
 
-export function readSettingsReturnState(): SettingsReturnState | null {
+export function readSettingsReturnState(ownerUserId: string): SettingsReturnState | null {
   const storage = getSessionStorage()
   if (!storage) return null
 
@@ -146,6 +148,11 @@ export function readSettingsReturnState(): SettingsReturnState | null {
   try {
     const parsedValue: unknown = JSON.parse(rawValue)
     if (!isSettingsReturnState(parsedValue)) {
+      clearStoredReturnState(storage)
+      return null
+    }
+    if (!ownerUserId || parsedValue.ownerUserId !== ownerUserId
+      || (parsedValue.notesUiState.selectedNote && parsedValue.notesUiState.selectedNote.user_id !== ownerUserId)) {
       clearStoredReturnState(storage)
       return null
     }
@@ -166,8 +173,8 @@ export function readSettingsReturnState(): SettingsReturnState | null {
   }
 }
 
-export function consumeSettingsReturnState(): SettingsReturnState | null {
-  const state = readSettingsReturnState()
+export function consumeSettingsReturnState(ownerUserId: string): SettingsReturnState | null {
+  const state = readSettingsReturnState(ownerUserId)
   clearStoredReturnState()
   return state
 }

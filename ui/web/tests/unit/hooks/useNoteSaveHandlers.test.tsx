@@ -114,6 +114,48 @@ describe('durable save failures and concurrent creation', () => {
     expect(params.offlineCache.saveNote).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'note-1', title: 'Latest' }))
   })
 
+  it('orders saves and waits for deletion across remounts of the same account', async () => {
+    let finish!: () => void
+    const held = new Promise<void>(resolve => { finish = resolve })
+    const saveNote = jest.fn().mockReturnValueOnce(held).mockResolvedValue(undefined)
+    const enqueueMutation = jest.fn().mockResolvedValue(undefined)
+    const shared = { offlineCache: { saveNote }, enqueueMutation }
+    const first = setup(shared)
+    let older!: ReturnType<typeof first.result.current.handleAutoSave>
+    await act(async () => {
+      older = first.result.current.handleAutoSave({ noteId: 'note-1', title: 'Earlier session', description: '', tags: '' })
+      await Promise.resolve()
+    })
+    first.unmount()
+    const second = setup(shared)
+    let newer!: ReturnType<typeof second.result.current.handleAutoSave>
+    let deletionReady = false
+    await act(async () => {
+      newer = second.result.current.handleAutoSave({ noteId: 'note-1', title: 'New session', description: '', tags: '' })
+      void second.result.current.waitForPendingNoteWrites(['note-1']).then(() => { deletionReady = true })
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(saveNote).toHaveBeenCalledTimes(1)
+    expect(deletionReady).toBe(false)
+    await act(async () => { finish(); await older; await newer })
+    expect(saveNote.mock.calls.map(([note]) => note.title)).toEqual(['Earlier session', 'New session'])
+    expect(enqueueMutation.mock.calls.map(([item]) => item.payload.title)).toEqual(['Earlier session', 'New session'])
+  })
+
+  it('does not serialize the same note id across different accounts', async () => {
+    let finish!: () => void
+    const held = new Promise<void>(resolve => { finish = resolve })
+    const saveNote = jest.fn().mockReturnValueOnce(held).mockResolvedValue(undefined)
+    const first = setup({ offlineCache: { saveNote } })
+    let older!: ReturnType<typeof first.result.current.handleAutoSave>
+    await act(async () => { older = first.result.current.handleAutoSave({ noteId: 'note-1', title: 'Account A', description: '', tags: '' }); await Promise.resolve() })
+    const second = setup({ user: { id: 'user-2' }, offlineCache: { saveNote } })
+    await act(async () => { await second.result.current.handleAutoSave({ noteId: 'note-1', title: 'Account B', description: '', tags: '' }) })
+    expect(saveNote.mock.calls.map(([note]) => note.title)).toEqual(['Account A', 'Account B'])
+    await act(async () => { finish(); await older })
+  })
+
   it('lets a newer save run after an older write fails while reporting the failure', async () => {
     let failQueue!: (error: Error) => void
     const firstQueueWrite = new Promise<void>((_, reject) => { failQueue = reject })

@@ -279,3 +279,29 @@ The final local run passed 1022 web unit tests and 101 component tests;
 type-check and ESLint passed. Allure reports are
 `/tmp/everfreenote-signout-final-web-unit-2/index.md` and
 `/tmp/everfreenote-signout-final-components-3/index.md`.
+
+### Account-session isolation (2026-10-29)
+
+`AccountSessionIsolation.cy.tsx` covers delayed and not-yet-started saves on
+account change, returning before a delayed write finishes (including a new
+note's create followed by an update with the same ID), same-account token
+refresh and explicit discard. Unit tests
+cover owner/note ordering across remounts, auth epoch and query-cache changes,
+late sign-out/navigation, and account-scoped Settings/AI return state.
+
+A separate local Supabase browser test uses two synthetic password accounts:
+A→B with a delayed IndexedDB operation, A→B→A with overlapping saves,
+pending input before autosave, and deliberate discard after a simulated local
+write error. It also checks B's server response and absence of A in B's UI.
+Offline state and local failures are simulated. These tests do not establish
+Google OAuth behavior, cross-window ordering, server sync, or durability when
+local storage is unavailable.
+
+The final local checks passed 732 core and 1,034 web unit tests; the combined
+account/settings/split/mobile component run passed 73 tests, and the final
+account-isolation suite passed 6. Type-check and ESLint passed. A broader
+150-test component run passed before the separate one-line overlay owner fix.
+
+### Combined tag and session boundary
+
+Controller regression tests delay the initial cache read or the first eight tag writes, change the session epoch, and check that no later write or reconciliation starts. An A→B→A test verifies the unfinished/uncertain marker is visible only to A and requests review after reconciliation. These are deterministic mocked boundary tests; independent integrated real-auth and IndexedDB coverage remains required.

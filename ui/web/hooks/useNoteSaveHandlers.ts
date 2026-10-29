@@ -8,6 +8,7 @@ import { parseTagString } from '@ui/web/lib/tags'
 import type { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
 import type { useNoteSync } from './useNoteSync'
 import type { useNoteSelection } from './useNoteSelection'
+import { enqueueOwnerNoteWrite, waitForOwnerNoteWrites } from '@ui/web/lib/ownerNoteWrites'
 
 type UseNoteSaveHandlersParams = {
   user: { id: string } | null
@@ -80,8 +81,6 @@ export function useNoteSaveHandlers({
   // Tracks an in-flight note creation (from either auto-save or manual save)
   // so that concurrent saves don't result in duplicate notes.
   const pendingCreatePromiseRef = useRef<Promise<NoteViewModel> | null>(null)
-  const pendingWritesByNoteRef = useRef(new Map<string, Promise<void>>())
-  const pendingWriteResultsRef = useRef(new Map<string, Promise<CachedNote>>())
   const failedWritesRef = useRef(new Map<string, unknown>())
   const latestWriteTimeByNoteRef = useRef(new Map<string, number>())
 
@@ -138,21 +137,23 @@ export function useNoteSaveHandlers({
       return cached
     }
 
-    // A manual save and an autosave can overlap. Preserve their order for the
-    // same note through both cache and queue writes; unrelated notes remain independent.
-    const previous = pendingWritesByNoteRef.current.get(noteId)
-    const current = previous ? previous.then(write) : write()
-    const settled = current.then(() => undefined, () => undefined)
-    pendingWritesByNoteRef.current.set(noteId, settled)
-    pendingWriteResultsRef.current.set(noteId, current)
+    // Serialize writes for one owner/note even if the UI remounts on an
+    // account switch. Other owners and notes proceed independently.
+    if (!user?.id) return Promise.reject(new Error('A signed-in account is required to save a note.'))
+    const snapshot: CachedNote = {
+      id: noteId,
+      user_id: user.id,
+      title: payload.title ?? 'Untitled',
+      description: payload.description,
+      tags: payload.tags,
+      updatedAt: clientUpdatedAt,
+      status: 'pending',
+    }
+    const current = enqueueOwnerNoteWrite(user.id, noteId, snapshot, write)
     void current.then(
       () => { failedWritesRef.current.delete(noteId) },
       (error: unknown) => { failedWritesRef.current.set(noteId, error) },
     )
-    void settled.then(() => {
-      if (pendingWritesByNoteRef.current.get(noteId) === settled) pendingWritesByNoteRef.current.delete(noteId)
-      if (pendingWriteResultsRef.current.get(noteId) === current) pendingWriteResultsRef.current.delete(noteId)
-    })
     return current
   }, [offlineCache, offlineQueueRef, setOfflineOverlay, enqueueMutation, setPendingCount, user?.id])
 
@@ -160,16 +161,10 @@ export function useNoteSaveHandlers({
   // autosave. Deletion must wait for every write affecting its target notes.
   const waitForPendingNoteWrites = useCallback(async (noteIds: readonly string[]) => {
     await Promise.all(noteIds.map(async (noteId) => {
-      let pending = pendingWriteResultsRef.current.get(noteId)
-      while (pending) {
-        await pending
-        const latest = pendingWriteResultsRef.current.get(noteId)
-        if (latest === pending) break
-        pending = latest
-      }
+      if (user?.id) await waitForOwnerNoteWrites(user.id, noteId)
       if (failedWritesRef.current.has(noteId)) throw failedWritesRef.current.get(noteId)
     }))
-  }, [])
+  }, [user?.id])
 
   const executeAutoSaveUpdateNote = useCallback(async (
     targetId: string,

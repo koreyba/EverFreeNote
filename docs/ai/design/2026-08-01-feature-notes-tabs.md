@@ -368,3 +368,34 @@ The design covers every requirements goal and transition:
 | Split View follow-up | independent tab sessions, one active editor and one read-only presenter |
 
 The only intentionally deferred behavior is native-mobile persistence policy; native UI can reuse the model without changing web `sessionStorage` semantics. No design gap blocks implementation.
+
+## Account-session isolation (2026-10-29)
+
+An authentication identity change advances a synchronous session epoch and
+remounts the account-owned UI and query cache. A token refresh for the same
+identity does neither. Async navigation checks its captured epoch before
+continuing, and Settings/AI navigation snapshots are scoped to an owner.
+Legacy unowned navigation snapshots are ignored.
+
+The old editor flushes its pending debounced save on an account change; the
+captured owner remains attached to that write. A deliberate discard cancels
+that save. Writes to the same owner and note are serialized across remounts in
+one JavaScript context, so a delayed old write cannot overwrite a later one.
+While a write is in flight, its owner can return and see its latest in-memory
+snapshot immediately. Completion replaces that snapshot with the local saved
+copy. Other owners and notes remain independent.
+
+```mermaid
+flowchart LR
+  auth[Identity change] --> epoch[Advance session epoch]
+  epoch --> ui[New account UI and query cache]
+  epoch --> old[Flush old owner's pending editor save]
+  old --> serial[Owner and note write coordinator]
+  serial --> cache[Local cache and queue]
+```
+
+This is not cross-window or cross-device locking. Storage failure can prevent
+an outstanding draft from being saved. Existing offline sync drains already
+running at sign-out are not cancelled by this boundary and require separate
+owner-scoped queue verification. Browser Back/Forward with both local write and
+workspace snapshot unavailable remains outside the app-controlled guard.

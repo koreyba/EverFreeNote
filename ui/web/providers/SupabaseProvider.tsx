@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { webSupabaseClientFactory } from "@ui/web/adapters/supabaseClient"
 import { webStorageAdapter } from "@ui/web/adapters/storage"
@@ -12,6 +12,9 @@ type SupabaseContextType = {
   supabase: SupabaseClient
   user: User | null
   loading: boolean
+  /** Changes when the account identity changes, not on same-account refresh. */
+  sessionKey?: string | number
+  getSessionSnapshot?: () => { userId: string | null; epoch: number }
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined)
@@ -25,6 +28,17 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   })
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionEpoch, setSessionEpoch] = useState(0)
+  const sessionRef = useRef<{ userId: string | null; epoch: number }>({ userId: null, epoch: 0 })
+  const getSessionSnapshot = useCallback(() => sessionRef.current, [])
+  const setSessionUser = useCallback((nextUser: User | null) => {
+    const userId = nextUser?.id ?? null
+    if (sessionRef.current.userId !== userId) {
+      sessionRef.current = { userId, epoch: sessionRef.current.epoch + 1 }
+      setSessionEpoch(sessionRef.current.epoch)
+    }
+    setUser(nextUser)
+  }, [])
 
   useEffect(() => {
     let disposed = false
@@ -42,14 +56,14 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
       try {
         const savedUser = await readOfflineSessionUser(supabaseConfig.url)
         if (disposed || authRevision !== 0) return
-        setUser(savedUser)
+        setSessionUser(savedUser)
         setLoading(false)
 
         // Refresh can wait on an unreachable server; it must never gate local access.
         const { data: { session }, error } = await supabase.auth.getSession()
         if (disposed || authRevision !== 0 || error) return
         const sessionUser = sessionUserForProject(session, supabaseConfig.url)
-        setUser(sessionUser)
+        setSessionUser(sessionUser)
         if (session?.access_token && !sessionUser) void supabase.auth.signOut({ scope: "local" })
       } catch (error) {
         console.error("Error checking auth session:", error)
@@ -62,7 +76,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
       (event, session) => {
         if (disposed || (event === "INITIAL_SESSION" && !session)) return
         authRevision += 1
-        setUser(sessionUserForProject(session, supabaseConfig.url))
+        setSessionUser(sessionUserForProject(session, supabaseConfig.url))
         setLoading(false)
       }
     )
@@ -74,13 +88,24 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe()
       globalThis.removeEventListener("unhandledrejection", handleUnhandledRejection)
     }
-  }, [supabase])
+  }, [setSessionUser, supabase])
 
   return (
-    <SupabaseContext.Provider value={{ supabase, user, loading }}>
+    <SupabaseContext.Provider value={{ supabase, user, loading, sessionKey: sessionEpoch, getSessionSnapshot }}>
       {children}
     </SupabaseContext.Provider>
   )
+}
+
+/** Isolates all descendant state and query clients across account sessions. */
+export function AccountSessionBoundary({ children }: { children: React.ReactNode }) {
+  const { user, sessionKey } = useSupabase()
+  return <Fragment key={sessionKey ?? user?.id ?? 'signed-out'}>{children}</Fragment>
+}
+
+function TestQueryProvider({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }))
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 
 export const useSupabase = () => {
@@ -103,12 +128,15 @@ export function SupabaseTestProvider({
   user?: User | null
   loading?: boolean
 }) {
-  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }))
+  const sessionRef = useRef<{ userId: string | null; epoch: number }>({ userId: user?.id ?? null, epoch: 0 })
+  useLayoutEffect(() => {
+    const userId = user?.id ?? null
+    if (sessionRef.current.userId !== userId) sessionRef.current = { userId, epoch: sessionRef.current.epoch + 1 }
+  }, [user?.id])
+  const getSessionSnapshot = useCallback(() => sessionRef.current, [])
   return (
-    <QueryClientProvider client={queryClient}>
-      <SupabaseContext.Provider value={{ supabase, user, loading }}>
-        {children}
-      </SupabaseContext.Provider>
-    </QueryClientProvider>
+    <SupabaseContext.Provider value={{ supabase, user, loading, sessionKey: user?.id ?? 'signed-out', getSessionSnapshot }}>
+      <AccountSessionBoundary><TestQueryProvider>{children}</TestQueryProvider></AccountSessionBoundary>
+    </SupabaseContext.Provider>
   )
 }

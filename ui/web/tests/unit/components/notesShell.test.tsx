@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 
@@ -478,7 +478,7 @@ describe('NotesShell', () => {
     expect(mockSaveSettingsReturnState).toHaveBeenCalledWith(expect.objectContaining({
       returnPath: expect.any(String),
       notesUiState: { selectedNoteId: 'note-1' },
-    }))
+    }), 'user-1')
   })
 
   it('opens an existing search result in context and clears applied focus', async () => {
@@ -553,5 +553,20 @@ describe('NotesShell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back from note' }))
     await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/settings?tab=ai-index'))
     expect(mockConsumeReturnPath).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not navigate or write settings state when an account changes during capture', async () => {
+    let snapshot = { userId: 'user-1', epoch: 1 }
+    const existing = jest.mocked(useSupabase)()
+    jest.mocked(useSupabase).mockReturnValue({ ...existing, getSessionSnapshot: () => snapshot })
+    let finish!: (value: { selectedNoteId: string }) => void
+    const capture = jest.fn(() => new Promise<{ selectedNoteId: string }>(resolve => { finish = resolve }))
+    renderShell(makeController({ captureSettingsReturnState: capture }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
+    expect(capture).toHaveBeenCalledTimes(1)
+    snapshot = { userId: 'user-2', epoch: 2 }
+    await act(async () => { finish({ selectedNoteId: 'note-1' }); await Promise.resolve() })
+    expect(mockSaveSettingsReturnState).not.toHaveBeenCalled()
+    expect(mockRouterPush).not.toHaveBeenCalled()
   })
 })

@@ -46,6 +46,8 @@ type UseNoteEditorAutoSaveParams = {
   onNoteSwitch?: () => void
   /** Cancels the debounced tag query (owned by NoteEditor) on note switch */
   cancelDebouncedTagQuery: () => void
+  /** Finish pending local work if an external account switch unmounts the editor. */
+  shouldFlushOnUnmount?: () => boolean
 }
 
 export type UseNoteEditorAutoSaveResult = {
@@ -78,6 +80,7 @@ export function useNoteEditorAutoSave({
   applyExternalSnapshot,
   onNoteSwitch,
   cancelDebouncedTagQuery,
+  shouldFlushOnUnmount,
 }: UseNoteEditorAutoSaveParams): UseNoteEditorAutoSaveResult {
   const onAutoSaveRef = useRef(onAutoSave)
   useEffect(() => {
@@ -153,12 +156,21 @@ export function useNoteEditorAutoSave({
   }), [autosaveDelayMs, flushAutoSave])
 
   const previousDebouncedAutoSaveRef = useRef<typeof debouncedAutoSave | null>(null)
+  const shouldFlushOnUnmountRef = useRef(shouldFlushOnUnmount)
+  useEffect(() => { shouldFlushOnUnmountRef.current = shouldFlushOnUnmount }, [shouldFlushOnUnmount])
   useEffect(() => {
+    const finishOrCancel = () => {
+      if (shouldFlushOnUnmountRef.current?.()) {
+        void debouncedAutoSave.flush().catch(() => undefined)
+      } else {
+        debouncedAutoSave.cancel()
+      }
+    }
     const previousDebouncedAutoSave = previousDebouncedAutoSaveRef.current
     if (!previousDebouncedAutoSave || previousDebouncedAutoSave === debouncedAutoSave) {
       previousDebouncedAutoSaveRef.current = debouncedAutoSave
       return () => {
-        debouncedAutoSave.cancel()
+        finishOrCancel()
       }
     }
 
@@ -175,7 +187,7 @@ export function useNoteEditorAutoSave({
     previousDebouncedAutoSaveRef.current = debouncedAutoSave
 
     return () => {
-      debouncedAutoSave.cancel()
+      finishOrCancel()
     }
   }, [debouncedAutoSave])
 

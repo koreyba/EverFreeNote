@@ -106,3 +106,13 @@ save the current editor; on failure, the current draft remains visible and the
 transition is blocked. Selecting an already-open note activates its existing
 tab. Exiting split does not close either tab. On mobile or when the available
 workspace is too narrow, only the active pane is shown until space returns.
+
+### Account-session isolation (2026-10-29)
+
+- A change of account must not expose the previous account's note content,
+  filters or navigation state while delayed work completes.
+- Pending edits should continue to save for their original owner; explicit
+  discard must cancel the pending editor save. A same-account token refresh
+  must retain the current workspace.
+- This guarantee is limited to one running browser context. A local storage
+  failure, another browser window or a device can prevent durable ordering.

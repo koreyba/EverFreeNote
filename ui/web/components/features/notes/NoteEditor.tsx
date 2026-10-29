@@ -25,6 +25,7 @@ const NOOP_CANCEL = () => {}
 
 export interface NoteEditorHandle {
   flushPendingSave: () => Promise<void>
+  cancelPendingSave?: () => void
   captureSession?: () => NoteEditorSession
   scrollToChunk: (charOffset: number, chunkLength: number) => void
 }
@@ -63,6 +64,7 @@ interface NoteEditorProps {
   initialSession?: NoteEditorSession
   onDraftChange?: (draft: NoteDraftSnapshot) => void
   onViewSessionChange?: (view: Partial<NoteViewSession>) => void
+  getSessionSnapshot?: () => { userId: string | null; epoch: number }
 }
 
 export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor({
@@ -87,7 +89,16 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   initialSession,
   onDraftChange,
   onViewSessionChange,
+  getSessionSnapshot,
 }: NoteEditorProps, ref) {
+  const editorSessionRef = React.useRef(getSessionSnapshot?.())
+  React.useEffect(() => { editorSessionRef.current = getSessionSnapshot?.() }, [getSessionSnapshot])
+  const shouldFlushOnUnmount = React.useCallback(() => {
+    const editorSession = editorSessionRef.current
+    if (!editorSession || !getSessionSnapshot) return false
+    const current = getSessionSnapshot()
+    return current.epoch !== editorSession.epoch || current.userId !== editorSession.userId
+  }, [getSessionSnapshot])
   const { expanded, setExpanded } = useMobileEditorExpansion()
   useAppBackHandler(APP_BACK_PRIORITY.editor, async () => {
     if (!expanded) return false
@@ -208,6 +219,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
       autosaveDelayMs,
       onAutoSave,
       getFormData,
+      shouldFlushOnUnmount,
       applyExternalSnapshot,
       cancelDebouncedTagQuery: NOOP_CANCEL,
       onNoteSwitch: () => {
@@ -318,6 +330,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
 
   React.useImperativeHandle(ref, () => ({
     flushPendingSave,
+    cancelPendingSave: cancelAutoSave,
     captureSession: () => {
       const titleInput = titleInputRef.current
       const titleSelection = titleInput && titleInput.selectionStart !== null && titleInput.selectionEnd !== null
@@ -342,7 +355,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     scrollToChunk: (charOffset: number, chunkLength: number) => {
       editorRef.current?.scrollToChunk(charOffset, chunkLength)
     },
-  }), [debouncedDraftNotify, debouncedViewNotify, flushPendingSave, getFormData])
+  }), [cancelAutoSave, debouncedDraftNotify, debouncedViewNotify, flushPendingSave, getFormData])
 
   React.useEffect(() => {
     const session = initialSessionRef.current

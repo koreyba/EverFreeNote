@@ -132,12 +132,12 @@ describe("SettingsPage AI Index tab", () => {
     saveSettingsReturnState({ returnPath: "/", notesUiState: {
       selectedNoteId: null, selectedNote: null, isEditing: true,
       isSearchPanelOpen: false, searchQuery: "", filterByTag: null,
-    } })
+    } }, 'test-user')
     render(<SupabaseTestProvider supabase={{} as never}><SettingsPage /></SupabaseTestProvider>)
 
     fireEvent.click(screen.getByTestId(button))
 
     expect(mockPush).toHaveBeenCalledWith(destination)
-    expect(readSettingsReturnState()).toBeNull()
+    expect(readSettingsReturnState('test-user')).toBeNull()
   })
 })

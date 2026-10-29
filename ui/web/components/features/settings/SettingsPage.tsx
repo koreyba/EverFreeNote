@@ -87,7 +87,7 @@ export function SettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading, deleteAccountLoading, handleDeleteAccount, handleSignOut } = useNoteAuth()
-  const { user: sessionUser, loading: sessionLoading } = useSupabase()
+  const { user: sessionUser, loading: sessionLoading, getSessionSnapshot } = useSupabase()
   const userId = user?.id
   const sessionUserId = sessionUser?.id
   const prepareSignOut = React.useCallback(async () => {
@@ -100,7 +100,7 @@ export function SettingsPage() {
     clearSettingsReturnState()
     router.push("/")
   }), [handleSignOut, router])
-  const signOutGuard = useGuardedSignOut(userId && userId === sessionUserId ? userId : null, prepareSignOut, performSignOut)
+  const signOutGuard = useGuardedSignOut(userId && userId === sessionUserId ? userId : null, prepareSignOut, performSignOut, getSessionSnapshot)
   const mobileTabsRef = React.useRef<HTMLDivElement | null>(null)
   const activeMobileTabRef = React.useRef<HTMLButtonElement | null>(null)
   const scrollTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -122,10 +122,10 @@ export function SettingsPage() {
   }, [router])
 
   const handleExit = React.useCallback(() => {
-    const returnState = readSettingsReturnState()
+    const returnState = userId ? readSettingsReturnState(userId) : null
     const safeReturnPath = sanitizeSettingsReturnPath(returnState?.returnPath) ?? "/"
     router.push(safeReturnPath)
-  }, [router])
+  }, [router, userId])
 
   useAppBackHandler(APP_BACK_PRIORITY.navigation, () => {
     handleExit()

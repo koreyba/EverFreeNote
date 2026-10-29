@@ -13,6 +13,7 @@ import {
 } from '@core/services/noteWorkspaceTabs'
 import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
 import { toast } from 'sonner'
+import { setTagMutationRecovery } from '@ui/web/lib/tagMutationRecovery'
 
 let mockSelectedNote: NoteViewModel | null = null
 let mockIsEditing = true
@@ -25,6 +26,8 @@ let mockResolvedSearchResult: NoteViewModel | null = null
 let mockNoteToDelete: NoteViewModel | null = null
 let mockAuthUser: { id: string } | null = { id: 'user-1' }
 let mockProviderUser: { id: string } | null = { id: 'user-1' }
+let mockSessionSnapshot = { userId: 'user-1' as string | null, epoch: 0 }
+const mockGetSessionSnapshot = () => mockSessionSnapshot
 
 const mockGetNotes = jest.fn()
 const mockGetExistingNoteIds = jest.fn()
@@ -60,7 +63,7 @@ jest.mock('@ui/web/providers/SupabaseProvider', () => ({
   useSupabase: () => ({ supabase: {
     key: 'supabase',
     from: () => ({ select: () => ({ eq: async () => ({ count: mockTagServerCount ?? mockNotes.length, error: null }) }) }),
-  }, user: mockProviderUser }),
+  }, user: mockProviderUser, getSessionSnapshot: mockGetSessionSnapshot }),
 }))
 jest.mock('@core/services/notes', () => ({
   NoteService: jest.fn().mockImplementation(() => ({
@@ -250,6 +253,8 @@ function setup() {
 describe('useNoteAppController additional observable behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    setTagMutationRecovery('user-1')
+    setTagMutationRecovery('user-2')
     window.sessionStorage.clear()
     mockSelectedNote = null
     mockIsEditing = true
@@ -267,6 +272,7 @@ describe('useNoteAppController additional observable behavior', () => {
     mockNoteToDelete = null
     mockAuthUser = { id: 'user-1' }
     mockProviderUser = { id: 'user-1' }
+    mockSessionSnapshot = { userId: 'user-1', epoch: 0 }
     mockHandleAutoSave.mockReset().mockResolvedValue(undefined)
     mockHandleSaveNote.mockReset().mockResolvedValue(undefined)
     mockHandleReadNote.mockReset().mockResolvedValue(undefined)
@@ -968,6 +974,78 @@ describe('useNoteAppController additional observable behavior', () => {
 
     unmount()
     window.history.pushState({}, '', '/')
+  })
+
+  it('stops verifying tags when the account changes before the cache read finishes', async () => {
+    mockNotes = [makeNote({ id: 'first', tags: ['old'] })]
+    let releaseCache!: (notes: never[]) => void
+    mockLoadCachedNotes.mockImplementationOnce(() => new Promise((resolve) => { releaseCache = resolve }))
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    let operation!: Promise<boolean | string>
+    act(() => { operation = result.current.handleRenameTag('old', 'new') })
+    await waitFor(() => expect(releaseCache).toBeDefined())
+    mockSessionSnapshot = { userId: 'user-2', epoch: 1 }
+    await act(async () => { releaseCache([]); await operation })
+
+    expect(mockUpdateNoteMutation).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('does not start another batch or reconcile tags after an account switch', async () => {
+    mockNotes = Array.from({ length: 9 }, (_, index) => makeNote({ id: `note-${index}`, tags: ['old'] }))
+    let releaseBatch!: () => void
+    const batch = new Promise<void>((resolve) => { releaseBatch = resolve })
+    mockUpdateNoteMutation.mockImplementation(() => batch)
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+
+    let operation!: Promise<boolean | string>
+    act(() => { operation = result.current.handleRenameTag('old', 'new') })
+    await waitFor(() => expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(8))
+    mockSessionSnapshot = { userId: 'user-2', epoch: 1 }
+    await act(async () => { releaseBatch(); await operation })
+
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(8)
+    expect(mockGetNotesByIds).not.toHaveBeenCalled()
+    expect(mockPatchSyncedTags).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalledWith('Tag "old" renamed to "new"')
+  })
+
+  it('shows only the original account an unfinished tag batch and asks it to review after the write settles', async () => {
+    mockNotes = Array.from({ length: 9 }, (_, index) => makeNote({ id: `note-${index}`, tags: ['old'] }))
+    let releaseBatch!: () => void
+    const batch = new Promise<void>((resolve) => { releaseBatch = resolve })
+    mockUpdateNoteMutation.mockImplementation(() => batch)
+    const accountA = setup()
+    await waitFor(() => expect(accountA.result.current.workspaceHydrated).toBe(true))
+    let operation!: Promise<boolean | string>
+    act(() => { operation = accountA.result.current.handleRenameTag('old', 'new') })
+    await waitFor(() => expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(8))
+
+    mockSessionSnapshot = { userId: 'user-2', epoch: 1 }
+    accountA.unmount()
+    mockProviderUser = { id: 'user-2' }
+    mockAuthUser = { id: 'user-2' }
+    const accountB = setup()
+    await waitFor(() => expect(accountB.result.current.workspaceHydrated).toBe(true))
+    expect(accountB.result.current.tagManagementBlockReason ?? '').not.toContain('previous tag')
+    accountB.unmount()
+
+    mockSessionSnapshot = { userId: 'user-1', epoch: 2 }
+    mockProviderUser = { id: 'user-1' }
+    mockAuthUser = { id: 'user-1' }
+    const returnedA = setup()
+    await waitFor(() => expect(returnedA.result.current.workspaceHydrated).toBe(true))
+    expect(returnedA.result.current.tagManagementBlockReason).toContain('still finishing')
+    await act(async () => { releaseBatch(); await operation })
+    await waitFor(() => expect(returnedA.result.current.tagManagementBlockReason).toContain('may be incomplete'))
+    expect(mockUpdateNoteMutation).toHaveBeenCalledTimes(8)
+    expect(toast.success).not.toHaveBeenCalledWith('Tag "old" renamed to "new"')
+    await act(async () => { await returnedA.result.current.checkTagCoverage() })
+    expect(returnedA.result.current.tagCoverageNotice).toContain('Review')
+    returnedA.unmount()
   })
 
   it('persists tag rename, deletion, and cleanup mutations', async () => {

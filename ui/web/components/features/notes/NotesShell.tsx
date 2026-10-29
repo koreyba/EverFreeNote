@@ -72,7 +72,13 @@ export function NotesShell({ controller }: NotesShellProps) {
   const isMobile = useIsMobile()
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
   const searchPanelRef = React.useRef<SearchResultsPanelHandle | null>(null)
-  const { supabase } = useSupabase()
+  const { supabase, getSessionSnapshot } = useSupabase()
+  const isCurrentSession = React.useCallback((started?: { userId: string | null; epoch: number }) => {
+    if (!started || !getSessionSnapshot) return true
+    const current = getSessionSnapshot()
+    return current.epoch === started.epoch && current.userId === started.userId
+      && started.userId === (controller.user?.id ?? null)
+  }, [controller.user?.id, getSessionSnapshot])
   const wordpressSettingsService = React.useMemo(() => new WordPressSettingsService(supabase), [supabase])
   const apiKeysService = React.useMemo(() => new ApiKeysSettingsService(supabase), [supabase])
   const [wordpressConfigured, setWordpressConfigured] = React.useState(false)
@@ -334,30 +340,32 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [])
 
   const handleOpenSettings = React.useCallback(async (destination = "/settings") => {
-    if (tagMutationInProgress) return
+    if (tagMutationInProgress || !controller.user?.id) return
+    const started = getSessionSnapshot?.()
     const notesUiState = await controller.captureSettingsReturnState()
-    if (!notesUiState) return
+    if (!notesUiState || !isCurrentSession(started)) return
 
     if (typeof globalThis.location !== "undefined") {
       saveSettingsReturnState({
         returnPath: `${globalThis.location.pathname}${globalThis.location.search}${globalThis.location.hash}`,
         notesUiState,
-      })
+      }, controller.user.id)
     }
 
     router.push(destination)
-  }, [controller, router, tagMutationInProgress])
+  }, [controller, getSessionSnapshot, isCurrentSession, router, tagMutationInProgress])
 
   const handleBackFromNote = React.useCallback(async () => {
-    const settingsReturnPath = readActiveSettingsNoteReturnPath()
+    const started = getSessionSnapshot?.()
+    const settingsReturnPath = controller.user?.id ? readActiveSettingsNoteReturnPath(controller.user.id) : null
     if (settingsReturnPath) {
-      if (!(await controller.captureSettingsReturnState())) return
-      consumeActiveSettingsNoteReturnPath()
+      if (!(await controller.captureSettingsReturnState()) || !isCurrentSession(started)) return
+      consumeActiveSettingsNoteReturnPath(controller.user!.id)
       router.push(settingsReturnPath)
       return
     }
     await handleSelectNote(null)
-  }, [controller, handleSelectNote, router])
+  }, [controller, getSessionSnapshot, handleSelectNote, isCurrentSession, router])
 
   useAppBackHandler(APP_BACK_PRIORITY.navigation, async () => {
     if (tagMutationInProgress) return true
@@ -635,7 +643,7 @@ function EditorPane({
     notes,
   } = controller
 
-  const { user } = useSupabase()
+  const { user, getSessionSnapshot } = useSupabase()
   const allTagsQuery = useAllTagsQuery({ userId: user?.id, enabled: !!user })
 
   const availableTags = React.useMemo(() => {
@@ -699,6 +707,7 @@ function EditorPane({
         onSave={handleSaveNote}
         onRead={handleReadNote}
         onAutoSave={controller.handleAutoSave}
+        getSessionSnapshot={getSessionSnapshot}
         isAutoSaving={autoSaving}
         lastSavedAt={lastSavedAt}
         wordpressConfigured={wordpressConfigured}

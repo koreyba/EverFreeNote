@@ -32,4 +32,18 @@ describe('guarded sign out', () => {
     expect(result.current.phase).toBe('idle')
     expect(signOut).not.toHaveBeenCalled()
   })
+
+  it('cancels an old request when the same account has a new session epoch', async () => {
+    let finish!: (safe: boolean) => void
+    let snapshot = { userId: 'user-a', epoch: 1 }
+    const prepare = jest.fn(() => new Promise<boolean>(resolve => { finish = resolve }))
+    const signOut = jest.fn().mockResolvedValue(undefined)
+    const { result } = renderHook(() => useGuardedSignOut('user-a', prepare, signOut, () => snapshot))
+    let pending!: Promise<void>
+    act(() => { pending = result.current.request() })
+    snapshot = { userId: 'user-a', epoch: 3 }
+    await act(async () => { finish(true); await pending })
+    expect(result.current.phase).toBe('idle')
+    expect(signOut).not.toHaveBeenCalled()
+  })
 })

@@ -136,3 +136,21 @@ fails. Closing split does not remount the active editor or close either tab.
 Reader positions are captured before navigation and guarded by tab and note ID
 when deferred updates arrive; editor capture remains the path for unsaved new
 notes and their initial ID assignment.
+
+## Account-session isolation follow-up (2026-10-29)
+
+`SupabaseProvider` advances an identity epoch synchronously with auth events;
+`AccountSessionBoundary` gives each epoch an independent `QueryClient` and UI.
+Awaiting navigation callbacks recheck the epoch. Settings and AI Index bridge
+state carries an owner ID and rejects unowned or mismatched snapshots.
+
+`useNoteEditorAutoSave` flushes pending input when its owner session changes;
+confirmed discard cancels it. `ownerNoteWrites` orders same-owner, same-note
+writes across UI remounts within the current JavaScript context only. It does
+not cancel an existing network drain or coordinate other windows or devices.
+`useNoteSync` overlays an in-flight snapshot only for its owner and installs the
+completed local copy before removing that snapshot.
+
+### Tag batches across account changes
+
+Bulk tag checks and reconciliation retain the initiating account's session epoch. An account change stops further batches and prevents stale UI updates. An owner-scoped in-memory recovery marker records an in-flight or uncertain batch across workspace remounts; returning to that account blocks new tag changes until the previous work settles and the loaded notes are checked. The other account does not see this marker. This marker does not survive page reload or coordinate other browser contexts.

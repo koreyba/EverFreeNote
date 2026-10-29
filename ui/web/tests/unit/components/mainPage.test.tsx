@@ -218,7 +218,7 @@ describe('App Component (app/page.tsx)', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(saveActiveSettingsNoteReturnPath).toHaveBeenCalledWith('/settings?tab=ai-index')
+      expect(saveActiveSettingsNoteReturnPath).toHaveBeenCalledWith('/settings?tab=ai-index', 'user-789')
       expect(mockRestoreUiState).toHaveBeenCalledWith({
         selectedNoteId: 'note-ai-789',
         selectedNote: null,
