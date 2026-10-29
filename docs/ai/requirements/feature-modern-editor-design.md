@@ -61,3 +61,7 @@ Specifically, we want to address:
 ## Image accessibility follow-up
 - Expose the note body as a named multiline textbox and allow descriptions to be edited for any image using touch or keyboard.
 - Preserve existing content and image attributes; identify images with no description in the interface without silently rewriting them. Mark an image decorative only by an explicit user choice.
+
+## Image size consistency
+- Keep safe image width and height across reading, editing, clipboard, MCP and ENEX export/import. Existing note content must not be rewritten by viewing it.
+- Limit images to the available mobile width and preserve their intended aspect ratio when both dimensions are present.

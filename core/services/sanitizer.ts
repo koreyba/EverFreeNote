@@ -1,4 +1,6 @@
 import DOMPurify from 'isomorphic-dompurify'
+import type { UponSanitizeAttributeHook } from 'dompurify'
+import { imageAspectRatio, isValidImageDimension } from '@core/utils/imageDimensions'
 
 type SanitizationProfile = 'default' | 'editor-self-copy'
 
@@ -21,7 +23,7 @@ const SELF_COPY_ALLOWED_TAGS = [
   'sub',
 ]
 
-const DEFAULT_ALLOWED_ATTR = ['href', 'target', 'src', 'alt', 'class', 'style', 'title']
+const DEFAULT_ALLOWED_ATTR = ['href', 'target', 'src', 'alt', 'class', 'style', 'title', 'width', 'height']
 const DEFAULT_ALLOWED_DATA_ATTR = ['data-checked', 'data-type']
 
 const SELF_COPY_ALLOWED_ATTR = [
@@ -59,6 +61,25 @@ function sanitizationConfig(profile: SanitizationProfile) {
   }
 }
 
+const imageDimensionHook: UponSanitizeAttributeHook = (node, event) => {
+  if (event.attrName !== 'width' && event.attrName !== 'height') return
+  // Read the original attribute: DOMPurify trims hookEvent.attrValue first.
+  if (node.localName !== 'img' || !isValidImageDimension(node.getAttribute(event.attrName))) {
+    event.keepAttr = false
+  }
+}
+
+export function withImageDimensionPolicy<T>(sanitize: () => T): T {
+  // DOMPurify's hook registry is shared; attach only for this synchronous call
+  // and remove this exact hook even if sanitization throws.
+  DOMPurify.addHook('uponSanitizeAttribute', imageDimensionHook)
+  try {
+    return sanitize()
+  } finally {
+    DOMPurify.removeHook('uponSanitizeAttribute', imageDimensionHook)
+  }
+}
+
 export class SanitizationService {
   /**
    * Sanitizes HTML content to prevent XSS attacks.
@@ -66,14 +87,22 @@ export class SanitizationService {
    * Removes <script>, <iframe>, and other dangerous tags.
    */
   static sanitize(html: string, options: SanitizeOptions = {}): string {
-    return DOMPurify.sanitize(html, sanitizationConfig(options.profile ?? 'default'))
+    return withImageDimensionPolicy(() => DOMPurify.sanitize(html, sanitizationConfig(options.profile ?? 'default')))
   }
 
   /** Names old undescribed images for display without changing stored or copied HTML. */
   static sanitizeForReading(html: string): string {
-    const fragment = DOMPurify.sanitize(html, { ...sanitizationConfig('default'), RETURN_DOM_FRAGMENT: true })
-    fragment.querySelectorAll('img:not([alt])').forEach((image) => {
-      image.setAttribute('alt', 'Image without description')
+    const fragment = withImageDimensionPolicy(() => DOMPurify.sanitize(html, { ...sanitizationConfig('default'), RETURN_DOM_FRAGMENT: true }))
+    fragment.querySelectorAll('img').forEach((image) => {
+      if (!image.hasAttribute('alt')) image.setAttribute('alt', 'Image without description')
+      const width = image.getAttribute('width')
+      const height = image.getAttribute('height')
+      const ratio = imageAspectRatio(width, height)
+      if (ratio && !image.style.aspectRatio) image.style.aspectRatio = ratio
+      if (!isValidImageDimension(width) && isValidImageDimension(height) && !image.style.height) {
+        image.style.height = `${height}px`
+        if (!image.style.objectFit) image.style.objectFit = 'contain'
+      }
     })
     const container = fragment.ownerDocument.createElement('div')
     container.appendChild(fragment)

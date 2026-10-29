@@ -43,6 +43,25 @@ describe('core/mcp/noteHtml - sanitizeNoteHtml', () => {
     expect(sanitizeNoteHtml(`<a href="${dataUri}">x</a>`)).toBe('<a>x</a>')
   })
 
+  it('preserves valid dimensions only on images', () => {
+    const result = sanitizeNoteHtml('<p width="77">x<img src="https://e.com/a.png" width="0048" height="96" alt="photo" /></p>')
+    expect(result).toBe('<p>x<img src="https://e.com/a.png" width="0048" height="96" alt="photo" /></p>')
+  })
+
+  it.each([
+    ['empty', ''], ['zero', '0'], ['negative', '-1'], ['signed', '+48'], ['fraction', '1.5'],
+    ['unit', '48px'], ['percentage', '50%'], ['leading space', ' 48'], ['trailing space', '48 '],
+    ['NaN', 'NaN'], ['above limit', '16385'], ['huge', '999999999999999999999'], ['excessive padding', '00000000000000000000001'],
+  ])('removes invalid image dimension: %s', (_label, value) => {
+    const result = sanitizeNoteHtml(`<img src="https://e.com/a.png" width="${value}" height="${value}" />`)
+    expect(result).toBe('<img src="https://e.com/a.png" />')
+  })
+
+  it('continues to reject an injected event handler and script-bearing URL', () => {
+    const result = sanitizeNoteHtml('<img src="javascript:bad()" width="48&quot; onerror=bad()" height="96" onerror="bad()" />')
+    expect(result).toBe('<img height="96" />')
+  })
+
   it('discards elements the editor cannot render', () => {
     expect(sanitizeNoteHtml('<iframe src="https://evil.example"></iframe><p>after</p>')).toBe('<p>after</p>')
     expect(sanitizeNoteHtml('<form><input value="x" /></form><p>after</p>')).toBe('<p>after</p>')

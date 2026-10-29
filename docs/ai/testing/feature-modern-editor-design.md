@@ -88,3 +88,10 @@ Screenshots are attached to the Cypress report and stored under `cypress/screens
 Component coverage checks editor semantics, unchanged content on cancel, multiple images, stale-position protection, device/URL/HTML clipboard insertion, descriptions, explicit decorative choice and reopen. Unit coverage checks reading views and clipboard preservation. Separate Chrome keyboard and accessibility-tree checks use isolated synthetic content at narrow/mobile/desktop sizes; they do not prove physical-device, screen-reader, native bitmap clipboard or backend persistence behavior.
 
 Local results: 13 final styled dialog component tests, 61 targeted web unit tests, 35 existing core sanitizer tests, full type-check and ESLint passed. A broader earlier component run passed 104 tests; the final dialog-only rerun supersedes its dialog coverage after safe-area adjustments. Screenshots and detailed evidence are kept outside the repository.
+
+## Image dimensions follow-up
+Mobile and desktop component tests compare reading/editing geometry for small, non-square, responsive, width-only and height-only images. Sanitizer, clipboard, MCP and ENEX tests exercise valid/invalid pixel values, adversarial attributes, mixed image resources, failed downloads, descriptions and XML escaping. A synthetic account on an isolated local API verified saved sizes, tags and content after reload; it was deleted afterward. Physical devices, third-party WordPress and exact integrated-head CI remain separate checks.
+
+Local validation: full unit-core 843/843; targeted web/core 178/178; component 3/3; full type-check, ESLint and Deno check for the MCP function passed. Synthetic browser export decoded a local data image and used stubbed remote URLs; no external image requests were made.
+
+Note: the existing DOMPurify XML-safety policy removes an `alt` containing a literal `]]>` sequence. On a very narrow viewport a large height-only image may retain empty vertical space inside its contained box; both dimensions preserve their ratio without that space.

@@ -294,6 +294,21 @@ describe('core/mcp/notebookServer', () => {
     })
 
     describe('update_note', () => {
+      it('round-trips safe image dimensions and strips invalid ones through MCP tools', async () => {
+        const contentHtml = '<p><img src="https://example.com/a.png" width="48" height="32" alt="A" /></p>'
+        repository.createNote.mockResolvedValue({ ...NOTE_A, contentHtml })
+        repository.getNote.mockResolvedValue({ ...NOTE_A, contentHtml })
+        repository.updateNote.mockResolvedValue({ ...NOTE_A, contentHtml })
+        await session.client.callTool({ name: 'create_note', arguments: { title: 'Image', content_html: contentHtml } })
+        expect(repository.createNote).toHaveBeenCalledWith({ title: 'Image', contentHtml, tags: [] })
+        const read = await session.client.callTool({ name: 'get_note', arguments: { id: NOTE_A.id } })
+        const returnedHtml = (read.structuredContent as { content_html: string }).content_html
+        await session.client.callTool({ name: 'update_note', arguments: { id: NOTE_A.id, content_html: returnedHtml } })
+        expect(repository.updateNote).toHaveBeenCalledWith(NOTE_A.id, { contentHtml })
+        await session.client.callTool({ name: 'update_note', arguments: { id: NOTE_A.id, content_html: '<img src="https://example.com/a.png" width="50%" height="48" onerror="bad()">' } })
+        expect(repository.updateNote).toHaveBeenLastCalledWith(NOTE_A.id, { contentHtml: '<img src="https://example.com/a.png" height="48" />' })
+      })
+
       it('keeps superscript and subscript when updating a previously read note', async () => {
         const contentHtml = '<p>x<sup>2</sup> + H<sub>2</sub>O</p>'
         repository.getNote.mockResolvedValue({ ...NOTE_A, contentHtml })

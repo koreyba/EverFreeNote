@@ -9,6 +9,7 @@
 // profile) so agent-authored notes render identically to hand-written ones.
 
 import sanitizeHtml from 'sanitize-html'
+import { isValidImageDimension } from '../utils/imageDimensions.ts'
 
 export const NOTE_ALLOWED_TAGS = [
   'b', 'i', 'em', 'strong', 'a', 'p', 'br', 'hr', 'ul', 'ol', 'li',
@@ -22,7 +23,16 @@ export const NOTE_ALLOWED_ATTRIBUTES = [
 
 const SANITIZE_OPTIONS = {
   allowedTags: NOTE_ALLOWED_TAGS,
-  allowedAttributes: { '*': NOTE_ALLOWED_ATTRIBUTES },
+  allowedAttributes: { '*': NOTE_ALLOWED_ATTRIBUTES, img: ['width', 'height'] },
+  transformTags: {
+    img: (tagName: string, attributes: Record<string, string>) => {
+      const safeAttributes = { ...attributes }
+      for (const name of ['width', 'height']) {
+        if (!isValidImageDimension(safeAttributes[name])) delete safeAttributes[name]
+      }
+      return { tagName, attribs: safeAttributes }
+    },
+  },
   // Links: no javascript:/vbscript:. Images may additionally carry data: URIs,
   // which the editor produces for pasted screenshots.
   allowedSchemes: ['http', 'https', 'mailto'],

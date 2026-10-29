@@ -2,6 +2,19 @@ import { EnexBuilder } from "./enex-builder"
 import { ImageDownloader } from "./image-downloader"
 import type { ExportNote, ExportProgress, ExportResource } from "./export-types"
 import { NoteService } from "@core/services/notes"
+import { isValidImageDimension } from "@core/utils/imageDimensions"
+
+function stripInvalidImageDimensions(image: Element): boolean {
+  let changed = false
+  for (const name of ["width", "height"]) {
+    const value = image.getAttribute(name)
+    if (value !== null && !isValidImageDimension(value)) {
+      image.removeAttribute(name)
+      changed = true
+    }
+  }
+  return changed
+}
 
 export class ExportService {
   private readonly noteService: NoteService
@@ -127,7 +140,12 @@ export class ExportService {
   ): Promise<{ resources: ExportResource[]; enmlContent: string; skipped: number }> {
     const urls = this.imageDownloader.extractImageUrls(html)
     if (urls.length === 0) {
-      return { resources: [], enmlContent: html, skipped: 0 }
+      if (!/<img[\s/>]/i.test(html)) return { resources: [], enmlContent: html, skipped: 0 }
+      const doc = new DOMParser().parseFromString(html, "text/html")
+      const images = Array.from(doc.querySelectorAll("img"))
+      let changed = false
+      images.forEach((image) => { if (stripInvalidImageDimensions(image)) changed = true })
+      return { resources: [], enmlContent: changed ? doc.body.innerHTML : html, skipped: images.length }
     }
 
     const downloaded: Array<{ resource: ExportResource | null }> = []
@@ -149,8 +167,16 @@ export class ExportService {
     const doc = parser.parseFromString(html, "text/html")
     const images = Array.from(doc.querySelectorAll("img"))
 
-    images.forEach((img, index) => {
-      const downloadResult = downloaded[index]
+    let nextDownload = 0
+    images.forEach((img) => {
+      stripInvalidImageDimensions(img)
+      // extractImageUrls filters unsupported sources, so its indexes do not
+      // necessarily match all <img> elements in the note.
+      if (img.getAttribute("src") !== urls[nextDownload]) {
+        skipped += 1
+        return
+      }
+      const downloadResult = downloaded[nextDownload++]
       const resource = downloadResult?.resource
 
       if (resource) {
@@ -158,6 +184,12 @@ export class ExportService {
         const enMedia = doc.createElement("en-media")
         enMedia.setAttribute("type", resource.mime)
         enMedia.setAttribute("hash", resource.hash)
+        for (const name of ["width", "height"]) {
+          const value = img.getAttribute(name)
+          if (isValidImageDimension(value)) enMedia.setAttribute(name, value)
+        }
+        const alt = img.getAttribute("alt")
+        if (alt !== null) enMedia.setAttribute("alt", alt)
         img.replaceWith(enMedia)
       } else {
         skipped += 1
@@ -166,7 +198,8 @@ export class ExportService {
     })
 
     let enmlContent = doc.body.innerHTML
-    enmlContent = enmlContent.replace(/<en-media([^>]*)><\/en-media>/gi, "<en-media$1/>")
+    // A description can contain a literal `>` inside a quoted attribute.
+    enmlContent = enmlContent.replace(/<en-media((?:[^<>"']|"[^"]*"|'[^']*')*)><\/en-media>/gi, "<en-media$1/>")
 
     return { resources, enmlContent, skipped }
   }

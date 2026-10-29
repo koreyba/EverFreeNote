@@ -1,5 +1,14 @@
 import type { ExportResource } from './export-types'
 
+// File and clipboard images produced by the editor are base64 data URLs.
+function imageDataUrlType(url: string): string | null {
+  const prefix = /^data:image\/(png|jpeg|gif|webp);base64,/i.exec(url)
+  if (!prefix) return null
+  const payload = url.slice(prefix[0].length)
+  if (!payload || payload.length % 4 !== 0 || !/^[a-z0-9+/]+={0,2}$/i.test(payload)) return null
+  return prefix[1].toLowerCase()
+}
+
 export class ImageDownloader {
   async downloadImage(url: string): Promise<ExportResource | null> {
     try {
@@ -18,9 +27,10 @@ export class ImageDownloader {
         fileName: this.getFileNameFromUrl(url),
       }
     } catch (error) {
+      const isEmbedded = /^data:/i.test(url)
       console.debug?.('[image-downloader] skipped image', {
-        url,
-        reason: (error as Error)?.message ?? error,
+        url: isEmbedded ? 'data:image' : url,
+        reason: isEmbedded ? 'Unable to read embedded image' : (error as Error)?.message ?? error,
       })
       return null
     }
@@ -34,7 +44,7 @@ export class ImageDownloader {
 
     return images
       .map((img) => img.getAttribute('src') || '')
-      .filter((src) => Boolean(src) && this.isAbsoluteUrl(src))
+      .filter((src) => Boolean(src) && (this.isAbsoluteUrl(src) || imageDataUrlType(src) !== null))
   }
 
   private async fetchBuffer(url: string): Promise<{ buffer: ArrayBuffer; mime: string }> {
@@ -49,7 +59,8 @@ export class ImageDownloader {
     } catch (error) {
       // Fallback to proxy only if explicitly enabled (SPA build has no API route)
       const proxyEnabled = process.env.NEXT_PUBLIC_ENABLE_IMAGE_PROXY === 'true'
-      if (!proxyEnabled) {
+      // Embedded image bytes must never be sent to the optional network proxy.
+      if (!proxyEnabled || /^data:/i.test(url)) {
         throw error
       }
 
@@ -69,6 +80,7 @@ export class ImageDownloader {
   }
 
   private isAbsoluteUrl(url: string): boolean {
+    if (/^data:/i.test(url)) return false
     try {
       const parsed = new URL(url)
       return parsed.protocol === 'http:' || parsed.protocol === 'https:'
@@ -243,6 +255,8 @@ export class ImageDownloader {
   }
 
   private getFileNameFromUrl(url: string): string {
+    const dataImage = imageDataUrlType(url)
+    if (dataImage) return `image.${dataImage}`
     try {
       const parsed = new URL(url)
       const parts = parsed.pathname.split('/')
@@ -253,6 +267,7 @@ export class ImageDownloader {
   }
 
   private safeHost(url: string): string {
+    if (/^data:/i.test(url)) return 'embedded-image'
     try {
       return new URL(url).host
     } catch {

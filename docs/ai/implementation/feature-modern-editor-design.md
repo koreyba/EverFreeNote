@@ -61,3 +61,6 @@ No changes to persistence schemas, backend requests, EditorMenuBar or EditorTool
 
 ## Image accessibility follow-up
 RichTextEditor exposes named multiline textbox semantics. Image options use the existing Tiptap image attributes to update descriptions; the dialog tracks multiple image drafts and rejects stale document positions. A ProseMirror decoration and reading-only sanitization provide a temporary name for images without alt, preserving stored HTML, image sources and dimensions until an explicit edit.
+
+## Image dimensions follow-up
+A shared validator limits image-only pixel attributes in DOMPurify and MCP. The DOMPurify hook is scoped to each synchronous sanitization call. Reading DOM and ProseMirror decorations derive presentation styles without altering stored HTML. ENEX export pairs resources by their source, preserves validated display sizes and alt on `en-media`, embeds supported data images locally, and escapes CDATA boundaries; the importer restores those attributes.

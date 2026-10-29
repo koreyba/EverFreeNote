@@ -211,6 +211,11 @@ mark {
   overflow-wrap: anywhere;
 }
 
+.note-content img {
+  max-width: 100%;
+  height: auto;
+}
+
 .note-content h1,
 .note-content h2,
 .note-content h3,

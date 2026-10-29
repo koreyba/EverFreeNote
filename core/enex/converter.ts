@@ -1,4 +1,6 @@
 import DOMPurify from 'isomorphic-dompurify'
+import { withImageDimensionPolicy } from '@core/services/sanitizer'
+import { isValidImageDimension } from '@core/utils/imageDimensions'
 
 import { ImageProcessor } from './image-processor'
 import type { EnexResource } from './types'
@@ -34,7 +36,7 @@ export class ContentConverter {
         'ul', 'ol', 'li', 'img', 'a', 'div', 'span', 'blockquote', 'code',
         'hr', 's', 'sub', 'sup', 'mark'
       ],
-      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style'],
+      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'width', 'height'],
       ALLOWED_STYLES: {
         '*': {
           'color': [/^#[0-9a-f]{3,6}$/i],
@@ -46,7 +48,7 @@ export class ContentConverter {
       }
     }
 
-    const sanitized: string | { toString(): string } = DOMPurify.sanitize(converted, sanitizeOptions)
+    const sanitized: string | { toString(): string } = withImageDimensionPolicy(() => DOMPurify.sanitize(converted, sanitizeOptions))
     converted = typeof sanitized === 'string' ? sanitized : sanitized.toString()
 
     return converted
@@ -120,23 +122,35 @@ export class ContentConverter {
 
     // Replace <en-media> tags with <img> tags
     let result = html
-    const mediaMatches = Array.from(result.matchAll(/<en-media[^>]*hash="([^"]+)"[^>]*\/>/gi))
+    const mediaMatches = Array.from(result.matchAll(/<en-media\b(?:[^<>"']|"[^"]*"|'[^']*')*\/>/gi))
     mediaMatches.forEach((match, idx) => {
-      const hash = match[1].toLowerCase()
+      const document = new DOMParser().parseFromString(match[0], 'text/html')
+      const media = document.querySelector('en-media')
+      const hash = media?.getAttribute('hash')?.toLowerCase()
+      if (!hash) return
       const resource = resourceMap.get(hash)
       const uploadUrl = resource ? uploadedUrls[resources.indexOf(resource)] : null
 
       let replacement: string
-      if (resource && uploadUrl) {
-        replacement = `<img src="${uploadUrl}" alt="Image ${idx + 1}" data-original-hash="${hash}" data-original-order="${idx}" />`
-      } else if (resource) {
-        replacement = `<img src="data:${resource.mime};base64,${resource.data}" alt="Image ${idx + 1}" data-original-hash="${hash}" data-original-order="${idx}" />`
+      if (resource) {
+        const image = document.createElement('img')
+        image.setAttribute('src', uploadUrl || `data:${resource.mime};base64,${resource.data}`)
+        image.setAttribute('data-original-hash', hash)
+        image.setAttribute('data-original-order', String(idx))
+        for (const name of ['width', 'height']) {
+          const value = media?.getAttribute(name)
+          if (isValidImageDimension(value)) image.setAttribute(name, value)
+        }
+        const alt = media?.getAttribute('alt')
+        if (alt != null) image.setAttribute('alt', alt)
+        replacement = image.outerHTML
       } else {
         console.warn('[import] missing resource for en-media', { hash, noteTitle })
         replacement = `[Image missing: ${hash}]`
       }
 
-      result = result.replace(match[0], replacement)
+      // User-supplied descriptions can contain `$&`, `$$` or other replacement tokens.
+      result = result.replace(match[0], () => replacement)
     })
 
     return result

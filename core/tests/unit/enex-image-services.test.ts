@@ -1,4 +1,4 @@
-/** @jest-environment jsdom */
+/** @jest-environment allure-jest/jsdom */
 
 import { ImageDownloader } from '../../enex/image-downloader'
 import { ImageProcessor } from '../../enex/image-processor'
@@ -17,6 +17,38 @@ describe('ENEX image services', () => {
     expect(downloader.extractImageUrls('<img src="/local.png"><img src="https://cdn.test/a.png"><img src="http://x.test/b.jpg">'))
       .toEqual(['https://cdn.test/a.png', 'http://x.test/b.jpg'])
   })
+
+  it('accepts safe base64 image data and rejects unsupported or malformed data URLs', () => {
+    const downloader = new ImageDownloader()
+    const html = '<img src="data:image/png;base64,AQ=="><img src="data:image/webp;base64,Ag==">' +
+      '<img src="data:text/html;base64,PGgxPg=="><img src="data:image/svg+xml;base64,PHN2Zz4=">' +
+      '<img src="data:image/png;base64,!!!"><img src="https://cdn.test/a.png">'
+    expect(downloader.extractImageUrls(html)).toEqual(['data:image/png;base64,AQ==', 'data:image/webp;base64,Ag==', 'https://cdn.test/a.png'])
+  })
+
+  it('downloads data images locally and never sends their bytes to the optional proxy', async () => {
+    const downloader = new ImageDownloader()
+    const debug = jest.spyOn(console, 'debug').mockImplementation(() => {})
+    const url = 'data:image/png;base64,YWJj'
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, headers: new Headers({ 'content-type': 'image/png' }), arrayBuffer: async () => new Uint8Array([97, 98, 99]).buffer })
+    Object.assign(globalThis, { fetch: fetchMock })
+    await expect(downloader.downloadImage(url)).resolves.toMatchObject({ data: 'YWJj', mime: 'image/png', hash: '900150983cd24fb0d6963f7d28e17f72', fileName: 'image.png' })
+    process.env.NEXT_PUBLIC_ENABLE_IMAGE_PROXY = 'true'
+    fetchMock.mockRejectedValueOnce(new Error(`bad data ${url}`))
+    await expect(downloader.downloadImage(url)).resolves.toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenLastCalledWith(url)
+    expect(JSON.stringify(debug.mock.calls)).not.toContain('YWJj')
+  })
+
+  it('handles a large valid inline image without overflowing the validator', async () => {
+    const url = `data:image/png;base64,${'A'.repeat(14_000_000)}`
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, headers: new Headers({ 'content-type': 'image/png' }), arrayBuffer: async () => new Uint8Array([1]).buffer })
+    jest.spyOn(console, 'debug').mockImplementation(() => {})
+    Object.assign(globalThis, { fetch: fetchMock })
+    const result = await new ImageDownloader().downloadImage(url)
+    expect(result?.fileName).toBe('image.png')
+  }, 15_000)
 
   it('downloads an image, computes md5, mime, filename and dimensions', async () => {
     const downloader = new ImageDownloader()

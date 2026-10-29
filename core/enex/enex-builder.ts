@@ -45,7 +45,8 @@ export class EnexBuilder {
     return [
       '<![CDATA[<?xml version="1.0" encoding="UTF-8"?>',
       '<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">',
-      `<en-note>${enml}</en-note>`,
+      // Split CDATA terminators without changing the resulting note text.
+      `<en-note>${enml.replaceAll(']]>', ']]]]><![CDATA[>')}</en-note>`,
       ']]>',
     ].join('\n')
   }
