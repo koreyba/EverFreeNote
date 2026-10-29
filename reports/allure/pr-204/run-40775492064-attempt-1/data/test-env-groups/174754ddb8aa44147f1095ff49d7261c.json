@@ -1,1 +1,0 @@
-{"id":"174754ddb8aa44147f1095ff49d7261c","fullName":"everfreenote:ui/web/tests/unit/hooks/useNotesMutations.test.tsx#useNotesMutations removes tags optimistically and restores them on failure","name":"removes tags optimistically and restores them on failure","status":"passed","testResultsByEnv":{"default":"0772eee93e17964e949c46c7cd44b96f"}}

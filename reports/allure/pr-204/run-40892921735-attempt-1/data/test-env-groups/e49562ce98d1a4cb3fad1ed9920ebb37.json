@@ -1,0 +1,1 @@
+{"id":"e49562ce98d1a4cb3fad1ed9920ebb37","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSaveHandlers.test.tsx#reading an unchanged note keeps editing if the matching in-flight save fails","name":"keeps editing if the matching in-flight save fails","status":"passed","testResultsByEnv":{"default":"d749b4e0c67a5ab19e57ab0f1ee3c2b5"}}

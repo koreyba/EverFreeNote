@@ -1,0 +1,1 @@
+{"id":"539f292938523c2e81e80f55679da7ad","fullName":"everfreenote:ui/web/tests/unit/components/settingsSignOutSafety.test.tsx#settings sign out with a local draft requires confirmation when the workspace cannot be read","name":"requires confirmation when the workspace cannot be read","status":"passed","testResultsByEnv":{"default":"3a3d8588f8f718d39767a69a40dfe484"}}
