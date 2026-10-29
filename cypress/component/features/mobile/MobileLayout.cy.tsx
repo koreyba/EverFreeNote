@@ -27,8 +27,11 @@ function assertVisibleCaret($editor: JQuery<HTMLElement>) {
   const editor = $editor[0]
   const doc = editor.ownerDocument
   const selection = selectionFrom(doc)
+  const style = getComputedStyle(editor)
   expect(doc.activeElement, 'keyboard focus is in the note').to.equal(editor)
   expect(editor.matches(':focus-visible'), 'keyboard focus is visible').to.equal(true)
+  expect(style.boxShadow, 'focused canvas has no side line').to.equal('none')
+  expect(style.outlineStyle, 'focused canvas has no frame').to.equal('none')
   expect(selection.isCollapsed, 'the insertion point is a caret').to.equal(true)
   expect(selection.anchorNode && editor.contains(selection.anchorNode), 'caret is in the note').to.equal(true)
   expect(selection.rangeCount, 'caret has a range').to.be.greaterThan(0)
@@ -61,7 +64,7 @@ function assertVisibleCaret($editor: JQuery<HTMLElement>) {
     backgrounds.push(rgba(getComputedStyle(node).backgroundColor))
   }
   const background = backgrounds.reverse().reduce((back, front) => composite(front, back), [255, 255, 255])
-  const caret = composite(rgba(getComputedStyle(editor).caretColor), background)
+  const caret = composite(rgba(style.caretColor), background)
   const luminance = (color: number[]) => color.reduce((sum, channel, index) => {
     const value = channel / 255
     const linear = value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
@@ -74,9 +77,23 @@ function assertVisibleCaret($editor: JQuery<HTMLElement>) {
 function assertVisibleControlFocus($button: JQuery<HTMLElement>) {
   const button = $button[0]
   const style = getComputedStyle(button)
-  const hasOutline = style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0
-  const shadowSizes = style.boxShadow.match(/-?\d+(?:\.\d+)?px/g) ?? []
-  const hasShadow = shadowSizes.some(size => Number.parseFloat(size) > 0)
+  const canvas = button.ownerDocument.createElement('canvas')
+  canvas.width = canvas.height = 1
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Canvas color conversion is unavailable')
+  const isVisibleColor = (color: string) => {
+    context.clearRect(0, 0, 1, 1)
+    context.fillStyle = 'transparent'
+    context.fillStyle = color
+    context.fillRect(0, 0, 1, 1)
+    return context.getImageData(0, 0, 1, 1).data[3] > 0
+  }
+  const hasOutline = style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0 && isVisibleColor(style.outlineColor)
+  const hasShadow = style.boxShadow.split(/,(?![^()]*\))/).some(layer => {
+    const sizes = layer.match(/-?\d+(?:\.\d+)?px/g) ?? []
+    const color = layer.match(/(?:rgba?|hsla?|(?:ok)?l(?:ab|ch)|color)\([^)]*\)|#[\da-f]+/i)?.[0]
+    return sizes.some(size => Number.parseFloat(size) > 0) && Boolean(color && isVisibleColor(color))
+  })
   expect(button.tagName, 'next control is a button').to.equal('BUTTON')
   expect(button.matches(':focus-visible'), 'button has keyboard focus').to.equal(true)
   expect(hasOutline || hasShadow, 'button focus has a visible indicator').to.equal(true)
