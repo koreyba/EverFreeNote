@@ -85,6 +85,8 @@ graph TD
 Opening Add temporarily replaces the tag chips with a full-width input alongside the
 44 px Add button. The chip collection remains mounted, invisible and inert: it
 retains the user's disclosure preference, but renders collapsed during entry.
+With no tags and entry closed, show a compact left-aligned “Add tag” action in the
+same row; its visible label matches the accessible name and its target remains 44 px.
 Entry always occupies one 44 px row; closing restores the prior disclosure.
 Collapsed collections do not move the document on open/close. Expanded collections
 intentionally give their space back to the body while entering, then restore it;

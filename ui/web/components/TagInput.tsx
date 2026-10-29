@@ -190,6 +190,7 @@ export function TagInput({
   }
 
   const isExpanded = !disabled && inputOpen && suggestions.length > 0
+  const showEmptyPrompt = tags.length === 0 && !inputOpen
 
   return (
     <div className={cn("relative z-30", className)}>
@@ -214,7 +215,7 @@ export function TagInput({
 
         {/* Entry uses one compact row. Keep the user's disclosure preference
             separately so closing entry restores it without reserving empty rows. */}
-        <div className={cn("flex min-w-0 flex-1", inputOpen && "invisible")} inert={inputOpen} aria-hidden={inputOpen || undefined}>
+        <div className={cn("min-w-0", showEmptyPrompt ? "hidden" : "flex flex-1", inputOpen && "invisible")} inert={inputOpen} aria-hidden={inputOpen || undefined}>
           <NoteTagList tags={tags} expanded={expanded && !inputOpen} onExpandedChange={setExpanded}
             onTagClick={onTagClick} onRemoveTag={disabled ? undefined : onRemoveTag}
             armedTag={backspaceArmed ? tags.at(-1) : undefined} variant="editor" />
@@ -262,7 +263,8 @@ export function TagInput({
             } else focusInput()
           }}
           className={cn(
-            "shrink-0 flex items-center justify-center w-11 h-11 rounded-lg",
+            "shrink-0 flex items-center justify-center h-11 rounded-lg",
+            showEmptyPrompt ? "gap-2 bg-muted/50 px-3 text-sm font-medium" : "w-11",
             "hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             "text-muted-foreground hover:text-accent-foreground",
             disabled && "opacity-50 cursor-not-allowed"
@@ -273,6 +275,7 @@ export function TagInput({
           aria-controls={inputId}
         >
           <Plus className="w-3.5 h-3.5" />
+          {showEmptyPrompt && <span>Add tag</span>}
         </button>
       </div>
 

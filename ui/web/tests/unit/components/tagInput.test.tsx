@@ -74,6 +74,22 @@ describe('TagInput', () => {
     expect(document.activeElement).toBe(input)
   })
 
+  it('offers a visible add tag action for an empty note and restores it after Escape', () => {
+    jest.useFakeTimers()
+    renderTagInput({ tags: [] })
+    const addButton = screen.getByRole('button', { name: 'Add tag' })
+    expect(addButton.textContent).toContain('Add tag')
+
+    fireEvent.click(addButton)
+    act(() => jest.runOnlyPendingTimers())
+    const input = screen.getByRole('combobox', { name: 'Add tags' })
+    expect(document.activeElement).toBe(input)
+    fireEvent.keyDown(input, { key: 'Escape' })
+
+    expect(addButton.textContent).toContain('Add tag')
+    expect(document.activeElement).toBe(addButton)
+  })
+
   it('normalizes comma-separated tags on Enter and clears the query', () => {
     const { onAddTags, onQueryChange } = renderTagInput()
     fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))

@@ -72,3 +72,4 @@ Remove the decorative green editor focus line; preserve caret, real blockquotes 
 After confirming tag entry, close the input and show new tags at the start of the note's tag list. Comma entry remains available for entering multiple tags; the input remains open until the entry is confirmed or focus leaves it.
 
 Start with the tag input closed for all notes, including notes without tags, so the first activation of Add opens and focuses it.
+When a note has no tags, show a clearly labelled, left-aligned Add tag action instead of an isolated icon on the right.
