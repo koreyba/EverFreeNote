@@ -1,1 +1,0 @@
-{"id":"62b9584462b348c5e3149e4715a3b0e7","fullName":"everfreenote:cypress/component/features/offline/QueueBatchSafety.cy.ts#Offline bulk deletions preserve the durable queue rolls back the whole batch if adding one deletion fails","name":"rolls back the whole batch if adding one deletion fails","status":"passed","testResultsByEnv":{"default":"fe8b498aabb112814c16a75c3d7f7f2b"}}

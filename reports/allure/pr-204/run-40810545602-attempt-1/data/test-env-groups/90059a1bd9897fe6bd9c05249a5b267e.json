@@ -1,1 +1,0 @@
-{"id":"90059a1bd9897fe6bd9c05249a5b267e","fullName":"everfreenote:ui/web/tests/unit/hooks/workspaceMemoryNavigation.test.tsx#workspace memory across same-document navigation clears the volatile failed copy after the owner saves it","name":"clears the volatile failed copy after the owner saves it","status":"passed","testResultsByEnv":{"default":"50224649655e4aec4d3cdfc486a9085a"}}

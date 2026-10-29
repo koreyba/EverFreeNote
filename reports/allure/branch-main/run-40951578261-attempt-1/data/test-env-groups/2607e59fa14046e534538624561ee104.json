@@ -1,0 +1,1 @@
+{"id":"2607e59fa14046e534538624561ee104","fullName":"everfreenote:ui/web/tests/unit/components/noteCard.test.tsx#NoteCard retains the legacy interpretation when markup has no recognized rich-text tags","name":"retains the legacy interpretation when markup has no recognized rich-text tags","status":"passed","testResultsByEnv":{"default":"7cd86d8d18d6f09da31b6eb24802a21c"}}

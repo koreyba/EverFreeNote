@@ -1,0 +1,1 @@
+{"id":"aadb572e110a92965f0a69089b9af87a","fullName":"everfreenote:cypress/component/lib/adapters/browser.cy.ts#WebBrowserAdapter calls window.confirm and returns result","name":"calls window.confirm and returns result","status":"passed","testResultsByEnv":{"default":"bf9b63b924b49c91873b78018cfa4144"}}

@@ -1,1 +1,0 @@
-{"id":"607af46054c339de2da2ff7ac87becfe","fullName":"everfreenote:ui/web/tests/unit/hooks/useGuardedSignOut.test.tsx#guarded sign out does not sign out after a pending check is cancelled","name":"does not sign out after a pending check is cancelled","status":"passed","testResultsByEnv":{"default":"f5a1dbfbc7461d4c7398e11f5fc3115c"}}

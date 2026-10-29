@@ -1,1 +1,0 @@
-{"id":"f499e3063514b054dc5c4a335d509809","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSyncPrivacy.test.tsx#keeps a changed ownerless draft hidden when a same-ID server row does not match","name":"keeps a changed ownerless draft hidden when a same-ID server row does not match","status":"passed","testResultsByEnv":{"default":"05d7adb5a4dad54767e2c15aef4feae1"}}

@@ -1,1 +1,0 @@
-{"id":"f82fbe4290e13bd76f9bc97b07a19b8d","fullName":"everfreenote:core/tests/unit/core-rag-searchSettings.test.ts#core/rag/searchSettings rejects non-integer top_k values","name":"rejects non-integer top_k values","status":"passed","testResultsByEnv":{"default":"dd651ab4b33fc418d0bb2691c586a427"}}
