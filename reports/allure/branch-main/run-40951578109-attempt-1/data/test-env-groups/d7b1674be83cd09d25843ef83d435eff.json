@@ -1,0 +1,1 @@
+{"id":"d7b1674be83cd09d25843ef83d435eff","fullName":"everfreenote:ui/web/tests/unit/components/noteEditor.test.tsx#NoteEditor same-note autosave reconciliation does not treat an untouched empty editor as an unsaved change","name":"does not treat an untouched empty editor as an unsaved change","status":"passed","testResultsByEnv":{"default":"908ffa7a4a5c27b7ceaadc9c2792cdf9"}}

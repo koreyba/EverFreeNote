@@ -1,0 +1,1 @@
+{"id":"353997876769b9fadcdbf8f7258d05f7","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteAuth.test.tsx#useNoteAuth keeps the workspace and session when sign-out returns an error","name":"keeps the workspace and session when sign-out returns an error","status":"passed","testResultsByEnv":{"default":"8ed30b8861c1ee462264ae85846f00fb"}}

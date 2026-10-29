@@ -1,0 +1,1 @@
+{"id":"3f49f98464a9195884b4de9036b6b51f","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML drops the invalid dimension: excessive padding","name":"drops the invalid dimension: excessive padding","status":"passed","testResultsByEnv":{"default":"be3b0b558e1ff2a69a4f0dde2efa35c4"}}
