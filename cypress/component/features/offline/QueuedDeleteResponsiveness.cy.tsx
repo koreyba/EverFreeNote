@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { QueryClient } from '@tanstack/react-query'
+import { toast, Toaster } from 'sonner'
 import type { MutationQueueItem } from '@core/types/offline'
 import type { NoteViewModel } from '@core/types/domain'
 import { useNoteSync } from '@ui/web/hooks/useNoteSync'
@@ -200,15 +201,26 @@ describe('Queued deletion does not wait for an unrelated request', { retries: 0 
   })
 
   it('does not claim deletion or save a tombstone when durable enqueue fails', () => {
-    cy.mount(<Harness update={async () => {}} remove={async () => { events.push('delete') }} ids={['target']} />)
+    // Focusing the browser can retry a failed update. Keep it unsynced so that
+    // a successful background request cannot consume the fixture before the check.
+    const update = async () => { throw new Error('Synthetic update remains unsynced') }
+    cy.mount(<><Harness update={update} remove={async () => { events.push('delete') }} ids={['target']} /><Toaster /></>)
     cy.wrap(null).should(() => expect(idle).to.equal(true))
     cy.then(async () => { await storage.appendQueueItems!([queued('target')]) })
     cy.then(() => { cy.stub(storage, 'appendQueueItems').rejects(new Error('queue unavailable')) })
-    cy.get('[data-cy="delete"]').trigger('click')
-    cy.get('[data-cy="error"]').should('contain', 'queue unavailable')
+    cy.spy(toast, 'error').as('deleteError')
+    cy.spy(toast, 'success').as('deleteSuccess')
+    cy.get('[data-cy="delete"]').click()
+    cy.get('[data-cy="error"]').should('have.text', 'Could not complete local deletion. Some deletions may already be queued; check sync status.')
+    cy.get('@deleteError').should('have.been.calledOnceWithExactly', 'Could not complete local deletion. Some deletions may already be queued; check sync status.')
+    cy.get('@deleteSuccess').should('not.have.been.called')
+    cy.contains('[data-sonner-toast]', 'Some deletions may already be queued; check sync status.').should('be.visible')
     cy.get('[data-cy="done"]').should('have.text', 'waiting')
     cy.then(async () => {
-      expect((await storage.getQueue()).map(item => item.id)).to.deep.equal(['queued-target'])
+      const queue = await storage.getQueue()
+      expect(queue.map(item => item.id)).to.deep.equal(['queued-target'])
+      expect(queue[0]).to.include({ noteId: 'target', operation: 'update' })
+      expect(queue[0].payload).to.deep.equal({ user_id: 'owner', title: 'target' })
       expect((await storage.loadNotes()).some(item => item.deleted)).to.equal(false)
       expect(events).to.deep.equal([])
     })
@@ -264,19 +276,25 @@ describe('Queued deletion does not wait for an unrelated request', { retries: 0 
     const update = async ({ id }: { id: string }) => {
       if (id === 'other') { started = true; await stalled }
     }
-    cy.mount(<Harness update={update} remove={async () => {}} ids={['target']} />)
+    cy.mount(<><Harness update={update} remove={async () => { events.push('delete') }} ids={['target']} /><Toaster /></>)
     cy.wrap(null).should(() => expect(idle).to.equal(true))
     cy.then(async () => { await storage.appendQueueItems!([queued('other'), queued('target')]) })
     cy.then(() => { cy.stub(storage, 'saveNote').rejects(new Error('cache unavailable')) })
     cy.window().then(win => win.dispatchEvent(new Event('focus')))
     cy.wrap(null).should(() => expect(started).to.equal(true))
-    cy.get('[data-cy="delete"]').trigger('click')
-    cy.get('[data-cy="error"]').should('contain', 'cache unavailable')
+    cy.spy(toast, 'error').as('deleteError')
+    cy.spy(toast, 'success').as('deleteSuccess')
+    cy.get('[data-cy="delete"]').click()
+    cy.get('[data-cy="error"]').should('have.text', 'Could not complete local deletion. Some deletions may already be queued; check sync status.')
+    cy.get('@deleteError').should('have.been.calledOnceWithExactly', 'Could not complete local deletion. Some deletions may already be queued; check sync status.')
+    cy.get('@deleteSuccess').should('not.have.been.called')
+    cy.contains('[data-sonner-toast]', 'Some deletions may already be queued; check sync status.').should('be.visible')
     cy.get('[data-cy="done"]').should('have.text', 'waiting')
     cy.then(async () => {
       const queue = await storage.getQueue()
       expect(queue.some(item => item.noteId === 'target' && item.operation === 'delete' && item.payload.user_id === 'owner')).to.equal(true)
       expect((await storage.loadNotes()).some(item => item.id === 'target' && item.deleted)).to.equal(false)
+      expect(events).to.deep.equal([])
     })
     cy.then(() => release())
   })
@@ -330,16 +348,22 @@ describe('Queued deletion does not wait for an unrelated request', { retries: 0 
 
   it('leaves the durable deletion queued and releases the local lock when the tombstone write fails', () => {
     let saveStub: sinon.SinonStub
-    cy.mount(<Harness update={async () => {}} remove={async () => { events.push('delete') }} ids={['target']} />)
+    cy.mount(<><Harness update={async () => {}} remove={async () => { events.push('delete') }} ids={['target']} /><Toaster /></>)
     cy.wrap(null).should(() => expect(idle).to.equal(true))
     cy.then(async () => { await storage.appendQueueItems!([queued('target')]) })
     cy.then(() => { saveStub = cy.stub(storage, 'saveNote').rejects(new Error('cache unavailable')) })
+    cy.spy(toast, 'error').as('deleteError')
+    cy.spy(toast, 'success').as('deleteSuccess')
+    // Start the focus-driven retry only after checking the failed local write.
     cy.get('[data-cy="delete"]').trigger('click')
-    cy.get('[data-cy="error"]').should('contain', 'cache unavailable')
+    cy.get('[data-cy="error"]').should('have.text', 'Could not complete local deletion. Some deletions may already be queued; check sync status.')
+    cy.get('@deleteError').should('have.been.calledOnceWithExactly', 'Could not complete local deletion. Some deletions may already be queued; check sync status.')
+    cy.get('@deleteSuccess').should('not.have.been.called')
+    cy.contains('[data-sonner-toast]', 'Some deletions may already be queued; check sync status.').should('be.visible')
     cy.get('[data-cy="done"]').should('have.text', 'waiting')
     cy.then(async () => {
       expect(events).to.deep.equal([])
-      expect((await storage.getQueue()).some(item => item.noteId === 'target' && item.operation === 'delete')).to.equal(true)
+      expect((await storage.getQueue()).some(item => item.noteId === 'target' && item.operation === 'delete' && item.payload.user_id === 'owner')).to.equal(true)
       saveStub.restore()
     })
     cy.window().then(win => win.dispatchEvent(new Event('focus')))
