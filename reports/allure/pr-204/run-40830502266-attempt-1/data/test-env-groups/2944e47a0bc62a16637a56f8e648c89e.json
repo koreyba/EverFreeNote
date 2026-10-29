@@ -1,0 +1,1 @@
+{"id":"2944e47a0bc62a16637a56f8e648c89e","fullName":"everfreenote:cypress/component/editor/ImageAltDraftState.cy.tsx#Image description and saved draft state keeps a failed manual save dirty and retries the same draft","name":"keeps a failed manual save dirty and retries the same draft","status":"passed","testResultsByEnv":{"default":"48e4ce671946aec4ce682d47e2b437a5"}}

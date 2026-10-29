@@ -1,0 +1,1 @@
+{"id":"ea664ee0549f981e6ea3a0dbf7324022","fullName":"everfreenote:ui/web/tests/unit/components/noteEditor.test.tsx#NoteEditor same-note autosave reconciliation reports typing as unsaved before the debounced workspace update","name":"reports typing as unsaved before the debounced workspace update","status":"passed","testResultsByEnv":{"default":"ce72e76b40b8ab7672f6ca194c8329cc"}}
