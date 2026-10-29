@@ -7,6 +7,7 @@ import { editorExtensions } from '@/components/editorExtensions'
 import { ContentConverter } from '@core/enex/converter'
 import { EnexBuilder } from '@core/enex/enex-builder'
 import { EnexParser } from '@core/enex/parser'
+import { imageWidthForHeight } from '@core/utils/imageDimensions'
 
 const htmlImage = (html: string) => new DOMParser().parseFromString(html, 'text/html').querySelector('img')!
 
@@ -79,15 +80,106 @@ describe('image dimensions in sanitized note HTML', () => {
     }
   })
 
-  it('respects height-only images without recording presentation CSS in the note', () => {
+  it('sizes height-only images after loading without recording presentation CSS in the note', async () => {
     const source = '<p><img src="https://example.com/p.png" height="48"></p>'
     const reading = htmlImage(SanitizationService.sanitizeForReading(source))
-    expect(reading.style.height).toBe('48px')
-    expect(reading.style.objectFit).toBe('contain')
+    expect(reading.style.height).toBe('')
+    expect(reading.style.objectFit).toBe('')
     const editor = new Editor({ extensions: editorExtensions, content: source })
     try {
-      expect(editor.view.dom.querySelector('img')?.style.height).toBe('48px')
+      const initial = editor.getHTML()
+      const onUpdate = jest.fn()
+      editor.on('update', onUpdate)
+      const image = editor.view.dom.querySelector('img')!
+      expect(image.style.height).toBe('')
+      Object.defineProperties(image, {
+        complete: { value: true },
+        naturalWidth: { value: 192 },
+        naturalHeight: { value: 96 },
+      })
+      image.dispatchEvent(new Event('load'))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(editor.view.dom.querySelector('img')?.style.width).toBe('96px')
+      expect(editor.getHTML()).toBe(initial)
+      expect(onUpdate).not.toHaveBeenCalled()
       expect(editor.getHTML()).not.toContain('style=')
+      expect(editor.getHTML()).toContain('height="48"')
+      const payload = NoteClipboardService.buildPayload(editor.getHTML())
+      const pasted = SmartPasteService.resolvePaste({ html: payload.html, text: payload.text, types: ['text/html', 'text/plain'] })
+      const copiedImage = htmlImage(pasted.html)
+      expect(copiedImage.getAttribute('height')).toBe('48')
+      expect(copiedImage.hasAttribute('width')).toBe(false)
+      expect(copiedImage.hasAttribute('style')).toBe(false)
+      expect(copiedImage.hasAttribute('alt')).toBe(false)
+    } finally {
+      editor.destroy()
+    }
+  })
+
+  it('requires safe dimensions and usable intrinsic geometry before computing a display width', () => {
+    expect(imageWidthForHeight('800', 192, 96)).toBe('1600.000000px')
+    expect(imageWidthForHeight('48', 96, 192)).toBe('24.000000px')
+    expect(imageWidthForHeight('48px', 192, 96)).toBeNull()
+    expect(imageWidthForHeight('16385', 192, 96)).toBeNull()
+    expect(imageWidthForHeight('48', 0, 96)).toBeNull()
+    expect(imageWidthForHeight('48', 192, 0)).toBeNull()
+    expect(imageWidthForHeight('48', Number.NaN, 96)).toBeNull()
+    expect(imageWidthForHeight('16384', 10000000, 1)).toBe('16777216.000000px')
+    expect(imageWidthForHeight('1', 1, 10000000)).toBe('0.000001px')
+  })
+
+  it('tracks image occurrences separately as editing moves or replaces them', async () => {
+    const source = '<p>Start<img src="/same.png" height="48" alt="Wide"><img src="/same.png" height="48" alt="Tall"></p>'
+    const editor = new Editor({ extensions: editorExtensions, content: source })
+    const markLoaded = (image: HTMLImageElement, width: number, height: number) => {
+      Object.defineProperties(image, {
+        complete: { value: true }, naturalWidth: { value: width }, naturalHeight: { value: height },
+      })
+      image.dispatchEvent(new Event('load'))
+    }
+    try {
+      const images = editor.view.dom.querySelectorAll('img')
+      markLoaded(images[0], 192, 96)
+      markLoaded(images[1], 96, 192)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(editor.view.dom.querySelector('img[alt="Wide"]')?.getAttribute('style')).toContain('96px')
+      expect(editor.view.dom.querySelector('img[alt="Tall"]')?.getAttribute('style')).toContain('24px')
+      editor.commands.insertContentAt(1, 'Before ')
+      expect(editor.view.dom.querySelector('img[alt="Wide"]')?.getAttribute('style')).toContain('96px')
+      expect(editor.view.dom.querySelector('img[alt="Tall"]')?.getAttribute('style')).toContain('24px')
+      expect(editor.getHTML()).not.toContain('style=')
+
+      editor.commands.setContent('<p><img src="/new.png" height="48" alt="New"></p>')
+      const replacement = editor.view.dom.querySelector('img')!
+      expect(replacement.style.width).toBe('')
+      markLoaded(replacement, 96, 192)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(editor.view.dom.querySelector('img')?.style.width).toBe('24px')
+      expect(editor.getHTML()).toContain('src="/new.png"')
+      expect(editor.getHTML()).not.toContain('style=')
+    } finally {
+      editor.destroy()
+    }
+  })
+
+  it('does not add image loads to undo history or emit a content update', async () => {
+    const editor = new Editor({ extensions: editorExtensions, content: '<p>Start<img src="/slow.png" height="48"></p>' })
+    const initial = editor.getHTML()
+    const onUpdate = jest.fn()
+    editor.on('update', onUpdate)
+    try {
+      editor.commands.insertContentAt(1, 'Typed ')
+      expect(onUpdate).toHaveBeenCalledTimes(1)
+      const image = editor.view.dom.querySelector('img')!
+      Object.defineProperties(image, {
+        complete: { value: true }, naturalWidth: { value: 192 }, naturalHeight: { value: 96 },
+      })
+      image.dispatchEvent(new Event('load'))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(onUpdate).toHaveBeenCalledTimes(1)
+      expect(editor.view.dom.querySelector('img')?.style.width).toBe('96px')
+      expect(editor.commands.undo()).toBe(true)
+      expect(editor.getHTML()).toBe(initial)
     } finally {
       editor.destroy()
     }

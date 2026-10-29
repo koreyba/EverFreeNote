@@ -99,10 +99,6 @@ export class SanitizationService {
       const height = image.getAttribute('height')
       const ratio = imageAspectRatio(width, height)
       if (ratio && !image.style.aspectRatio) image.style.aspectRatio = ratio
-      if (!isValidImageDimension(width) && isValidImageDimension(height) && !image.style.height) {
-        image.style.height = `${height}px`
-        if (!image.style.objectFit) image.style.objectFit = 'contain'
-      }
     })
     const container = fragment.ownerDocument.createElement('div')
     container.appendChild(fragment)

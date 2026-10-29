@@ -6,6 +6,7 @@ import { SanitizationService } from "@core/services/sanitizer"
 import type { NoteViewSession, NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { useDebouncedSessionCallback } from "@ui/web/hooks/useDebouncedSessionCallback"
 import { parseTagString } from "@ui/web/lib/tags"
+import { RenderedNoteContent } from "@/components/RenderedNoteContent"
 
 /** The inactive pane is read-only; only the active tab owns an editor. */
 export function SplitNotePreview({
@@ -63,7 +64,7 @@ export function SplitNotePreview({
               ))}
             </div>
           )}
-          <div className={NOTE_CONTENT_CLASS} dangerouslySetInnerHTML={{ __html: content }} />
+          <RenderedNoteContent className={NOTE_CONTENT_CLASS} html={content} />
         </div>
       </div>
     </div>

@@ -94,4 +94,8 @@ Mobile and desktop component tests compare reading/editing geometry for small, n
 
 Local validation: full unit-core 843/843; targeted web/core 178/178; component 3/3; full type-check, ESLint and Deno check for the MCP function passed. Synthetic browser export decoded a local data image and used stubbed remote URLs; no external image requests were made.
 
-Note: the existing DOMPurify XML-safety policy removes an `alt` containing a literal `]]>` sequence. On a very narrow viewport a large height-only image may retain empty vertical space inside its contained box; both dimensions preserve their ratio without that space.
+Note: the existing DOMPurify XML-safety policy removes an `alt` containing a literal `]]>` sequence.
+
+## Responsive height-only images
+
+Responsive component coverage checks small and large height-only images with square, wide and tall intrinsic ratios at 320, 390 and 1200 px in reading and editing; it also checks delayed loading, shared notes and the inactive split pane. The editor is checked for unchanged HTML, no content-change event from loading, and working keyboard input. Unit tests cover separate images sharing a source, positional changes, replacement, undo, invalid values and reading/clipboard/ENEX behavior. Local results: responsive component 5/5, earlier image accessibility and dimensions component suites 16/16, targeted web unit 46/46, full type-check and ESLint. Exact integrated-head, physical-device and independent real-API checks remain separate.

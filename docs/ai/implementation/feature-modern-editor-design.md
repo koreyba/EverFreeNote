@@ -64,3 +64,5 @@ RichTextEditor exposes named multiline textbox semantics. Image options use the 
 
 ## Image dimensions follow-up
 A shared validator limits image-only pixel attributes in DOMPurify and MCP. The DOMPurify hook is scoped to each synchronous sanitization call. Reading DOM and ProseMirror decorations derive presentation styles without altering stored HTML. ENEX export pairs resources by their source, preserves validated display sizes and alt on `en-media`, embeds supported data images locally, and escapes CDATA boundaries; the importer restores those attributes.
+
+For images with only a height, the rendered reading component and editor plugin observe the loaded intrinsic size and calculate an equivalent width. The existing responsive maximum width then scales the image proportionally. Editor measurements update decorations using non-history transactions, without changing the document or triggering content-change handlers.

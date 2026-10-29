@@ -8,6 +8,7 @@ import { NoteTag } from "@/components/NoteTag"
 import { PullToRefresh } from "@/components/PullToRefresh"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import { NoteFindBar } from "@/components/features/notes/NoteFindBar"
+import { RenderedNoteContent } from "@/components/RenderedNoteContent"
 import { SanitizationService } from "@core/services/sanitizer"
 import { NoteClipboardService } from "@core/services/noteClipboard"
 import { useCopyNote } from "@ui/web/hooks/useCopyNote"
@@ -220,10 +221,10 @@ export const NoteView = React.memo(function NoteView({
               </div>
             )}
 
-            <div
+            <RenderedNoteContent
               ref={bodyRef}
               className={NOTE_CONTENT_CLASS}
-              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+              html={sanitizedContent}
             />
 
             <div className="mt-12 pt-6 border-t border-border/40 text-[11px] text-foreground/70 flex flex-wrap gap-x-6 gap-y-2">
