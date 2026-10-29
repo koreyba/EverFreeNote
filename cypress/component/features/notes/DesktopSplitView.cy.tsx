@@ -146,7 +146,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.then(async () => {
       try {
         const releases = await Promise.allSettled(heldWrites.map(({ release }) => release()))
-        releases.forEach(result => { if (result.status === 'rejected') errors.add(result.reason) })
+        releases.forEach(result => { if (result.status === 'rejected' && !expectedWriteErrors.has(result.reason)) errors.add(result.reason) })
         const noteIds = new Set([...notes.map(note => note.id), ...heldWrites.map(write => write.noteId), ...pendingBeforeUnmount, ...getPendingOwnerNotes(user.id).map(note => note.id)])
         const waits = await Promise.allSettled([...noteIds].map(noteId => waitForOwnerNoteWrites(user.id, noteId)))
         waits.forEach(result => { if (result.status === 'rejected' && !expectedWriteErrors.has(result.reason)) errors.add(result.reason) })
@@ -736,6 +736,168 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
       expect(cached.find(note => note.id === 'second')?.title).to.equal('Latest manual save')
+    })
+  })
+
+  it('does not duplicate a manual save during an offline pane transition already waiting for autosave', () => {
+    openTwoNotes()
+    cy.window().then(win => {
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
+      win.dispatchEvent(new Event('offline'))
+    })
+    cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    const releases: Array<() => Promise<unknown>> = []
+    const titles: string[] = []
+    const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
+    cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      if (item.noteId !== 'second') return original(item)
+      const title = item.payload?.title ?? ''
+      titles.push(title)
+      if (title !== 'Older offline' && title !== 'Manual offline') return original(item)
+      if (title === 'Manual offline' && releases.length > 1) return original(item)
+      return holdQueueWrite(item.noteId, () => original(item), release => releases.push(release))
+    })
+    cy.get('[aria-label="Note title"]').clear().type('Older offline')
+    cy.tick(4000)
+    cy.wrap(null).should(() => expect(releases).to.have.length(1))
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[aria-label="Note title"]').clear().type('Manual offline')
+    cy.get('[data-cy="note-save-button"]').click()
+    cy.then(() => releases[0]())
+    cy.wrap(null).should(() => expect(releases).to.have.length(2))
+    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.then(() => releases[1]())
+    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.then(() => waitForOwnerNoteWrites(user.id, 'second'))
+    cy.then(() => expect(titles.filter(title => title === 'Manual offline')).to.have.length(1))
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+      const writes = queue.filter(item => item.noteId === 'second' && item.payload?.title === 'Manual offline')
+      expect(writes).to.have.length(1)
+    })
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
+      expect(cached.find(note => note.id === 'second')?.title).to.equal('Manual offline')
+    })
+  })
+
+  it('sends one manual snapshot online during a transition already waiting for autosave', () => {
+    const remoteTitles: string[] = []
+    cy.intercept('PATCH', 'https://split-notes.invalid/rest/v1/notes*', req => {
+      remoteTitles.push(req.body.title)
+      req.reply({ statusCode: 200, body: { ...notes[1], ...req.body } })
+    })
+    openTwoNotes()
+    cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    const releases: Array<() => Promise<unknown>> = []
+    const titles: string[] = []
+    const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
+    cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      if (item.noteId !== 'second') return original(item)
+      const title = item.payload?.title ?? ''
+      titles.push(title)
+      if (title !== 'Older online' && title !== 'Manual online') return original(item)
+      if (title === 'Manual online' && releases.length > 1) return original(item)
+      return holdQueueWrite(item.noteId, () => original(item), release => releases.push(release))
+    })
+    cy.get('[aria-label="Note title"]').clear().type('Older online')
+    cy.tick(4000)
+    cy.wrap(null).should(() => expect(releases).to.have.length(1))
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[aria-label="Note title"]').clear().type('Manual online')
+    cy.get('[data-cy="note-save-button"]').click()
+    cy.then(() => releases[0]())
+    cy.wrap(null).should(() => expect(releases).to.have.length(2))
+    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.then(() => releases[1]())
+    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.then(() => waitForOwnerNoteWrites(user.id, 'second'))
+    cy.then(() => expect(titles.filter(title => title === 'Manual online')).to.have.length(1))
+    cy.wrap(null).should(() => expect(remoteTitles).to.include('Manual online'))
+    cy.then(() => expect(remoteTitles.filter(title => title === 'Manual online')).to.have.length(1))
+  })
+
+  it('keeps a reverted draft on the pane after a partial manual queue failure and rewrites it on retry', () => {
+    openTwoNotes()
+    cy.window().then(win => {
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
+      win.dispatchEvent(new Event('offline'))
+    })
+    cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
+    const error = expectedWriteFailure()
+    let release: (() => Promise<unknown>) | undefined
+    const write = cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      if (item.payload?.title === 'Failed manual') return Cypress.Promise.reject(error)
+      if (item.noteId === 'second' && !release) return holdQueueWrite(item.noteId, () => original(item), held => { release = held })
+      return original(item)
+    })
+    cy.get('[aria-label="Note title"]').clear().type('Stable offline')
+    cy.tick(4000)
+    cy.wrap(null).should(() => expect(release).to.be.a('function'))
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[aria-label="Note title"]').clear().type('Failed manual')
+    cy.get('[data-cy="note-save-button"]').click()
+    cy.get('[aria-label="Note title"]').clear().type('Stable offline')
+    cy.then(() => release!())
+    cy.wrap(write).should(stub => {
+      const calls = (stub as unknown as { getCalls: () => Array<{ args: Array<{ payload?: { title?: string } }> }> }).getCalls()
+      expect(calls.some(call => call.args[0].payload?.title === 'Failed manual')).to.equal(true)
+    })
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
+      expect(cached.find(note => note.id === 'second')?.title).to.equal('Failed manual')
+    })
+    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[aria-label="Note title"]').should('have.value', 'Stable offline')
+    cy.then(() => write.restore())
+    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
+      expect(cached.find(note => note.id === 'second')?.title).to.equal('Stable offline')
+    })
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+      const writes = queue.filter(item => item.noteId === 'second').sort((a, b) => a.clientUpdatedAt.localeCompare(b.clientUpdatedAt))
+      expect(writes[writes.length - 1]?.payload?.title).to.equal('Stable offline')
+    })
+  })
+
+  it('does not replay a failed older offline write after a newer manual save succeeds', () => {
+    openTwoNotes()
+    cy.window().then(win => {
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
+      win.dispatchEvent(new Event('offline'))
+    })
+    cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
+    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    const titles: string[] = []
+    const error = expectedWriteFailure()
+    const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
+    let release: (() => Promise<unknown>) | undefined
+    cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
+      if (item.noteId !== 'second') return original(item)
+      const title = item.payload?.title ?? ''
+      titles.push(title)
+      if (title !== 'Older failure' || release) return original(item)
+      return holdQueueWrite(item.noteId, () => Cypress.Promise.reject(error), held => { release = held })
+    })
+    cy.get('[aria-label="Note title"]').clear().type('Older failure')
+    cy.tick(4000)
+    cy.wrap(null).should(() => expect(release).to.be.a('function'))
+    cy.get('[aria-label="Note title"]').clear().type('Manual success')
+    cy.get('[data-cy="note-save-button"]').click()
+    cy.then(() => release!().catch(() => undefined))
+    cy.then(() => waitForOwnerNoteWrites(user.id, 'second'))
+    cy.get('[data-cy="note-save-button"]').should('be.enabled')
+    cy.tick(4000)
+    cy.then(() => waitForOwnerNoteWrites(user.id, 'second'))
+    cy.then(() => expect(titles.filter(title => title === 'Older failure')).to.have.length(1))
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
+      expect(cached.find(note => note.id === 'second')?.title).to.equal('Manual success')
+    })
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+      const writes = queue.filter(item => item.noteId === 'second').sort((a, b) => a.clientUpdatedAt.localeCompare(b.clientUpdatedAt))
+      expect(writes[writes.length - 1]?.payload?.title).to.equal('Manual success')
     })
   })
 

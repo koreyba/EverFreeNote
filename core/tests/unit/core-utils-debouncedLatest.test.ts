@@ -106,6 +106,19 @@ describe('createDebouncedLatest', () => {
     expect(debounced.getPending()).toBeNull()
   })
 
+  it('forces one durable retry even when the draft matches the baseline', async () => {
+    const onFlush = jest.fn().mockResolvedValue(undefined)
+    const debounced = createDebouncedLatest<string>({ delayMs: 100, onFlush })
+    debounced.reset('saved')
+    debounced.schedule('saved', { force: true })
+    await debounced.flush()
+    expect(onFlush).toHaveBeenCalledTimes(1)
+    expect(onFlush).toHaveBeenCalledWith('saved')
+    debounced.schedule('saved')
+    await debounced.flush()
+    expect(onFlush).toHaveBeenCalledTimes(1)
+  })
+
   it('rolls back the baseline when flush fails', async () => {
     const onFlush = jest.fn()
       .mockResolvedValueOnce(undefined)
@@ -284,5 +297,41 @@ describe('createDebouncedLatest', () => {
     expect(onFlush).toHaveBeenCalledTimes(1)
     expect(debounced.getPending()).toBeNull()
     expect(debounced.getBaseline()).toBe('new note')
+  })
+
+  it('does not retry an older in-flight failure after a newer write is confirmed', async () => {
+    let failOld!: (error: Error) => void
+    const onFlush = jest.fn()
+      .mockImplementationOnce(() => new Promise<void>((_, reject) => { failOld = reject }))
+      .mockResolvedValue(undefined)
+    const debounced = createDebouncedLatest<string>({ delayMs: 100, onFlush })
+    debounced.reset('original')
+    debounced.schedule('older')
+    const oldResult = debounced.flush().catch(() => undefined)
+    debounced.rebase('manual', null, { supersedeInFlight: true })
+    failOld(new Error('Old write failed'))
+    await oldResult
+    await jest.advanceTimersByTimeAsync(100)
+    expect(onFlush).toHaveBeenCalledTimes(1)
+    expect(debounced.getPending()).toBeNull()
+    expect(debounced.getBaseline()).toBe('manual')
+  })
+
+  it('keeps newer pending edits when superseding an older in-flight failure', async () => {
+    let failOld!: (error: Error) => void
+    const onFlush = jest.fn()
+      .mockImplementationOnce(() => new Promise<void>((_, reject) => { failOld = reject }))
+      .mockResolvedValue(undefined)
+    const debounced = createDebouncedLatest<string>({ delayMs: 100, onFlush })
+    debounced.reset('original')
+    debounced.schedule('older')
+    const oldResult = debounced.flush().catch(() => undefined)
+    debounced.schedule('latest')
+    debounced.rebase('manual', 'latest', { supersedeInFlight: true })
+    failOld(new Error('Old write failed'))
+    await oldResult
+    await debounced.flush()
+    expect(onFlush.mock.calls.map(([value]) => value)).toEqual(['older', 'latest'])
+    expect(debounced.getBaseline()).toBe('latest')
   })
 })

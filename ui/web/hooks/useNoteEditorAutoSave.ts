@@ -65,6 +65,7 @@ export type UseNoteEditorAutoSaveResult = {
   hasUnconfirmedChanges: () => boolean
   /** Capture a revision before a manual write, then acknowledge its exact payload after success. */
   getSaveRevision: (snapshot: NoteEditorSnapshot) => number
+  finishManualSave: (revision: number, result: 'saved' | 'failed' | 'cancelled') => void
   finishManualCreate: (revision: number, assignedNoteId: string | null) => void
   acknowledgeManualSave: (snapshot: NoteEditorSnapshot, revision: number) => void
 }
@@ -99,7 +100,17 @@ export function useNoteEditorAutoSave({
   // An awaited flush may finish after the editor unmounts or switches notes.
   // Never enqueue its old form data into a different editing session.
   const flushSessionRevisionRef = useRef(0)
-  useEffect(() => () => { flushSessionRevisionRef.current += 1 }, [])
+  const manualSavesRef = useRef(new Map<number, { snapshot: NoteEditorSnapshot; completed: Promise<void>; resolve: () => void }>())
+  const failedManualRevisionRef = useRef<number | null>(null)
+  const releaseManualSaves = useCallback(() => {
+    for (const save of manualSavesRef.current.values()) save.resolve()
+    manualSavesRef.current.clear()
+    failedManualRevisionRef.current = null
+  }, [])
+  useEffect(() => () => {
+    flushSessionRevisionRef.current += 1
+    releaseManualSaves()
+  }, [releaseManualSaves])
   const getIncomingSnapshot = useCallback((): NoteEditorSnapshot => ({
     title: initialTitle,
     description: initialDescription,
@@ -152,6 +163,7 @@ export function useNoteEditorAutoSave({
     try {
       const result = await onAutoSaveRef.current(resolvedPayload)
       lastSuccessfulSaveRef.current = Math.max(lastSuccessfulSaveRef.current, sequence)
+      if (failedManualRevisionRef.current !== null && sequence > failedManualRevisionRef.current) failedManualRevisionRef.current = null
       // The account may have changed while this save was in flight. Its
       // feedback must not create or clear a notification in the new session.
       if (!shouldFlushOnUnmountRef.current?.()) toast.dismiss('note-autosave-failed')
@@ -275,6 +287,7 @@ export function useNoteEditorAutoSave({
 
     // Real note switch: reset session key (remounts editor + title input) and notify caller.
     flushSessionRevisionRef.current += 1
+    releaseManualSaves()
     assignedCreateNoteIdRef.current = null
     if (manualCreate) setManualCreate(null)
     setEditorSessionKey((k) => k + 1)
@@ -295,6 +308,7 @@ export function useNoteEditorAutoSave({
     pendingCreateAssignedNoteId,
     createInFlight,
     manualCreate,
+    releaseManualSaves,
   ])
 
   const handleContentChange = useCallback(() => {
@@ -313,10 +327,43 @@ export function useNoteEditorAutoSave({
   }, [debouncedAutoSave])
 
   const flushPendingSave = useCallback(async () => {
-    if (!onAutoSave) return
     const sessionRevision = flushSessionRevisionRef.current
+    if (!onAutoSave) {
+      while (manualSavesRef.current.size > 0) {
+        await Promise.all([...manualSavesRef.current.values()].map(save => save.completed))
+        if (sessionRevision !== flushSessionRevisionRef.current || shouldFlushOnUnmountRef.current?.()) return
+      }
+      if (failedManualRevisionRef.current !== null) throw new Error('Manual save failed')
+      return
+    }
+    const failedAtStart = failedManualRevisionRef.current
     while (true) {
       const currentDraft = getDraftSnapshot()
+      const pending = debouncedAutoSave.getPending()
+      const failedRevision = failedManualRevisionRef.current
+      const recoveryInProgress = failedRevision !== null && (
+        pending !== null ||
+        [...manualSavesRef.current.keys()].some(revision => revision > failedRevision) ||
+        (autoSaveInFlightRef.current !== null && autoSaveInFlightRef.current > failedRevision)
+      )
+      // A failed local write can update the cache before its queue write fails.
+      // Equality with the old baseline is not proof that the draft is durable.
+      if (failedRevision !== null && !recoveryInProgress) {
+        if (failedRevision !== failedAtStart) throw new Error('Manual save failed')
+        // A later transition is an explicit retry; write even if the draft
+        // matches the old baseline because the failed write may be partial.
+        debouncedAutoSave.schedule({ noteId: noteIdRef.current, ...currentDraft }, { force: true })
+      }
+      // Wait for a manual save before duplicating its snapshot or scheduling
+      // unscheduled tag edits. A newer scheduled body edit can proceed now.
+      const manualSaves = [...manualSavesRef.current.values()].filter(save =>
+        pending === null || areSnapshotsEqual(save.snapshot, currentDraft)
+      )
+      if (manualSaves.length) {
+        await Promise.all(manualSaves.map(save => save.completed))
+        if (sessionRevision !== flushSessionRevisionRef.current || shouldFlushOnUnmountRef.current?.()) return
+        continue
+      }
       const baseline = debouncedAutoSave.getBaseline() ?? lastAcceptedRef.current
       if (debouncedAutoSave.getPending() === null && !areSnapshotsEqual(currentDraft, baseline)) {
         debouncedAutoSave.schedule({ noteId: noteIdRef.current, ...currentDraft })
@@ -328,19 +375,31 @@ export function useNoteEditorAutoSave({
       // Tag changes do not schedule autosave. Re-read after the awaited write so
       // a tag edited during a slow transition cannot be lost on navigation.
       const latestBaseline = debouncedAutoSave.getBaseline() ?? lastAcceptedRef.current
-      if (debouncedAutoSave.getPending() === null && areSnapshotsEqual(getDraftSnapshot(), latestBaseline)) return
+      if (failedManualRevisionRef.current === null && manualSavesRef.current.size === 0 && debouncedAutoSave.getPending() === null && areSnapshotsEqual(getDraftSnapshot(), latestBaseline)) return
     }
   }, [debouncedAutoSave, getDraftSnapshot, onAutoSave])
 
   const hasUnconfirmedChanges = useCallback(() => {
     const baseline = debouncedAutoSave.getBaseline() ?? lastAcceptedRef.current
-    return debouncedAutoSave.getPending() !== null || !areSnapshotsEqual(getDraftSnapshot(), baseline)
+    return failedManualRevisionRef.current !== null || debouncedAutoSave.getPending() !== null || !areSnapshotsEqual(getDraftSnapshot(), baseline)
   }, [debouncedAutoSave, getDraftSnapshot])
 
   const getSaveRevision = useCallback((snapshot: NoteEditorSnapshot) => {
     const revision = ++saveSequenceRef.current
+    let resolve!: () => void
+    const completed = new Promise<void>(done => { resolve = done })
+    manualSavesRef.current.set(revision, { snapshot, completed, resolve })
     if (!noteIdRef.current) setManualCreate({ revision, pending: true, assignedNoteId: null, snapshot })
     return revision
+  }, [])
+
+  const finishManualSave = useCallback((revision: number, result: 'saved' | 'failed' | 'cancelled') => {
+    const save = manualSavesRef.current.get(revision)
+    if (!save) return
+    if (result === 'failed' && revision >= lastSuccessfulSaveRef.current) failedManualRevisionRef.current = revision
+    if (result === 'saved' && failedManualRevisionRef.current !== null && revision > failedManualRevisionRef.current) failedManualRevisionRef.current = null
+    manualSavesRef.current.delete(revision)
+    save.resolve()
   }, [])
 
   const finishManualCreate = useCallback((revision: number, assignedNoteId: string | null) => {
@@ -359,9 +418,17 @@ export function useNoteEditorAutoSave({
     // older one must not overwrite this newer manual acknowledgement instead.
     const autoSaveSequence = autoSaveInFlightRef.current
     if (autoSaveSequence === null || autoSaveSequence < revision) {
-      debouncedAutoSave.rebase({ noteId: noteIdRef.current, ...snapshot }, debouncedAutoSave.getPending())
+      const pending = debouncedAutoSave.getPending()
+      const latest = getDraftSnapshot()
+      const newerPending = pending && !areSnapshotsEqual(latest, snapshot)
+        ? { noteId: noteIdRef.current, ...latest }
+        : null
+      // A failed older automatic write may have re-queued its stale payload.
+      // A successful newer manual write supersedes it, while retaining the
+      // current draft if the user made another edit after pressing Save.
+      debouncedAutoSave.rebase({ noteId: noteIdRef.current, ...snapshot }, newerPending, { supersedeInFlight: true })
     }
-  }, [debouncedAutoSave])
+  }, [debouncedAutoSave, getDraftSnapshot])
 
   return {
     editorSessionKey,
@@ -371,6 +438,7 @@ export function useNoteEditorAutoSave({
     flushPendingSave,
     hasUnconfirmedChanges,
     getSaveRevision,
+    finishManualSave,
     finishManualCreate,
     acknowledgeManualSave,
   }

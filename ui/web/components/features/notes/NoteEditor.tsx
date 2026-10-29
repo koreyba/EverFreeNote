@@ -219,7 +219,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     }
   }, [resizeTitle])
 
-  const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave: flushNoteSave, hasUnconfirmedChanges, getSaveRevision, finishManualCreate, acknowledgeManualSave } =
+  const { editorSessionKey, handleContentChange, cancelAutoSave, flushPendingSave: flushNoteSave, hasUnconfirmedChanges, getSaveRevision, finishManualSave, finishManualCreate, acknowledgeManualSave } =
     useNoteEditorAutoSave({
       noteId,
       initialTitle,
@@ -311,19 +311,40 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
     const snapshot = getFormData()
     const revision = getSaveRevision(snapshot)
     const manualRevision = ++manualSaveRevisionRef.current
+    const lifetime = editorLifetimeRef.current
     const startedSession = getSessionSnapshot?.()
-    void Promise.resolve(onSave(snapshot)).then((saved) => {
+    const onSaved = (saved: void | boolean | { noteId?: string }) => {
+      let result: 'saved' | 'failed' | 'cancelled' = 'cancelled'
+      try {
+        const currentSession = getSessionSnapshot?.()
+        const sameAccount = !startedSession || Boolean(currentSession && startedSession.userId === currentSession.userId && startedSession.epoch === currentSession.epoch)
+        const savedId = typeof saved === 'object' && saved !== null ? saved.noteId : undefined
+        if (!noteId) finishManualCreate(revision, sameAccount ? savedId ?? null : null)
+        if (!sameAccount || manualRevision !== manualSaveRevisionRef.current || lifetime !== editorLifetimeRef.current) return
+        // A void callback gives no confirmation, but is a supported legacy
+        // contract; it must not be treated as an explicit save failure.
+        if (saved === undefined) return
+        if (saved !== true && !savedId) {
+          hasLocalInputRef.current = true
+          result = 'failed'
+          return
+        }
+        if (noteId ? currentNoteIdRef.current !== noteId : currentNoteIdRef.current && currentNoteIdRef.current !== savedId) return
+        acknowledgeManualSave(snapshot, revision)
+        result = 'saved'
+      } finally { finishManualSave(revision, result) }
+    }
+    const onSaveFailed = () => {
       const currentSession = getSessionSnapshot?.()
       const sameAccount = !startedSession || Boolean(currentSession && startedSession.userId === currentSession.userId && startedSession.epoch === currentSession.epoch)
-      const savedId = typeof saved === 'object' && saved !== null ? saved.noteId : undefined
-      if (!noteId) finishManualCreate(revision, sameAccount ? savedId ?? null : null)
-      if (!sameAccount || (saved !== true && !savedId) || manualRevision !== manualSaveRevisionRef.current) return
-      if (noteId ? currentNoteIdRef.current !== noteId : currentNoteIdRef.current && currentNoteIdRef.current !== savedId) return
-      acknowledgeManualSave(snapshot, revision)
-    }, () => {
-      if (!noteId) finishManualCreate(revision, null)
-      // The save owner reports the failure and leaves the draft dirty.
-    })
+      const current = sameAccount && lifetime === editorLifetimeRef.current && manualRevision === manualSaveRevisionRef.current
+      try {
+        if (!noteId) finishManualCreate(revision, null)
+        // The save owner reports the failure and leaves the draft dirty.
+        if (current) hasLocalInputRef.current = true
+      } finally { finishManualSave(revision, current ? 'failed' : 'cancelled') }
+    }
+    try { void Promise.resolve(onSave(snapshot)).then(onSaved, onSaveFailed) } catch { onSaveFailed() }
   }
 
   const handleRead = () => {

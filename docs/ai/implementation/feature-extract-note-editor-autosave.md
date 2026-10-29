@@ -53,6 +53,18 @@ wait. A failed durable write propagates to the transition owner so navigation
 can preserve the draft. A note switch, account change, or editor unmount prevents
 the old flush from enqueueing another snapshot in a different session.
 
+Manual saves register their snapshot and completion with the editor session.
+A transition waits instead of submitting an identical automatic write, while a
+newer scheduled body edit can still start. Failed manual writes keep the draft
+unconfirmed. If a failure occurs during a transition, that transition fails;
+a later transition retries the latest draft, including a forced write when the
+draft equals the last confirmed baseline. This matters because the local cache
+and sync queue are separate writes. Unmount or a real note switch releases
+waiters and prevents the old session from enqueueing follow-up work.
+When a newer manual write succeeds, a failed older automatic payload is no
+longer retried; any later live edit remains pending. Read also waits for a
+manual save when autosave is not configured.
+
 Read keeps the editing surface and mobile toolbar inert until the transition
 finishes; it restores editing after an error. When a selected image is still
 being read or validated, the editor reports `Adding image...`, disables manual

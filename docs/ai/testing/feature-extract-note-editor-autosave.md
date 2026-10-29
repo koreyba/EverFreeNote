@@ -40,6 +40,17 @@ Existing NoteEditor Cypress scenarios must continue to pass; history shortcuts u
   image started during a pending save, file/decode errors, pending body autosave,
   tag-only draft, beforeunload warning and unmount cancellation. The file picker
   itself is not tracked until it returns a file.
+- `ManualSaveOverlap.cy.tsx` covers manual/automatic completion order, newer
+  text and tags, save failure, retry after reverting, account changes, unmount,
+  note ID assignment and Read without autosave. Split-view tests cover duplicate
+  local writes offline and mocked online PATCHes, plus a queue failure after the
+  cache has already changed and its subsequent recovery.
+- `ManualAutoFailureRace.cy.tsx` checks failures before and after manual
+  success, ensuring older payloads are not retried while later text, tags and
+  deliberate reverts remain saveable.
+- On the manual-save overlap fix, 157/157 focused component cases and 44/44
+  editor and debouncer unit cases passed with retries disabled. Online results
+  use mocked server responses; offline cases exercise the local IndexedDB queue.
 - The final 198-case component run had one broken toolbar test caused by a
   Cypress subject-chain error; the other 197 passed. After correcting that test,
   the complete 40-case split suite passed (the other 158 cases had already

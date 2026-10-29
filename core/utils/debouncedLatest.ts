@@ -5,11 +5,11 @@ export type DebouncedLatestOptions<T> = {
 }
 
 export type DebouncedLatest<T> = {
-  schedule: (next: T) => void
+  schedule: (next: T, options?: { force?: boolean }) => void
   flush: () => Promise<void>
   cancel: () => void
   reset: (base: T) => void
-  rebase: (base: T, nextPending?: T | null) => void
+  rebase: (base: T, nextPending?: T | null, options?: { supersedeInFlight?: boolean }) => void
   getBaseline: () => T | null
   getPending: () => T | null
 }
@@ -139,7 +139,8 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
   }
 
   return {
-    schedule: (next: T) => {
+    schedule: (next: T, options?: { force?: boolean }) => {
+      if (options?.force) needsRetry = true
       queuePending(next)
     },
 
@@ -160,8 +161,12 @@ export function createDebouncedLatest<T>(options: DebouncedLatestOptions<T>): De
       lastFlushed = base
     },
 
-    rebase: (base: T, nextPending?: T | null) => {
+    rebase: (base: T, nextPending?: T | null, options?: { supersedeInFlight?: boolean }) => {
       baselineRevision += 1
+      if (options?.supersedeInFlight) {
+        sessionRevision += 1
+        needsRetry = false
+      }
       lastFlushed = base
       // Default behavior: keep the current pending draft when caller omits nextPending.
       queuePending(nextPending === undefined ? pending : nextPending, { restartTimer: false })
