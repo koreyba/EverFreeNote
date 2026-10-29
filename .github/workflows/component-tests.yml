@@ -35,7 +35,6 @@ on:
         required: false
 
 permissions:
-  actions: read
   contents: read
 
 jobs:
@@ -81,7 +80,7 @@ jobs:
             { print; fflush() }
             index($0, "::add-mask::") != 1 { print >> "cypress/results/component-tests.log"; fflush("cypress/results/component-tests.log") }
           '
-          exit ${PIPESTATUS[0]}
+          exit "${PIPESTATUS[0]}"
 
       - name: Render Cypress coverage report
         if: always() && inputs.coverage == true
