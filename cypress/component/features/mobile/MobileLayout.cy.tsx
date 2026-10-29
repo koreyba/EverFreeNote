@@ -31,120 +31,6 @@ type EscapeTrace = {
   transitions: Array<{ at: number; target: 'trigger' | 'menu'; attribute: string; previous: string | null; current: string | null }>
 }
 
-type FontOpenTrace = Array<Record<string, unknown>>
-
-type ViewportLifecycleEvent = Record<string, unknown>
-let viewportLifecycle: ViewportLifecycleEvent[] = []
-let viewportLifecycleLabel = ''
-let stopViewportLifecycle: (() => void) | undefined
-
-// Install before cy.viewport so its real window resize cannot be missed.
-function watchViewportLifecycle(label: string) {
-  cy.window().then(win => {
-    viewportLifecycle = []
-    viewportLifecycleLabel = label
-    const sample = (type: string, data?: unknown) => {
-      viewportLifecycle.push({
-        type, data, at: Math.round(win.performance.now()),
-        inner: [win.innerWidth, win.innerHeight], outer: [win.outerWidth, win.outerHeight],
-        client: [win.document.documentElement.clientWidth, win.document.documentElement.clientHeight],
-        visual: [win.visualViewport?.width, win.visualViewport?.height],
-        menu: win.document.querySelector('[role="listbox"]')?.getAttribute('data-state') ?? null,
-      })
-    }
-    const resize = (event: Event) => sample('window:resize', { trusted: event.isTrusted })
-    const viewport = (value: unknown) => sample('cypress:viewport:changed', value)
-    win.addEventListener('resize', resize, { passive: true })
-    Cypress.on('viewport:changed', viewport)
-    stopViewportLifecycle = () => {
-      win.removeEventListener('resize', resize)
-      Cypress.off('viewport:changed', viewport)
-    }
-    sample('installed')
-  })
-}
-
-// Diagnostic-only observer: it does not change events or the editor state.
-function watchFontOpening(trace: FontOpenTrace, setCleanup: (cleanup: () => void) => void) {
-  cy.document().then(doc => {
-    const win = doc.defaultView
-    const trigger = doc.querySelector('[data-cy="font-size-button"]')
-    if (!win || !trigger) throw new Error('Missing font menu context')
-    const record = (type: string, event?: Event, mutation?: MutationRecord) => {
-      const target = event?.target instanceof win.Element ? event.target : null
-      const active = doc.activeElement
-      trace.push({
-        at: Math.round(win.performance.now()), type,
-        key: event instanceof win.KeyboardEvent ? event.key : null,
-        target: target?.getAttribute('role') ?? target?.tagName ?? null,
-        targetLabel: target?.getAttribute('aria-label') ?? null,
-        trusted: event?.isTrusted ?? null,
-        defaultPrevented: event?.defaultPrevented ?? null,
-        active: active?.getAttribute('role') ?? active?.getAttribute('aria-label') ?? active?.tagName,
-        expanded: trigger.getAttribute('aria-expanded'),
-        triggerState: trigger.getAttribute('data-state'),
-        changed: mutation?.attributeName ?? null,
-        previous: mutation?.oldValue ?? null,
-        windowWidth: win.innerWidth,
-        windowHeight: win.innerHeight,
-        documentHasFocus: doc.hasFocus(),
-        visibility: doc.visibilityState,
-        menus: Array.from(doc.querySelectorAll('[role="listbox"]'), menu => ({
-          state: menu.getAttribute('data-state'),
-          opacity: win.getComputedStyle(menu).opacity,
-          display: win.getComputedStyle(menu).display,
-        })),
-        tooltipCount: doc.querySelectorAll('[role="tooltip"]').length,
-      })
-      if (trace.length > 150) trace.shift()
-    }
-    const events = [
-      'pointerdown', 'pointerup', 'click', 'keydown', 'keyup', 'focusin', 'focusout',
-      'dismissableLayer.pointerDownOutside', 'dismissableLayer.focusOutside', 'visibilitychange',
-    ]
-    const windowEvents = ['blur', 'focus', 'resize']
-    const capture = (event: Event) => record(`capture:${event.type}`, event)
-    const bubble = (event: Event) => record(`bubble:${event.type}`, event)
-    const windowEvent = (event: Event) => {
-      if (event.target === win) record(`window:${event.type}`, event)
-    }
-    events.forEach(type => {
-      doc.addEventListener(type, capture, { capture: true, passive: true })
-      doc.addEventListener(type, bubble, { passive: true })
-    })
-    windowEvents.forEach(type => win.addEventListener(type, windowEvent, { capture: true, passive: true }))
-    const observer = new win.MutationObserver(mutations => {
-      // Values read here are delivery-time snapshots; oldValue preserves the
-      // previous attribute value if multiple mutations were batched.
-      for (const mutation of mutations) {
-        if (mutation.type === 'childList' || mutation.target === trigger) record('mutation', undefined, mutation)
-      }
-    })
-    observer.observe(doc.body, {
-      childList: true, subtree: true, attributes: true,
-      attributeFilter: ['aria-expanded', 'aria-describedby', 'data-state'], attributeOldValue: true,
-    })
-    record('installed')
-    setCleanup(() => {
-      events.forEach(type => {
-        doc.removeEventListener(type, capture, true)
-        doc.removeEventListener(type, bubble)
-      })
-      windowEvents.forEach(type => win.removeEventListener(type, windowEvent, true))
-      observer.disconnect()
-    })
-  })
-}
-
-function expectOpenFontMenu(trace: FontOpenTrace) {
-  cy.get('body').should($body => {
-    const menu = $body.find('[role="listbox"]')
-    const diagnostic = `font menu did not open: ${JSON.stringify(trace)}`
-    expect(menu, diagnostic).to.have.length(1)
-    expect(menu, diagnostic).to.be.visible
-  })
-}
-
 function fontMenuDiagnostic(doc: Document, escapeTrace?: EscapeTrace) {
   const view = doc.defaultView
   const active = doc.activeElement
@@ -270,17 +156,39 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   let restoreViewport: (() => void) | undefined
   let restoreNavigator: (() => void) | undefined
   let stopEscapeTrace: (() => void) | undefined
-  let stopFontOpenTrace: (() => void) | undefined
+  let cancelViewportResize: (() => void) | undefined
+
+  function observeViewportResize(win: Window, width: number, height: number) {
+    let cancel = () => {}
+    const promise = new Cypress.Promise<void>(resolve => {
+      const onResize = () => {
+        if (win.innerWidth !== width || win.innerHeight !== height) return
+        win.removeEventListener('resize', onResize)
+        resolve()
+      }
+      win.addEventListener('resize', onResize, { passive: true })
+      cancel = () => win.removeEventListener('resize', onResize)
+    })
+    return { promise, cancel }
+  }
+
+  function viewportAfterResize(width: number, height: number) {
+    let resized: PromiseLike<void> = Promise.resolve()
+    cy.window().then(win => {
+      if (win.innerWidth === width && win.innerHeight === height) return
+      // cy.viewport can finish before the browser delivers its resize event.
+      // Subscribe first, so an early event is retained by the promise as well.
+      const observation = observeViewportResize(win, width, height)
+      cancelViewportResize = observation.cancel
+      resized = observation.promise
+    })
+    cy.viewport(width, height)
+    cy.then(() => resized)
+  }
 
   afterEach(() => {
-    stopViewportLifecycle?.()
-    stopViewportLifecycle = undefined
-    if (viewportLifecycleLabel) {
-      cy.writeFile(`cypress/results/lifecycle-${viewportLifecycleLabel}.json`, viewportLifecycle, { log: false })
-      viewportLifecycleLabel = ''
-    }
-    try { stopFontOpenTrace?.() } finally {
-      stopFontOpenTrace = undefined
+    try { cancelViewportResize?.() } finally {
+      cancelViewportResize = undefined
       try { stopEscapeTrace?.() } finally {
         stopEscapeTrace = undefined
         restoreViewport?.()
@@ -1138,8 +1046,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('uses a compact font icon while retaining the selected font in its menu', () => {
-    watchViewportLifecycle('compact-family')
-    cy.viewport(390, 844)
+    viewportAfterResize(390, 844)
     mountLongEditor()
     cy.get('.tiptap p').first().click().then(($paragraph) => {
       const doc = $paragraph[0].ownerDocument
@@ -1542,7 +1449,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
         <section data-cy="second-pane"><div ref={setSecondToolbar} /><RichTextEditor initialContent="<p>Pane B text</p>" mobileToolbarContainer={secondToolbar} /></section>
       </>
     }
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     cy.mount(<EditorPair />)
     cy.get('[data-cy="first-pane"] .tiptap').should('contain.text', 'Pane A text')
     cy.get('[data-cy="second-pane"] .tiptap').should('contain.text', 'Pane B text')
@@ -1663,7 +1570,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('cancels a pending focus before an assistive click opens font size', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[aria-label="Text formatting"]').click({ scrollBehavior: false })
@@ -1699,7 +1606,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('keeps focus in the new menu after a delayed font size selection', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1716,7 +1623,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('keeps focus in the new menu after a delayed font family selection', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-family-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1749,7 +1656,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('restores the selection and allows typing after choosing a font size', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1761,7 +1668,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('keeps the editor focused when font size close autofocus arrives after the focus frame', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1786,7 +1693,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('restores the editor when font size close autofocus arrives before the focus frame', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
@@ -1804,9 +1711,29 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('.tiptap p').first().find('span[style*="font-size: 14pt"]').should('have.text', 'x')
   })
 
+  it('observes a viewport resize that arrives before the promise is awaited', () => {
+    cy.window().then(win => {
+      const observation = observeViewportResize(win, win.innerWidth, win.innerHeight)
+      win.dispatchEvent(new win.Event('resize'))
+      return observation.promise.then(() => {
+        expect(win.innerWidth).to.be.greaterThan(0)
+      }).finally(observation.cancel)
+    })
+  })
+
+  it('closes the font size menu when the viewport really changes', () => {
+    viewportAfterResize(320, 740)
+    mountLongEditor()
+    cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    cy.get('[role="listbox"]').should('be.visible')
+    viewportAfterResize(360, 740)
+    cy.window().its('innerWidth').should('equal', 360)
+    cy.get('[role="listbox"]').should('not.exist')
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'false')
+  })
+
   it('dismisses the font size menu when Escape follows a delayed tooltip', () => {
-    watchViewportLifecycle('compact-size')
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     cy.get('[data-cy="font-size-button"]').scrollIntoView()
@@ -1815,6 +1742,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     cy.get('[role="listbox"]').should('be.visible')
     // Allow the toolbar tooltip delay to elapse before dismissing the menu.
     cy.tick(250)
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.tick(1)
     cy.get('[role="listbox"]').should('not.exist')
@@ -1822,7 +1751,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('dismisses the font family menu when Escape follows a delayed tooltip', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     cy.get('[data-cy="font-family-button"]').scrollIntoView()
@@ -1830,6 +1759,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       .click({ scrollBehavior: false })
     cy.get('[role="listbox"]').should('be.visible')
     cy.tick(250)
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.get('[data-cy="font-family-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.tick(1)
     cy.get('[role="listbox"]').should('not.exist')
@@ -1837,17 +1768,16 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('dismisses the desktop font size menu after a hover with one Escape', () => {
-    watchViewportLifecycle('desktop-size')
-    cy.viewport(1440, 900)
+    viewportAfterResize(1440, 900)
     mountLongEditor()
-    const trace: FontOpenTrace = []
-    watchFontOpening(trace, cleanup => { stopFontOpenTrace = cleanup })
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     cy.get('[data-cy="font-size-button"]')
       .trigger('pointermove', { eventConstructor: 'PointerEvent', pointerType: 'mouse' })
       .click()
-    expectOpenFontMenu(trace)
+    cy.get('[role="listbox"]').should('be.visible')
     cy.tick(250)
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.tick(1)
     cy.get('[role="listbox"]').should('not.exist')
@@ -1855,11 +1785,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('exposes the font size tooltip to keyboard users and dismisses its menu', () => {
-    watchViewportLifecycle('keyboard-size')
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
-    const trace: FontOpenTrace = []
-    watchFontOpening(trace, cleanup => { stopFontOpenTrace = cleanup })
     cy.get('[data-cy="font-family-button"]').scrollIntoView().focus()
     cy.press(Cypress.Keyboard.Keys.TAB)
     cy.get('[data-cy="font-size-button"]').should('be.focused').should(($trigger) => {
@@ -1868,21 +1795,18 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       expect($trigger[0].ownerDocument.getElementById(tooltipId ?? '')?.textContent).to.equal('Font size')
     })
     cy.press(Cypress.Keyboard.Keys.ENTER)
-    expectOpenFontMenu(trace)
+    cy.get('[role="listbox"]').should('be.visible')
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.get('[role="listbox"]').should('not.exist')
     cy.get('[data-cy="font-size-button"]').should('be.focused')
   })
 
   it('returns focus to the font size trigger when dismissed without a choice', () => {
-    watchViewportLifecycle('focus-size')
     const escapeTrace: EscapeTrace = { event: null, menu: null, capture: null, transitions: [] }
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountLongEditor()
-    const trace: FontOpenTrace = []
-    watchFontOpening(trace, cleanup => { stopFontOpenTrace = cleanup })
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
-    expectOpenFontMenu(trace)
     cy.get('[role="listbox"]').should('be.visible').then(($listbox) => {
       const menu = $listbox[0]
       const doc = menu.ownerDocument
@@ -1919,6 +1843,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       observer.observe(trigger, { attributes: true, attributeFilter: ['aria-expanded'], attributeOldValue: true })
       observer.observe(menu, { attributes: true, attributeFilter: ['data-state'], attributeOldValue: true })
     })
+    cy.get('[data-cy="font-size-button"]').should('have.attr', 'aria-expanded', 'true')
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.get('body').should(($body) => {
       const doc = $body[0].ownerDocument
@@ -1940,7 +1865,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('saves the chosen text color together with the font size', () => {
-    cy.viewport(320, 740)
+    viewportAfterResize(320, 740)
     mountShortEditor()
     selectFirstParagraph()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
