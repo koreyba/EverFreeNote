@@ -7,6 +7,7 @@ import type { CachedNote } from '@core/types/offline'
 import type { NoteService } from '@core/services/notes'
 import type { NoteViewModel } from '@core/types/domain'
 import { SEARCH_CONFIG } from '@core/constants/search'
+import { snapshotEvidence } from '@ui/web/lib/offlineOwnership'
 export type NoteRefreshOptions = {
   userId?: string
   tabId: string
@@ -15,6 +16,7 @@ export type NoteRefreshOptions = {
   noteService: Pick<NoteService, 'getNotes' | 'getNoteStatus' | 'getExistingNoteIds'>
   offlineCache: Pick<OfflineCacheService, 'loadNotes'>
   onCachedNotesUnavailable: (notes: CachedNote[]) => void
+  onCachedNotesAvailable?: (ids: string[]) => void
   queryClient: QueryClient
   hasPendingChanges: (id: string) => boolean
   onNoteRefreshed: (note: NoteViewModel) => void
@@ -42,9 +44,24 @@ export function useNoteRefresh(options: NoteRefreshOptions) {
     const queryKey = ['notes', current.userId, '', null]
     await current.queryClient.cancelQueries({ queryKey, exact: true })
     if (signal.aborted || latest.current.userId !== current.userId) return
-    // A missing response does not establish that this is a disposable copy.
+    // The existence request may have been in flight while a copy was deleted
+    // or edited. Do not report its old snapshot as an unavailable copy.
+    let stillMissing = missing
     if (missing.length) {
-      latest.current.onCachedNotesUnavailable(missing)
+      const cachedNow = await current.offlineCache.loadNotes()
+      if (signal.aborted || latest.current.userId !== current.userId) return
+      const currentById = new Map(cachedNow.map(note => [note.id, note]))
+      stillMissing = missing.filter(note => {
+        const now = currentById.get(note.id)
+        return now && snapshotEvidence(now) === snapshotEvidence(note) && !latest.current.hasPendingChanges(note.id)
+      })
+    }
+    // Use the callback captured when the refresh started so a newer warning
+    // cannot be cleared by an older server response.
+    current.onCachedNotesAvailable?.([...visibleIds, ...existing])
+    // A missing response does not establish that this is a disposable copy.
+    if (stillMissing.length) {
+      latest.current.onCachedNotesUnavailable(stillMissing)
       toast.info('Some local copies are unavailable on the server and remain on this device.')
     }
     current.queryClient.setQueryData(queryKey, { pages: [page], pageParams: [0] })

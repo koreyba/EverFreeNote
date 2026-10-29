@@ -16,7 +16,7 @@ function setup() {
   const getNotes = jest.fn().mockResolvedValue({ notes: [note], totalCount: 1, hasMore: false })
   const getNoteStatus = jest.fn().mockResolvedValue({ status: 'found', note })
   const getExistingNoteIds = jest.fn().mockResolvedValue([])
-  const options: NoteRefreshOptions = { userId: 'u1', tabId: 't1', note, isEditing: false, queryClient, offlineCache, onCachedNotesUnavailable: jest.fn(), noteService: { getNotes, getNoteStatus, getExistingNoteIds }, hasPendingChanges: jest.fn(() => false), onNoteRefreshed: jest.fn(), onNoteDeleted: jest.fn().mockResolvedValue(undefined) }
+  const options: NoteRefreshOptions = { userId: 'u1', tabId: 't1', note, isEditing: false, queryClient, offlineCache, onCachedNotesUnavailable: jest.fn(), onCachedNotesAvailable: jest.fn(), noteService: { getNotes, getNoteStatus, getExistingNoteIds }, hasPendingChanges: jest.fn(() => false), onNoteRefreshed: jest.fn(), onNoteDeleted: jest.fn().mockResolvedValue(undefined) }
   const hook = renderHook((props: NoteRefreshOptions) => useNoteRefresh(props), { initialProps: options })
   return { ...hook, options, queryClient, getNotes, getNoteStatus, getExistingNoteIds, signal: new AbortController().signal }
 }
@@ -99,6 +99,26 @@ it('retains cached notes from later pages, unsynced drafts and other accounts', 
   await act(async () => result.current.refreshList(signal))
   expect(await offlineCache.loadNotes()).toEqual(saved)
   expect(getExistingNoteIds).toHaveBeenCalledWith(['older'], 'u1', signal)
+})
+it('reports only server-verified IDs as available, including notes outside the first page', async () => {
+  const { result, signal, getExistingNoteIds, options } = setup()
+  await offlineCache.saveNotes([cached('older'), cached('missing')])
+  getExistingNoteIds.mockResolvedValue(['older'])
+  await act(async () => result.current.refreshList(signal))
+  expect(options.onCachedNotesAvailable).toHaveBeenCalledWith(['n1', 'older'])
+  expect(options.onCachedNotesUnavailable).toHaveBeenCalledWith([cached('missing')])
+})
+it('does not report an old cached snapshot after it was deleted or edited during verification', async () => {
+  const { result, options, getExistingNoteIds, signal } = setup()
+  await offlineCache.saveNotes([cached('deleted'), cached('edited'), cached('still-missing')])
+  let finish!: (ids: string[]) => void
+  getExistingNoteIds.mockImplementation(() => new Promise<string[]>(done => { finish = done }))
+  const pending = result.current.refreshList(signal)
+  await waitFor(() => expect(getExistingNoteIds).toHaveBeenCalledTimes(1))
+  await offlineCache.deleteNote('deleted')
+  await offlineCache.saveNote(cached('edited', { title: 'A later edit', status: 'pending' }))
+  await act(async () => { finish([]); await pending })
+  expect(options.onCachedNotesUnavailable).toHaveBeenCalledWith([cached('still-missing')])
 })
 it('retains the cache and list if deletion verification fails', async () => {
   const { result, signal, getExistingNoteIds, queryClient } = setup()

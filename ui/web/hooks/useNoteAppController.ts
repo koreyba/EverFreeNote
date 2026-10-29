@@ -287,6 +287,16 @@ export function useNoteAppController() {
       return { ...previous, ids }
     })
   }, [workspaceUserId])
+  const clearAvailableOnRefresh = useCallback((ids: string[]) => {
+    setUnavailableLocal(previous => {
+      // This callback is captured at refresh start; preserve warnings that
+      // changed while the server request was in flight.
+      if (previous !== unavailableLocal || previous.userId !== workspaceUserId) return previous
+      const remaining = new Set(previous.ids)
+      ids.forEach(id => remaining.delete(id))
+      return remaining.size === previous.ids.size ? previous : { ...previous, ids: remaining }
+    })
+  }, [unavailableLocal, workspaceUserId])
   const createNoteMutation = useCreateNote()
   const updateNoteMutation = useUpdateNote()
   const deleteNoteMutation = useDeleteNote()
@@ -412,6 +422,7 @@ export function useNoteAppController() {
     queryClient,
     offlineCache,
     onCachedNotesUnavailable: missing => markLocalUnavailable(missing.map(note => note.id)),
+    onCachedNotesAvailable: clearAvailableOnRefresh,
     hasPendingChanges: id => hasPendingLocalWrites(id) || tabs.some(tab => (
       tab.noteId === id && (tab.saveState !== 'saved' ||
         (tab.mode === 'editing' && tab.id === activeTabId && notePaneVisible))
@@ -542,6 +553,7 @@ export function useNoteAppController() {
   const confirmDeleteNoteWithWorkspace = useCallback(async () => {
     const deletedNoteId = noteToDelete?.id ?? null
     if (!deletedNoteId) return
+    const started = getSessionSnapshot?.()
     try {
       await prepareNotesForDeletion([deletedNoteId])
     } catch (error) {
@@ -557,7 +569,8 @@ export function useNoteAppController() {
     // A deleted note must not survive in any workspace tab: a stale tab would
     // keep rendering it (or its draft as the tab label) and typing there
     // would re-create the note.
-    if (deleted && deletedNoteId) {
+    if (deleted && isCurrentSession(started)) {
+      clearLocalUnavailable(deletedNoteId)
       resetTabsForNotes([deletedNoteId])
       if (tabHoldingNote) {
         updateTab(tabHoldingNote.id, {
@@ -571,7 +584,7 @@ export function useNoteAppController() {
         })
       }
     }
-  }, [confirmDeleteNote, findTabByNoteId, noteToDelete, prepareNotesForDeletion, resetTabsForNotes, setDeleteDialogOpen, setNoteToDelete, updateTab])
+  }, [clearLocalUnavailable, confirmDeleteNote, findTabByNoteId, getSessionSnapshot, isCurrentSession, noteToDelete, prepareNotesForDeletion, resetTabsForNotes, setDeleteDialogOpen, setNoteToDelete, updateTab])
 
   const handleDraftChange = useCallback((draft: NoteDraftSnapshot) => {
     updateTab(activeTabId, {
@@ -690,6 +703,12 @@ export function useNoteAppController() {
   }, [discardGuardedSignOut, getSessionSnapshot, isCurrentSession, workspaceEpoch, workspaceMemory, workspaceUserId])
 
   // -- Bulk actions --
+  const handleNotesDeleted = useCallback((noteIds: string[]) => {
+    if (!workspaceUserId || !isCurrentSession(sessionSnapshot)) return
+    noteIds.forEach(clearLocalUnavailable)
+    resetTabsForNotes(noteIds)
+  }, [clearLocalUnavailable, isCurrentSession, resetTabsForNotes, sessionSnapshot, workspaceUserId])
+
   const { selectAllVisible, deleteSelectedNotes, deleteNotesByIds } = useNoteBulkActions({
     userId: user?.id,
     selectedNoteIds,
@@ -702,7 +721,7 @@ export function useNoteAppController() {
     deleteNoteMutation,
     exitSelectionMode,
     setBulkDeleting,
-    onNotesDeleted: resetTabsForNotes,
+    onNotesDeleted: handleNotesDeleted,
     beforeDelete: prepareNotesForDeletion,
     queryClient,
     notes,
