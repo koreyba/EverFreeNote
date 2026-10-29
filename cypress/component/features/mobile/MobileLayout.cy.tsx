@@ -167,6 +167,8 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       unqueuedLocalCount: 0,
       unavailableRemoteEdits: false,
       legacyClaimBlocked: false,
+      localCleanupCount: 0,
+      retryLocalDeletion: cy.stub().resolves(),
       retryLocalVerification: cy.stub().resolves(),
       handleAutoSave: cy.stub(),
       lastSavedAt: null,

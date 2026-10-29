@@ -303,9 +303,9 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
             } else {
                 controller.resetFtsResults()
             }
-            if (result.failed === 0) {
+            if (result.failed === 0 || result.failedIds?.length === 0) {
                 exitPanelSelectionMode()
-            }
+            } else if (result.failedIds) setPanelSelectedIds(new Set(result.failedIds))
         } finally {
             setPanelBulkDeleting(false)
         }

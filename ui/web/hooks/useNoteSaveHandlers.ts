@@ -10,6 +10,8 @@ import type { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from '
 import type { useNoteSync } from './useNoteSync'
 import type { useNoteSelection } from './useNoteSelection'
 import { enqueueOwnerNoteWrite, waitForOwnerNoteWrites } from '@ui/web/lib/ownerNoteWrites'
+import type { useLocalDeletionRecovery } from './useLocalDeletionRecovery'
+import { snapshotEvidence } from '@ui/web/lib/offlineOwnership'
 
 type UseNoteSaveHandlersParams = {
   user: { id: string } | null
@@ -38,6 +40,9 @@ type UseNoteSaveHandlersParams = {
   selectedNoteRef: React.MutableRefObject<NoteViewModel | null>
   rememberPendingCreate?: (note: NoteViewModel) => void
   beginWorkspaceWrite?: () => WorkspaceWriteLease | undefined
+  localDeletion?: Pick<ReturnType<typeof useLocalDeletionRecovery>, 'prepare' | 'complete'>
+  onQueueStateNeedsRefresh?: () => void
+  isDeleteSessionCurrent?: () => boolean
 }
 
 type OfflineWriteInput = {
@@ -84,6 +89,9 @@ export function useNoteSaveHandlers({
   selectedNoteRef,
   rememberPendingCreate,
   beginWorkspaceWrite,
+  localDeletion,
+  onQueueStateNeedsRefresh,
+  isDeleteSessionCurrent,
 }: UseNoteSaveHandlersParams) {
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
@@ -435,10 +443,14 @@ export function useNoteSaveHandlers({
   const confirmDeleteNote = async (): Promise<boolean> => {
     if (!noteToDelete) return false
 
+    let queuedPath = false
+    let serverDeleted = false
+    let checkingLocal = false
     try {
       const queue = await offlineQueueRef.current.getQueue()
       const hasQueuedWrites = queue.some((item) => item.noteId === noteToDelete.id)
       if (isOffline || hasQueuedWrites) {
+        queuedPath = true
         if (!user?.id) throw new Error('User not authenticated - deletion skipped')
         const deletedAt = nextMutationTimestamp(queue, new Set([noteToDelete.id]))
         const cachedDelete: CachedNote = {
@@ -471,11 +483,28 @@ export function useNoteSaveHandlers({
           if (queueAfterSave) setPendingCount(queueAfterSave.filter((item) => item.status === 'pending').length)
           else setPendingCount((prev) => prev + 1)
         })
-        toast.success(isOffline ? 'Deletion queued offline' : 'Deletion queued for sync')
+        if (isDeleteSessionCurrent?.() !== false) toast.success(isOffline ? 'Deletion queued offline' : 'Deletion queued for sync')
       } else {
-        await deleteNoteMutation.mutateAsync({ id: noteToDelete.id })
-        await offlineCache.deleteNote(noteToDelete.id)
-        setOfflineOverlay((prev) => prev.filter((note) => note.id !== noteToDelete.id))
+        checkingLocal = Boolean(localDeletion)
+        const plan = await localDeletion?.prepare([noteToDelete.id])
+        checkingLocal = false
+        if (isDeleteSessionCurrent?.() === false) throw new Error('Account changed before deletion.')
+        await deleteNoteMutation.mutateAsync({ id: noteToDelete.id, silent: true })
+        serverDeleted = true
+        let locallyCleaned = true
+        if (plan && localDeletion) locallyCleaned = await localDeletion.complete(noteToDelete.id, plan)
+        else await offlineCache.deleteNote(noteToDelete.id)
+        if (!locallyCleaned) {
+          if (isDeleteSessionCurrent?.() !== false) toast.error('Server accepted deletion; local cleanup needs checking.')
+          return false
+        }
+        setOfflineOverlay((prev) => prev.filter((note) => {
+          if (note.id !== noteToDelete.id || (note.user_id && note.user_id !== user?.id)) return true
+          if (!plan) return false
+          const expected = plan.snapshots.get(note.id)
+          return !expected || snapshotEvidence(note) !== snapshotEvidence(expected)
+        }))
+        if (isDeleteSessionCurrent?.() !== false) toast.success('Note deleted successfully')
       }
 
       if (selectedNote?.id === noteToDelete.id) {
@@ -485,6 +514,17 @@ export function useNoteSaveHandlers({
       return true
     } catch (error) {
       console.error('Error deleting note:', error)
+      if (isDeleteSessionCurrent?.() === false) return false
+      if (queuedPath) {
+        onQueueStateNeedsRefresh?.()
+        toast.error('Could not finish local deletion. It may already be queued; check sync status.')
+      } else if (serverDeleted) {
+        toast.error('Server accepted deletion, but the local copy could not be removed. Check local cleanup.')
+      } else if (checkingLocal) {
+        toast.error('Could not check local data. The deletion was not sent.')
+      } else {
+        toast.error('Failed to delete note')
+      }
       return false
     } finally {
       setDeleteDialogOpen(false)

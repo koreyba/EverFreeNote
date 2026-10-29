@@ -110,12 +110,37 @@ describe('useNoteBulkActions', () => {
       total: 2,
       failed: 1,
       queuedOffline: false,
+      failedIds: ['bad'],
     })
     expect(toast.error).toHaveBeenCalledWith('Failed to delete 1 notes')
     expect(invalidate).toHaveBeenCalledTimes(2)
     expect(params.onNotesDeleted).toHaveBeenCalledWith(['good'])
     expect(params.offlineCache.deleteNote).toHaveBeenCalledWith('good')
     expect(params.offlineCache.deleteNote).not.toHaveBeenCalledWith('bad')
+  })
+
+  it('retains only server failures for selection when local cleanup also fails', async () => {
+    const plan = { ownerId: 'user-1', snapshots: new Map() }
+    const localDeletion = {
+      prepare: jest.fn().mockResolvedValue(plan),
+      complete: jest.fn(async (id: string) => id !== 'local-failed'),
+    }
+    const mutateAsync = jest.fn(async ({ id }: { id: string }) => {
+      if (id === 'server-failed') throw new Error('Server failed')
+      return id
+    })
+    const retainSelection = jest.fn()
+    const { params } = makeParams({
+      selectedNoteIds: new Set(['local-failed', 'server-failed', 'cleaned']),
+      deleteNoteMutation: { mutateAsync }, localDeletion, retainSelection,
+    })
+    const { result } = renderHook(() => useNoteBulkActions(params))
+    await act(async () => { await result.current.deleteSelectedNotes() })
+    expect(retainSelection).toHaveBeenCalledWith(['server-failed'])
+    expect(params.onNotesDeleted).toHaveBeenCalledWith(['cleaned'])
+    expect(toast.error).toHaveBeenCalledWith('Failed to delete 1 notes')
+    expect(toast.error).toHaveBeenCalledWith('1 deletion was accepted by the server; local cleanup needs checking.')
+    expect(toast.success).not.toHaveBeenCalled()
   })
 
   it('queues offline deletions, persists optimistic tombstones, and updates overlay state', async () => {

@@ -132,6 +132,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     unqueuedLocalCount = 0,
     unavailableRemoteEdits = false,
     legacyClaimBlocked = false,
+    localCleanupCount = 0,
+    retryLocalDeletion,
     retryLocalVerification,
     pendingCount,
     failedCount,
@@ -454,7 +456,7 @@ export function NotesShell({ controller }: NotesShellProps) {
 
       {activeMainView === "tags" ? (
         <main className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
-          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} onRetryLocalVerification={() => void retryLocalVerification?.()} />
+          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} localCleanupCount={localCleanupCount} onRetryLocalDeletion={() => void retryLocalDeletion?.()} onRetryLocalVerification={() => void retryLocalVerification?.()} />
           <TagsPage
             notes={notes}
             onSelectTag={handleSelectTagFromTagsPage}
@@ -470,7 +472,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         </main>
       ) : (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} onRetryLocalVerification={() => void retryLocalVerification?.()} />
+          <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} localCleanupCount={localCleanupCount} onRetryLocalDeletion={() => void retryLocalDeletion?.()} onRetryLocalVerification={() => void retryLocalVerification?.()} />
           <MobileNotesTabMenu
             tabs={tabs}
             activeTabId={activeTabId}
@@ -496,6 +498,7 @@ export function NotesShell({ controller }: NotesShellProps) {
               unqueuedLocalCount={unqueuedLocalCount}
               unavailableRemoteEdits={unavailableRemoteEdits}
               legacyClaimBlocked={legacyClaimBlocked}
+              localCleanupCount={localCleanupCount}
               isOffline={isOffline}
               selectionMode={selectionMode}
               selectedCount={selectedCount}

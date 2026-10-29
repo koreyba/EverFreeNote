@@ -25,6 +25,7 @@ interface SidebarProps {
   unqueuedLocalCount?: number
   unavailableRemoteEdits?: boolean
   legacyClaimBlocked?: boolean
+  localCleanupCount?: number
   isOffline: boolean
   selectionMode: boolean
   selectedCount: number
@@ -56,6 +57,7 @@ export function Sidebar({
   unqueuedLocalCount = 0,
   unavailableRemoteEdits = false,
   legacyClaimBlocked = false,
+  localCleanupCount = 0,
   isOffline,
   selectionMode,
   selectedCount,
@@ -80,12 +82,12 @@ export function Sidebar({
     : false
 
   const syncStatus = React.useMemo(() => {
-    const status = describeDeviceSyncStatus({ isOffline, failedCount, pendingCount, syncStateReady, storageReadError, legacyUnverifiedCount, unqueuedLocalCount, unavailableRemoteEdits, legacyClaimBlocked })
+    const status = describeDeviceSyncStatus({ isOffline, failedCount, pendingCount, syncStateReady, storageReadError, legacyUnverifiedCount, unqueuedLocalCount, unavailableRemoteEdits, legacyClaimBlocked, localCleanupCount })
     return {
       className: status.tone === "error" ? "bg-destructive" : status.tone === "offline" ? "bg-amber-500" : "bg-muted-foreground",
       label: status.text,
     }
-  }, [isOffline, failedCount, pendingCount, syncStateReady, storageReadError, legacyUnverifiedCount, unqueuedLocalCount, unavailableRemoteEdits, legacyClaimBlocked])
+  }, [isOffline, failedCount, pendingCount, syncStateReady, storageReadError, legacyUnverifiedCount, unqueuedLocalCount, unavailableRemoteEdits, legacyClaimBlocked, localCleanupCount])
 
   const notesCountText = React.useMemo(() => {
     const displayed = typeof notesDisplayed === "number" ? notesDisplayed : "-"

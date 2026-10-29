@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -16,6 +16,7 @@ import { useNoteData } from './useNoteData'
 import { useNoteRefresh } from './useNoteRefresh'
 import { useNoteSaveHandlers } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
+import { useLocalDeletionRecovery } from './useLocalDeletionRecovery'
 import { useNoteWorkspaceTabs } from './useNoteWorkspaceTabs'
 import { useGuardedSignOut } from './useGuardedSignOut'
 import { MOBILE_BREAKPOINT } from './use-mobile'
@@ -34,7 +35,9 @@ import { readNoteWorkspaceState } from '@ui/web/lib/noteWorkspaceStorage'
 import { clearActiveSettingsNoteReturnPath } from '@ui/web/lib/aiIndexNavigationState'
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 import { assertTagLocalState } from '@ui/web/lib/tagLocalPreflight'
-import { advanceNoteListRevision } from '@ui/web/lib/noteListRevision'
+import { advanceNoteListRevision, noteListRevision } from '@ui/web/lib/noteListRevision'
+import { snapshotEvidence } from '@ui/web/lib/offlineOwnership'
+import { canCloseRecoveredTabs, forgetLocalDeletionRecovery } from '@ui/web/lib/localDeletionRecovery'
 
 
 export type EditFormState = {
@@ -91,6 +94,7 @@ export function useNoteAppController() {
     noteToDelete,
     setNoteToDelete,
     selectedNoteIds,
+    setSelectedNoteIds,
     selectionMode,
     bulkDeleting,
     setBulkDeleting,
@@ -137,6 +141,8 @@ export function useNoteAppController() {
     findTabByNoteId,
     canAddTab,
   } = workspace
+  const currentTabsRef = useRef(tabs)
+  useLayoutEffect(() => { currentTabsRef.current = tabs }, [tabs])
   const workspaceContextRef = useRef({ userId: workspaceUserId, tabId: activeTabId, mode: activeTab.mode, revision: 0 })
   useEffect(() => {
     const previous = workspaceContextRef.current
@@ -280,24 +286,6 @@ export function useNoteAppController() {
       ids: new Set([...(previous.userId === workspaceUserId ? previous.ids : []), ...ids]),
     }))
   }, [workspaceUserId])
-  const clearLocalUnavailable = useCallback((id: string) => {
-    setUnavailableLocal(previous => {
-      if (previous.userId !== workspaceUserId || !previous.ids.has(id)) return previous
-      const ids = new Set(previous.ids)
-      ids.delete(id)
-      return { ...previous, ids }
-    })
-  }, [workspaceUserId])
-  const clearAvailableOnRefresh = useCallback((ids: string[]) => {
-    setUnavailableLocal(previous => {
-      // This callback is captured at refresh start; preserve warnings that
-      // changed while the server request was in flight.
-      if (previous !== unavailableLocal || previous.userId !== workspaceUserId) return previous
-      const remaining = new Set(previous.ids)
-      ids.forEach(id => remaining.delete(id))
-      return remaining.size === previous.ids.size ? previous : { ...previous, ids: remaining }
-    })
-  }, [unavailableLocal, workspaceUserId])
   const createNoteMutation = useCreateNote()
   const updateNoteMutation = useUpdateNote()
   const deleteNoteMutation = useDeleteNote()
@@ -314,6 +302,7 @@ export function useNoteAppController() {
     unavailableRemoteEdits: queuedRemoteUnavailable,
     legacyClaimBlocked,
     retryLocalVerification,
+    refreshLocalState,
     pendingCount,
     setPendingCount,
     failedCount,
@@ -333,6 +322,32 @@ export function useNoteAppController() {
     verifyLegacyNotes,
     getSessionSnapshot,
   })
+  const localDeletion = useLocalDeletionRecovery(workspaceUserId, offlineCache, getSessionSnapshot)
+  const knownLocalDeletionRecoveries = localDeletion.recoveries
+  const clearLocalUnavailable = useCallback((id: string) => {
+    if (workspaceUserId) knownLocalDeletionRecoveries.filter(entry => entry.noteId === id).forEach(entry => forgetLocalDeletionRecovery(workspaceUserId, entry))
+    setUnavailableLocal(previous => {
+      if (previous.userId !== workspaceUserId || !previous.ids.has(id)) return previous
+      const ids = new Set(previous.ids)
+      ids.delete(id)
+      return { ...previous, ids }
+    })
+  }, [knownLocalDeletionRecoveries, workspaceUserId])
+  const clearAvailableOnRefresh = useCallback((ids: string[]) => {
+    if (workspaceUserId) knownLocalDeletionRecoveries.filter(entry => ids.includes(entry.noteId)).forEach(entry => forgetLocalDeletionRecovery(workspaceUserId, entry))
+    setUnavailableLocal(previous => {
+      // This callback is captured at refresh start; preserve warnings that
+      // changed while the server request was in flight.
+      if (previous !== unavailableLocal || previous.userId !== workspaceUserId) return previous
+      const remaining = new Set(previous.ids)
+      ids.forEach(id => remaining.delete(id))
+      return remaining.size === previous.ids.size ? previous : { ...previous, ids: remaining }
+    })
+  }, [knownLocalDeletionRecoveries, unavailableLocal, workspaceUserId])
+  const isDeleteSessionCurrent = useCallback(() => Boolean(workspaceUserId && isCurrentSession(sessionSnapshot)), [isCurrentSession, sessionSnapshot, workspaceUserId])
+  useEffect(() => {
+    if (workspaceUserId) markLocalUnavailable(localDeletion.recoveries.filter(entry => entry.snapshot.user_id === workspaceUserId).map(entry => entry.noteId))
+  }, [localDeletion.recoveries, markLocalUnavailable, workspaceUserId])
 
   // -- Search --
   const {
@@ -460,9 +475,10 @@ export function useNoteAppController() {
       return note
     }
 
+    const revision = workspaceUserId ? noteListRevision(queryClient, workspaceUserId) : 0
     try {
       const remoteResult = await noteService.getNoteStatus(note.id)
-      if (!isCurrentSession(started)) return null
+      if (!isCurrentSession(started) || (workspaceUserId && noteListRevision(queryClient, workspaceUserId) !== revision)) return null
       if (remoteResult.status === 'found') {
         clearLocalUnavailable(note.id)
         return pickLatestNote([
@@ -531,6 +547,9 @@ export function useNoteAppController() {
     selectedNoteRef,
     rememberPendingCreate,
     beginWorkspaceWrite,
+    localDeletion,
+    onQueueStateNeedsRefresh: () => { void retryLocalVerification() },
+    isDeleteSessionCurrent,
   })
 
   const prepareNotesForDeletion = useCallback(async (noteIds: readonly string[]) => {
@@ -729,7 +748,38 @@ export function useNoteAppController() {
     queryClient,
     notes,
     selectAllVisibleCallback,
+    localDeletion,
+    onQueueStateNeedsRefresh: () => { void retryLocalVerification() },
+    isDeleteSessionCurrent,
+    retainSelection: ids => setSelectedNoteIds(new Set(ids)),
   })
+
+  const retryLocalDeletion = useCallback(async () => {
+    const started = getSessionSnapshot?.()
+    if (!workspaceUserId || !isCurrentSession(started)) return
+    try {
+      await prepareNotesForDeletion(localDeletion.recoveries.map(entry => entry.noteId))
+      if (!isCurrentSession(started)) return
+      const { cleaned, remaining } = await localDeletion.retry()
+      if (!isCurrentSession(started)) return
+      if (cleaned.length) {
+        setOfflineOverlay(previous => previous.filter(note => !cleaned.some(entry => (
+          note.id === entry.noteId && snapshotEvidence(note) === snapshotEvidence(entry.snapshot)
+        ))))
+        const safeToClose = cleaned.filter(entry => canCloseRecoveredTabs(currentTabsRef.current, entry))
+        const retainedOpen = cleaned.filter(entry => !safeToClose.includes(entry))
+        safeToClose.forEach(entry => clearLocalUnavailable(entry.noteId))
+        if (retainedOpen.length) markLocalUnavailable(retainedOpen.map(entry => entry.noteId))
+        resetTabsForNotes(safeToClose.map(entry => entry.noteId))
+        await refreshLocalState()
+        if (!isCurrentSession(started)) return
+        toast.success(retainedOpen.length ? 'Local cleanup finished. An open or changed note was kept; copy it before closing.' : 'Removed the local copies from this device.')
+      }
+      if (remaining) toast.error('Some local copies changed or could not be removed. They were kept; copy their contents before continuing.')
+    } catch (error) {
+      if (isCurrentSession(started)) toast.error(error instanceof Error ? error.message : 'Could not retry local cleanup.')
+    }
+  }, [clearLocalUnavailable, getSessionSnapshot, isCurrentSession, localDeletion, markLocalUnavailable, prepareNotesForDeletion, refreshLocalState, resetTabsForNotes, setOfflineOverlay, workspaceUserId])
 
   // -- Nav wrappers: flush pending editor save before any navigation --
   const hideNotePane = useCallback(async (): Promise<boolean> => {
@@ -1605,6 +1655,8 @@ export function useNoteAppController() {
     unqueuedLocalCount,
     unavailableRemoteEdits: queuedRemoteUnavailable || Boolean(workspaceUserId && unavailableLocal.userId === workspaceUserId && unavailableLocal.ids.size),
     legacyClaimBlocked,
+    localCleanupCount: workspaceUserId ? localDeletion.recoveries.length : 0,
+    retryLocalDeletion,
     retryLocalVerification,
     pendingCount,
     failedCount,

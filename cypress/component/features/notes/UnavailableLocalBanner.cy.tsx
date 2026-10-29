@@ -5,6 +5,7 @@ import { NotesShell } from '@ui/web/components/features/notes/NotesShell'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { webOfflineStorageAdapter } from '@ui/web/adapters/offlineStorage'
+import { getLocalDeletionRecoveries } from '@ui/web/lib/localDeletionRecovery'
 import { Toaster } from 'sonner'
 
 const user = { id: 'review-synthetic-user', email: 'review@example.invalid' } as User
@@ -420,12 +421,6 @@ describe('Unavailable local-note warning with multiple notes and sessions', { re
   })
 
   it('does not clear the new account’s warning when the previous account deletion completes late', () => {
-    let firstDeletionDone = false
-    const originalDelete = webOfflineStorageAdapter.deleteNote.bind(webOfflineStorageAdapter)
-    cy.stub(webOfflineStorageAdapter, 'deleteNote').callsFake(async id => {
-      await originalDelete(id)
-      if (id === firstId) firstDeletionDone = true
-    })
     cy.then(async () => {
       await webOfflineStorageAdapter.saveNote(localNote(firstId, 'First account copy'))
       await webOfflineStorageAdapter.saveNote(localNote(otherId, 'Other account copy', secondUser.id))
@@ -439,12 +434,23 @@ describe('Unavailable local-note warning with multiple notes and sessions', { re
     cy.get('[data-cy="switch-other-account"]').click({ force: true })
     openMissing('Other account copy')
     cy.then(() => { heldDelete!(); heldDelete = undefined })
-    cy.wrap(null).should(() => expect(firstDeletionDone).to.equal(true))
+    cy.wrap(null).should(() => expect(getLocalDeletionRecoveries(user.id)).to.have.length(1))
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(notes => {
-      expect(notes.map(note => note.id)).to.include(otherId).and.not.include(firstId)
+      expect(notes.map(note => note.id)).to.include.members([firstId, otherId])
     })
     cy.get('[data-testid="device-sync-status"]').should('contain.text', 'unavailable on the server')
     confirmSingleDelete()
     cy.get('[data-testid="device-sync-status"]').should('not.contain.text', 'unavailable on the server')
+    cy.get('[data-cy="switch-first-account"]').click({ force: true })
+    cy.get('[data-testid="device-sync-status"]').should('contain.text', 'Server accepted deletion; check local cleanup')
+    cy.get('[data-testid="device-sync-status"]').contains('summary', 'What can I do?').click()
+    cy.get('[data-testid="retry-local-cleanup"]').click()
+    cy.get('[data-testid="device-sync-status"]').should('not.contain.text', 'check local cleanup')
+    cy.then(async () => {
+      const ids = (await webOfflineStorageAdapter.loadNotes()).map(note => note.id)
+      expect(ids).to.not.include(firstId)
+      expect(ids).to.not.include(otherId)
+      expect(sentDeletes).to.deep.equal([firstId, otherId])
+    })
   })
 })

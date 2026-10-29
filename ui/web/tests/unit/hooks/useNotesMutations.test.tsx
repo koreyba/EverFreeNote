@@ -189,6 +189,14 @@ describe('useNotesMutations', () => {
     expect(onError).toHaveBeenCalledWith(expect.any(Error))
   })
 
+  it('lets the caller report a silent delete failure once', async () => {
+    mockNoteService.deleteNote.mockRejectedValue(new Error('delete failed'))
+    const onError = jest.fn()
+    const { result } = renderMutation(() => useDeleteNote({ onError }))
+    await expect(result.current.mutateAsync({ id: 'note-1', silent: true })).rejects.toThrow('delete failed')
+    expect(onError).not.toHaveBeenCalled()
+  })
+
   it('removes a confirmed delete only from the initiating account cache after account switch', async () => {
     let finishDelete: (id: string) => void = () => {}
     mockNoteService.deleteNote.mockReturnValue(new Promise<string>(resolve => { finishDelete = resolve }))

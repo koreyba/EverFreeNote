@@ -247,11 +247,11 @@ export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCall
       return { previousNotes, userId: user?.id }
     },
 
-    onError: (err, _vars, context) => {
+    onError: (err, vars, context) => {
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes'], context.previousNotes)
       }
-      callbacks.onError?.(err)
+      if (!vars.silent) callbacks.onError?.(err)
     },
 
     onSuccess: async (_data, vars, context) => {

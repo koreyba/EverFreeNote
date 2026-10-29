@@ -78,13 +78,14 @@ export function useNoteRefresh(options: NoteRefreshOptions) {
     const current = latest.current
     const id = current.note?.id
     if (!id || !current.userId || current.isEditing || signal.aborted) return
+    const revision = noteListRevision(current.queryClient, current.userId)
     if (current.hasPendingChanges(id)) {
       toast.info('Local changes are waiting to sync.')
       return
     }
     const result = await current.noteService.getNoteStatus(id, signal)
     const active = latest.current
-    if (signal.aborted || active.userId !== current.userId || active.tabId !== current.tabId ||
+    if (signal.aborted || active.userId !== current.userId || noteListRevision(current.queryClient, current.userId) !== revision || active.tabId !== current.tabId ||
       active.note?.id !== id || active.isEditing || active.hasPendingChanges(id)) return
     if (result.status === 'transient_error') throw result.error
     if (result.status === 'not_found') await active.onNoteDeleted(id)

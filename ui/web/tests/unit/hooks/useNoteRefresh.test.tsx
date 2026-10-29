@@ -44,6 +44,17 @@ it('refreshes the reading snapshot and handles remote deletion', async () => {
   await act(async () => result.current.refreshNote(signal))
   expect(options.onNoteDeleted).toHaveBeenCalledWith('n1')
 })
+it('ignores a pre-delete note response while allowing a later restored note', async () => {
+  const { result, options, getNoteStatus, queryClient, signal } = setup()
+  let finish!: (value: unknown) => void
+  getNoteStatus.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  const pending = result.current.refreshNote(signal)
+  advanceNoteListRevision(queryClient, 'u1')
+  await act(async () => { finish({ status: 'found', note }); await pending })
+  expect(options.onNoteRefreshed).not.toHaveBeenCalled()
+  await act(async () => result.current.refreshNote(signal))
+  expect(options.onNoteRefreshed).toHaveBeenCalledWith(note)
+})
 it('keeps queued local changes instead of replacing them from the server', async () => {
   const { result, options, getNoteStatus, signal } = setup()
   jest.mocked(options.hasPendingChanges).mockReturnValue(true)

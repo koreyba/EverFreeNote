@@ -501,6 +501,7 @@ export function useNoteSync({
         unavailableRemoteEdits: Boolean(userId && localHealth.userId === userId && localHealth.missingRemote),
         legacyClaimBlocked: Boolean(userId && localHealth.userId === userId && localHealth.claimBlocked),
         retryLocalVerification,
+        refreshLocalState: refreshQueueState,
         pendingCount,
         setPendingCount,
         failedCount,

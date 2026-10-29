@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react'
 import { useNoteSaveHandlers } from '@ui/web/hooks/useNoteSaveHandlers'
 import type { NoteViewModel } from '@core/types/domain'
+import { toast } from 'sonner'
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 jest.mock('uuid', () => ({ v4: () => 'mock-uuid' }))
@@ -386,6 +387,31 @@ describe('durable save failures and concurrent creation', () => {
 })
 
 describe('durable local saves', () => {
+  it('reports a retained local copy without a premature success toast', async () => {
+    jest.clearAllMocks()
+    const plan = { ownerId: 'user-1', snapshots: new Map() }
+    const localDeletion = { prepare: jest.fn().mockResolvedValue(plan), complete: jest.fn().mockResolvedValue(false) }
+    const { result, params } = setup({ noteToDelete: makeNote(), localDeletion })
+    await act(async () => { await expect(result.current.confirmDeleteNote()).resolves.toBe(false) })
+    expect(params.deleteNoteMutation.mutateAsync).toHaveBeenCalledWith({ id: 'note-1', silent: true })
+    expect(localDeletion.complete).toHaveBeenCalledWith('note-1', plan)
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('Server accepted deletion; local cleanup needs checking.')
+    expect(params.setOfflineOverlay).not.toHaveBeenCalled()
+  })
+
+  it('does not send a server delete when local data cannot be checked', async () => {
+    jest.clearAllMocks()
+    const log = jest.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const localDeletion = { prepare: jest.fn().mockRejectedValue(new Error('Storage unavailable')), complete: jest.fn() }
+      const { result, params } = setup({ noteToDelete: makeNote(), localDeletion })
+      await act(async () => { await expect(result.current.confirmDeleteNote()).resolves.toBe(false) })
+      expect(params.deleteNoteMutation.mutateAsync).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('Could not check local data. The deletion was not sent.')
+    } finally { log.mockRestore() }
+  })
+
   it('removes an online-deleted note from persistent cache and the offline list', async () => {
     const { result, params } = setup({ noteToDelete: makeNote() })
     await act(async () => { await result.current.confirmDeleteNote() })
