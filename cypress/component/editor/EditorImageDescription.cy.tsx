@@ -6,7 +6,8 @@ import { NoteView } from '../../../ui/web/components/features/notes/NoteView'
 import { toast } from 'sonner'
 
 const pictureOne = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
-const pictureTwo = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+// Use a 64×48 image so selecting it tests an ordinary pointer target, not a single pixel.
+const pictureTwo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAAAc0lEQVR42u3QMQGAMBAEwVhCyktJhwzeQUpcQjxcmSlWwM647vUlVdgM67ABAAAAAAAAAAAAAAAAAAAAnAjw7JGgCpthHQYAAAAAAAAAAAAAAAAAAAAcCfDukaAKm2EdBgAAAAAAAAAAAAAAAAAAABwI8ANjg8HD4RCQdQAAAABJRU5ErkJggg=='
 const twoPictures = `<p>Before <img src="${pictureOne}" width="64" height="32"> between <img src="${pictureTwo}" alt="Existing description"> after</p>`
 const tinyPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAgUBAScY42YAAAAASUVORK5CYII='
 
@@ -67,8 +68,17 @@ describe('Accessible note content and image descriptions', { retries: 0 }, () =>
   })
 
   it('uses the selected image when editing a description', () => {
-    cy.mount(<RichTextEditor initialContent={twoPictures} />)
-    cy.get('[data-cy="editor-content"] img').eq(1).click()
+    const ref = React.createRef<RichTextEditorHandle>()
+    cy.mount(<RichTextEditor ref={ref} initialContent={twoPictures} />)
+    cy.get('[data-cy="editor-content"] img').eq(1).should('be.visible').should(($image) => {
+      const image = $image[0] as HTMLImageElement
+      const bounds = image.getBoundingClientRect()
+      expect(image.naturalWidth).to.equal(64)
+      expect(image.naturalHeight).to.equal(48)
+      expect(bounds.width).to.be.at.least(48)
+      expect(bounds.height).to.be.at.least(36)
+      expect(image.ownerDocument.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)).to.equal(image)
+    }).click()
     cy.get('[data-cy="image-button"]').click()
     cy.contains('button', 'Image description').click()
     cy.get('[role="dialog"] select').should('have.value', '1')
@@ -76,6 +86,15 @@ describe('Accessible note content and image descriptions', { retries: 0 }, () =>
     cy.contains('[role="dialog"] button', 'Save').click()
     cy.get('[data-cy="editor-content"] img').eq(1).should('have.attr', 'alt', 'Second image')
     cy.get('[data-cy="editor-content"] img').first().should('have.attr', 'alt', 'Image without description')
+    cy.then(() => {
+      const saved = new DOMParser().parseFromString(ref.current?.getHTML() ?? '', 'text/html')
+      const images = saved.querySelectorAll('img')
+      expect(images).to.have.length(2)
+      expect(images[0].getAttribute('src')).to.equal(pictureOne)
+      expect(images[0].hasAttribute('alt')).to.equal(false)
+      expect(images[1].getAttribute('src')).to.equal(pictureTwo)
+      expect(images[1].getAttribute('alt')).to.equal('Second image')
+    })
   })
 
   it('keeps draft descriptions when choosing between images and saves both', () => {
