@@ -1,0 +1,1 @@
+{"id":"672934d48db9978a14c38ce43b4d4a50","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteWorkspaceTabs.test.tsx#useNoteWorkspaceTabs persistence warning warns when even the active note cannot be remembered","name":"warns when even the active note cannot be remembered","status":"passed","testResultsByEnv":{"default":"14ddf735cb567594f5cd156e0034c5be"}}

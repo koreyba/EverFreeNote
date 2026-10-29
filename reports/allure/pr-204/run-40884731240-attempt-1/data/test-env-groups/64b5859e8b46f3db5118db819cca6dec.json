@@ -1,0 +1,1 @@
+{"id":"64b5859e8b46f3db5118db819cca6dec","fullName":"everfreenote:cypress/component/features/notes/NoteEditorNoopNormalization.cy.tsx#unchanged note content during editor transitions preserves source markup if only a tag changes","name":"preserves source markup if only a tag changes","status":"passed","testResultsByEnv":{"default":"590581e57380d35cb6adc50a203e7b7f"}}

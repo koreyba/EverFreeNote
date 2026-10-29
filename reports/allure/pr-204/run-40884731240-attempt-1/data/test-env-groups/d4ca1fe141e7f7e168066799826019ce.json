@@ -1,0 +1,1 @@
+{"id":"d4ca1fe141e7f7e168066799826019ce","fullName":"everfreenote:cypress/component/features/notes/NoteEditorNoopNormalization.cy.tsx#unchanged note content during editor transitions saves actual text edits as HTML","name":"saves actual text edits as HTML","status":"passed","testResultsByEnv":{"default":"43209ff9e2d2f4c12eaad2f13572f7f9"}}

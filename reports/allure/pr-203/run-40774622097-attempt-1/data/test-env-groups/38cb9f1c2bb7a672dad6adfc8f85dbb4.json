@@ -1,1 +1,0 @@
-{"id":"38cb9f1c2bb7a672dad6adfc8f85dbb4","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteRefresh.test.tsx#preserves a cached note when editor changes during deletion verification","name":"preserves a cached note when editor changes during deletion verification","status":"passed","testResultsByEnv":{"default":"8cbf0fc5a1c8f7d98f74deb8d653c8ab"}}

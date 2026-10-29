@@ -1,0 +1,1 @@
+{"id":"c5c18cb4747c32a8704a38356c2695b2","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML drops the invalid dimension: trailing space","name":"drops the invalid dimension: trailing space","status":"passed","testResultsByEnv":{"default":"c48e1589857bc855ec89ae5ecdd2b4b5"}}
