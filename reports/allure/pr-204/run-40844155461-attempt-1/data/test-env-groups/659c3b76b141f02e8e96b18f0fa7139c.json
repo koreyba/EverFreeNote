@@ -1,0 +1,1 @@
+{"id":"659c3b76b141f02e8e96b18f0fa7139c","fullName":"everfreenote:cypress/component/editor/ImageAltDraftState.cy.tsx#Image description and saved draft state keeps a newer in-flight autosave dirty until it succeeds","name":"keeps a newer in-flight autosave dirty until it succeeds","status":"passed","testResultsByEnv":{"default":"383887adfc29c1c600bf10c9ff9b88d0"}}

@@ -1,0 +1,1 @@
+{"id":"8a6a95aa8c663da835a8b17cc5161f6d","fullName":"everfreenote:ui/web/tests/unit/components/notesShell.test.tsx#NotesShell captures on sign-out teardown so a session expiry can preserve the live editor","name":"captures on sign-out teardown so a session expiry can preserve the live editor","status":"passed","testResultsByEnv":{"default":"093dddb614d5c6c0cfb475ade3247a56"}}

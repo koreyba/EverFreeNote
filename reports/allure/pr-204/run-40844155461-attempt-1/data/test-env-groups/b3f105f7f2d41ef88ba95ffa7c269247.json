@@ -1,0 +1,1 @@
+{"id":"b3f105f7f2d41ef88ba95ffa7c269247","fullName":"everfreenote:ui/web/tests/unit/lib/offlineOwnership.test.ts#warns about unassigned data without counting a known foreign owner as their issue","name":"warns about unassigned data without counting a known foreign owner as their issue","status":"passed","testResultsByEnv":{"default":"c89039cfc77d49f38cc87444e56f6c03"}}

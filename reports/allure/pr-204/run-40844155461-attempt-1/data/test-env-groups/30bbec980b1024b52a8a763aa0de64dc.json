@@ -1,0 +1,1 @@
+{"id":"30bbec980b1024b52a8a763aa0de64dc","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML does not change unrelated DOMPurify usage","name":"does not change unrelated DOMPurify usage","status":"passed","testResultsByEnv":{"default":"0385d09e2a27df3d37cad4729aa3c7d4"}}

@@ -1,0 +1,1 @@
+{"id":"35f070e9fbeceb95ea68aeeff8d42ccb","fullName":"everfreenote:ui/web/tests/unit/components/notesShell.test.tsx#NotesShell does not navigate or write settings state when an account changes during capture","name":"does not navigate or write settings state when an account changes during capture","status":"passed","testResultsByEnv":{"default":"004b8279923b2bd576bc4444e45330c2"}}
