@@ -76,6 +76,7 @@ description: Clarify the problem space, gather requirements, and define success 
 
 - Add opens and focuses input in the same row as tags and Add, including empty notes.
 - While entering, chips temporarily yield their space to the input; no extra input row.
-- Preserve explicit disclosure state and document position when opening/cancelling.
+- Preserve explicit disclosure state; temporarily compact expanded collections to one row
+  during entry, then restore them. Opening/cancelling collapsed collections must not move the body.
 - Preserve Enter, comma, suggestion, Escape, blur and second-Add semantics and tag order.
 - Support narrow screens, long tags, both themes and 44 px touch targets without horizontal overflow.

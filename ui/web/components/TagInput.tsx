@@ -212,10 +212,10 @@ export function TagInput({
           <span>Tags</span>
         </div>
 
-        {/* Keep the tag layout mounted so opening entry preserves both disclosure
-            state and row height, including an explicitly expanded collection. */}
+        {/* Entry uses one compact row. Keep the user's disclosure preference
+            separately so closing entry restores it without reserving empty rows. */}
         <div className={cn("flex min-w-0 flex-1", inputOpen && "invisible")} inert={inputOpen} aria-hidden={inputOpen || undefined}>
-          <NoteTagList tags={tags} expanded={expanded} onExpandedChange={setExpanded}
+          <NoteTagList tags={tags} expanded={expanded && !inputOpen} onExpandedChange={setExpanded}
             onTagClick={onTagClick} onRemoveTag={disabled ? undefined : onRemoveTag}
             armedTag={backspaceArmed ? tags.at(-1) : undefined} variant="editor" />
         </div>

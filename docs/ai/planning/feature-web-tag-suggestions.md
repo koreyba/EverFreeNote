@@ -62,4 +62,7 @@ description: Break down work into actionable tasks and estimate timeline
 - [x] Replace the separate input row with an overlay in the existing tag region.
 - [x] Preserve mounted disclosure state, keyboard behavior and touch controls.
 - [x] Add mobile/desktop geometry and expanded-state cancellation regressions.
-- [ ] Independent browser verification against an isolated synthetic preview.
+- [x] Independent browser verification against an isolated synthetic preview (17a);
+  expanded-height UX issue found despite interaction checks passing.
+- [x] Compact expanded collections during entry without losing disclosure preference.
+- [ ] Independent browser retest of the compact-entry follow-up.

@@ -84,8 +84,11 @@ graph TD
 
 Opening Add temporarily replaces the tag chips with a full-width input alongside the
 44 px Add button. The chip collection remains mounted, invisible and inert: it
-retains disclosure state and its measured height, so opening/cancelling entry does
-not move the document even when tags were explicitly expanded. Enter, suggestion
+retains the user's disclosure preference, but renders collapsed during entry.
+Entry always occupies one 44 px row; closing restores the prior disclosure.
+Collapsed collections do not move the document on open/close. Expanded collections
+intentionally give their space back to the body while entering, then restore it;
+keeping hundreds of pixels of invisible tags is explicitly avoided. Enter, suggestion
 selection and a second Add close entry; comma continues entry. Closing restores
 chips in their existing order. No automatic disclosure or animation is introduced.
 The input has an inset focus underline and border; the body editor is untouched.

@@ -112,7 +112,7 @@ describe('Inline tag row geometry', { retries: 0 }, () => {
     })
   }
 
-  it('preserves expanded long tags and document position through cancellation', () => {
+  it('compacts expanded long tags during entry and restores their position on cancellation', () => {
     cy.viewport(320, 700)
     cy.mount(<NoteEditor initialTitle="Expanded tags" initialDescription="<p>Body anchor</p>"
       initialTags="long-tag-with-many-characters-that-must-wrap-safely, second, third, fourth, fifth"
@@ -123,11 +123,41 @@ describe('Inline tag row geometry', { retries: 0 }, () => {
       cy.get('[aria-label="Add tag"]').click()
       cy.get('[data-note-tag-item]').first().should('not.be.visible')
       cy.get('[aria-label="Add tags"]').should('be.focused').type('discard me')
-      cy.get('.ProseMirror').should($current => expect($current[0].getBoundingClientRect().top).to.equal(bodyTop))
+      cy.get('[data-testid="tag-input-container"]').should($row => expect($row[0].getBoundingClientRect().height).to.equal(44))
+      cy.get('.ProseMirror').should($current => expect($current[0].getBoundingClientRect().top).to.be.lessThan(bodyTop))
       cy.get('[aria-label="Add tags"]').type('{esc}')
       cy.get('[aria-label="Show fewer tags"]').should('have.attr', 'aria-expanded', 'true')
       cy.get('[data-note-tag-item]').should('have.length', 5)
       cy.get('.ProseMirror').should($current => expect($current[0].getBoundingClientRect().top).to.equal(bodyTop))
     })
   })
+
+  for (const [width, height] of [[320, 667], [1280, 900]]) {
+    it(`keeps entry to one row with 17 expanded tags and restores them after confirmation at ${width}px`, () => {
+      cy.viewport(width, height)
+      const tags = Array.from({ length: 17 }, (_, index) => `existing-tag-${index}`)
+      const onSave = cy.stub().as('onSave')
+      cy.mount(<NoteEditor initialTitle="Many tags" initialDescription="<p>Body anchor</p>"
+        initialTags={tags.join(', ')} availableTags={[]} isSaving={false} onSave={onSave} onRead={cy.stub()} />)
+      cy.get('[aria-label="Show all 17 tags"]').click()
+      cy.get('[data-testid="tag-input-container"]').should($row => expect($row[0].getBoundingClientRect().height).to.be.greaterThan(44))
+      cy.get('[aria-label="Add tag"]').click()
+      cy.get('[aria-label="Add tags"]').should('be.focused').type('new first,')
+      cy.get('[data-testid="tag-input-container"]').should($row => {
+        expect($row[0].getBoundingClientRect().height).to.equal(44)
+        expect($row[0].scrollWidth).to.be.at.most($row[0].clientWidth)
+      })
+      cy.get('.ProseMirror').should($body => expect($body[0].getBoundingClientRect().top).to.be.lessThan(height))
+      cy.screenshot(`expanded-tags-compact-entry-${width}`)
+      cy.get('[aria-label="Add tags"]').type('new second{enter}')
+      cy.get('[aria-label="Add tags"]').should('not.be.visible')
+      cy.get('[aria-label="Show fewer tags"]').should('have.attr', 'aria-expanded', 'true')
+      cy.get('[data-note-tag-item]').should('have.length', 19)
+      cy.get('[data-note-tag-item]').first().should('contain.text', 'new second')
+      cy.get('[aria-label="Add tag"]').should('be.focused')
+      cy.get('[data-cy="note-save-button"]').click()
+      cy.get('@onSave').should('have.been.calledWith', Cypress.sinon.match({ tags: `new second, new first, ${tags.join(', ')}` }))
+    })
+  }
+
 })

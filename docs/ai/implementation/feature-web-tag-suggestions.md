@@ -79,6 +79,7 @@ description: Technical implementation notes, patterns, and code guidelines
 `TagInput` overlays the existing tag region while entering, leaving the Add button
 in place. The hidden collection uses `inert` and `aria-hidden` to remove invisible
 controls from keyboard navigation and accessibility APIs. Keeping the collection
-mounted preserves `NoteTagList` sizing and disclosure across entry. Suggestions
+mounted preserves `NoteTagList` sizing. Its rendered `expanded` value is false
+during entry while the user's preference remains in state for restoration. Suggestions
 are positioned directly beneath the input with bounded height and wrapping text.
 No dependencies, persistence rules, normalization or editor-body styling changed.

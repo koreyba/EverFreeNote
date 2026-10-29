@@ -82,11 +82,11 @@ description: Define testing approach, test cases, and quality assurance
 
 ## Inline entry validation (2026-10-29)
 
-- 45/45 Cypress component tests passed through Allure agent: `TagEntryBehavior`,
+- 47/47 Cypress component tests passed through Allure agent (compact-entry follow-up): `TagEntryBehavior`,
   `NoteTagLayout`, `NoteEditor`; expected count matched, no findings or retries.
 - New geometry assertions cover 320/1280 px: input and Add share the same top,
   input stays before Add, body position is unchanged on open/confirm. Expanded
-  long-tag cancellation retains the original document position and disclosure.
+  long-tag cancellation restores the original document position and disclosure.
 - Existing coverage verifies first click/touch, second Add, comma, Enter,
   autocomplete, double Backspace, prepend order, save payloads and responsive tags.
 - Existing tests now check chips are hidden during input and restore before
@@ -96,6 +96,9 @@ description: Define testing approach, test cases, and quality assurance
 - Runtime used existing macOS dependencies via local symlinks, not a fresh locked
   install. Native device/virtual keyboard and real backend reload acceptance are
   outside component scope; independent synthetic browser QA is tracked separately.
-- The expanded collection deliberately retains its space while entry is open.
-  Adding/removing tags can naturally change collection height; opening/cancelling
-  alone does not. No animation was added, so no motion preference override is needed.
+- Follow-up to independent browser QA: expanded collections now compact to 44 px
+  during entry and restore their previous disclosure on close. The previous design
+  reserved a large empty area for 17 mobile tags and was rejected. Explicit mobile
+  and desktop tests protect compact height, reachable body, CSV confirmation, order
+  and disclosure restoration. Collapsed collections still preserve body position.
+  No animation was added, so no motion preference override is needed.
