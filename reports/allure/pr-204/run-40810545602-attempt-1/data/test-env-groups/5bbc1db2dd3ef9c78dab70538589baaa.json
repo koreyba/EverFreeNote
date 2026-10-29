@@ -1,0 +1,1 @@
+{"id":"5bbc1db2dd3ef9c78dab70538589baaa","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSyncPrivacy.test.tsx#rechecks a legacy snapshot on request and restores it only after a complete match","name":"rechecks a legacy snapshot on request and restores it only after a complete match","status":"passed","testResultsByEnv":{"default":"cb58092d96dda5584c6cb31e3e72fad1"}}
