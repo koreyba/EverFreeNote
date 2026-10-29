@@ -52,21 +52,27 @@ jobs:
           expected = {
               'dismisses the desktop font size menu after a hover with one Escape',
               'exposes the font size tooltip to keyboard users and dismisses its menu',
+              'returns focus to the font size trigger when dismissed without a choice',
           }
           observed = set()
+          skipped = set()
           for path in sorted(Path('cypress/results').glob('component-tests-*.xml')):
               for case in ET.parse(path).iter('testcase'):
                   name = case.get('classname', '')
-                  if name not in expected:
+                  failures = case.findall('failure') + case.findall('error')
+                  if name not in expected and not failures:
                       continue
-                  observed.add(name)
-                  failures = case.findall('failure')
-                  print(f'Font diagnostic: {name}: {"FAILED" if failures else "PASSED"}', flush=True)
+                  if name in expected:
+                      observed.add(name)
+                  if case.findall('skipped'):
+                      skipped.add(name)
+                  status = 'FAILED' if failures else 'SKIPPED' if name in skipped else 'PASSED'
+                  print(f'Font diagnostic: {name}: {status}', flush=True)
                   for failure in failures:
                       print(failure.get('message', ''), flush=True)
           missing = expected - observed
-          if missing:
-              raise SystemExit(f'Missing expected font tests: {sorted(missing)}')
+          if missing or skipped:
+              raise SystemExit(f'Missing expected font tests: {sorted(missing)}; skipped: {sorted(skipped)}')
           PY
 
       - name: Preserve the component test result

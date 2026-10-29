@@ -54,6 +54,10 @@ function watchFontOpening(trace: FontOpenTrace, setCleanup: (cleanup: () => void
         triggerState: trigger.getAttribute('data-state'),
         changed: mutation?.attributeName ?? null,
         previous: mutation?.oldValue ?? null,
+        windowWidth: win.innerWidth,
+        windowHeight: win.innerHeight,
+        documentHasFocus: doc.hasFocus(),
+        visibility: doc.visibilityState,
         menus: Array.from(doc.querySelectorAll('[role="listbox"]'), menu => ({
           state: menu.getAttribute('data-state'),
           opacity: win.getComputedStyle(menu).opacity,
@@ -61,15 +65,23 @@ function watchFontOpening(trace: FontOpenTrace, setCleanup: (cleanup: () => void
         })),
         tooltipCount: doc.querySelectorAll('[role="tooltip"]').length,
       })
-      if (trace.length > 50) trace.shift()
+      if (trace.length > 150) trace.shift()
     }
-    const events = ['pointerdown', 'pointerup', 'click', 'keydown', 'keyup', 'focusin', 'focusout']
+    const events = [
+      'pointerdown', 'pointerup', 'click', 'keydown', 'keyup', 'focusin', 'focusout',
+      'dismissableLayer.pointerDownOutside', 'dismissableLayer.focusOutside', 'visibilitychange',
+    ]
+    const windowEvents = ['blur', 'focus', 'resize']
     const capture = (event: Event) => record(`capture:${event.type}`, event)
     const bubble = (event: Event) => record(`bubble:${event.type}`, event)
+    const windowEvent = (event: Event) => {
+      if (event.target === win) record(`window:${event.type}`, event)
+    }
     events.forEach(type => {
       doc.addEventListener(type, capture, { capture: true, passive: true })
       doc.addEventListener(type, bubble, { passive: true })
     })
+    windowEvents.forEach(type => win.addEventListener(type, windowEvent, { capture: true, passive: true }))
     const observer = new win.MutationObserver(mutations => {
       // Values read here are delivery-time snapshots; oldValue preserves the
       // previous attribute value if multiple mutations were batched.
@@ -87,6 +99,7 @@ function watchFontOpening(trace: FontOpenTrace, setCleanup: (cleanup: () => void
         doc.removeEventListener(type, capture, true)
         doc.removeEventListener(type, bubble)
       })
+      windowEvents.forEach(type => win.removeEventListener(type, windowEvent, true))
       observer.disconnect()
     })
   })
@@ -1824,7 +1837,10 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
     const escapeTrace: EscapeTrace = { event: null, menu: null, capture: null, transitions: [] }
     cy.viewport(320, 740)
     mountLongEditor()
+    const trace: FontOpenTrace = []
+    watchFontOpening(trace, cleanup => { stopFontOpenTrace = cleanup })
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
+    expectOpenFontMenu(trace)
     cy.get('[role="listbox"]').should('be.visible').then(($listbox) => {
       const menu = $listbox[0]
       const doc = menu.ownerDocument
