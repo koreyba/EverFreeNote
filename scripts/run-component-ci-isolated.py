@@ -25,6 +25,106 @@ MIGRATIONS = (
 )
 EXCLUDED = 'studio,inbucket,analytics,realtime,edge-runtime,storage,imgproxy,vector,meta'
 JWT_PATTERN = re.compile(r'eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}')
+LOOPBACK_BIND_OPTION = 'com.docker.network.bridge.host_binding_ipv4'
+BIND_PROBE_LABEL = 'com.everfreenote.component-bind-probe'
+BIND_PROBE_IMAGE = 'alpine:3.22.1'
+
+
+class FixtureIsolationError(ValueError):
+    """A safe, actionable fixture isolation error without credential values."""
+
+
+def require_secure_docker_version(version):
+    # Docker < 28 can expose ports published to localhost to hosts on the same L2 segment.
+    match = re.match(r'^(\d+)\.', version.strip())
+    if not match or int(match.group(1)) < 28:
+        raise FixtureIsolationError('Docker Engine 28 or newer is required for loopback-only ports')
+
+
+def docker_output(args, env):
+    return subprocess.run(['docker', *args], cwd=ROOT, env=env, capture_output=True,
+                          text=True, check=True, timeout=30).stdout
+
+
+def verify_fixture_network(network_id, env):
+    network_data = json.loads(docker_output(['network', 'inspect', network_id], env))
+    if len(network_data) != 1:
+        raise FixtureIsolationError('Could not verify the fixture network')
+    network = network_data[0]
+    if (network.get('Id') != network_id or network.get('Driver') != 'bridge'
+            or network.get('Options', {}).get(LOOPBACK_BIND_OPTION) != '127.0.0.1'):
+        raise FixtureIsolationError('Fixture network is not configured for loopback binding')
+
+
+def verify_host_listener(port, env):
+    # Docker Desktop may forward VM loopback ports on all host interfaces.
+    try:
+        result = subprocess.run(['lsof', '-nP', f'-iTCP:{port}', '-sTCP:LISTEN', '-F', 'n'],
+                                cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
+    except FileNotFoundError as error:
+        raise FixtureIsolationError('lsof is required to verify Docker Desktop host listeners') from error
+    listeners = [line[1:] for line in result.stdout.splitlines() if line.startswith('n')]
+    if result.returncode != 0 or not listeners or any(item != f'127.0.0.1:{port}' for item in listeners):
+        raise FixtureIsolationError('Could not verify a loopback-only Docker Desktop host listener')
+
+
+def verify_bind_probe(project, network_id, docker_desktop, env):
+    # Probe without credentials or data before starting Supabase: Desktop may ignore bridge defaults.
+    owner = secrets.token_hex(16)
+    label = f'{BIND_PROBE_LABEL}={owner}'
+    try:
+        probe_id = docker_output([
+            'create', '--name', f'{project}-bind-probe', '--network', network_id,
+            '--publish', '12345/tcp', '--label', label, '--entrypoint', 'sleep', BIND_PROBE_IMAGE, '120',
+        ], env).strip()
+        if not re.fullmatch(r'[0-9a-f]{64}', probe_id):
+            raise FixtureIsolationError('Unexpected Docker probe container ID')
+        docker_output(['start', probe_id], env)
+        settings = json.loads(docker_output(['inspect', '--format', '{{json .NetworkSettings}}', probe_id], env))
+        networks = settings.get('Networks') or {}
+        if not networks or any(item.get('NetworkID') != network_id for item in networks.values()):
+            raise FixtureIsolationError('The Docker probe is attached to an unexpected network')
+        bindings = (settings.get('Ports') or {}).get('12345/tcp') or []
+        if len(bindings) != 1 or bindings[0].get('HostIp') != '127.0.0.1':
+            raise FixtureIsolationError('Docker did not publish the probe port on IPv4 loopback only')
+        host_port = bindings[0].get('HostPort', '')
+        if not host_port.isdecimal() or not 1 <= int(host_port) <= 65535:
+            raise FixtureIsolationError('Invalid Docker probe host port')
+        if docker_desktop:
+            verify_host_listener(host_port, env)
+    finally:
+        # A unique label identifies only this invocation, even if creation was interrupted.
+        owned = docker_output(['ps', '--all', '--quiet', '--filter', f'label={label}'], env).splitlines()
+        for container_id in owned:
+            if not re.fullmatch(r'[0-9a-f]{12,64}', container_id):
+                raise FixtureIsolationError('Unexpected Docker probe container ID during cleanup')
+            docker_output(['rm', '--force', container_id], env)
+
+
+def verify_fixture_bindings(project, network_id, port, docker_desktop, env):
+    verify_fixture_network(network_id, env)
+    container_ids = docker_output([
+        'ps', '--quiet', '--filter', f'label=com.supabase.cli.project={project}',
+    ], env).splitlines()
+    if not container_ids:
+        raise FixtureIsolationError('No running fixture containers were found')
+    published_ports = set()
+    for container_id in container_ids:
+        settings = json.loads(docker_output([
+            'inspect', '--format', '{{json .NetworkSettings}}', container_id,
+        ], env))
+        networks = settings.get('Networks') or {}
+        if not networks or any(item.get('NetworkID') != network_id for item in networks.values()):
+            raise FixtureIsolationError('Fixture container is attached to an unexpected network')
+        for bindings in (settings.get('Ports') or {}).values():
+            for binding in bindings or []:
+                if binding.get('HostIp') != '127.0.0.1':
+                    raise FixtureIsolationError('Fixture published a port outside IPv4 loopback')
+                if docker_desktop:
+                    verify_host_listener(binding.get('HostPort', ''), env)
+                published_ports.add(binding.get('HostPort'))
+    if not {str(port), str(port + 1)}.issubset(published_ports):
+        raise FixtureIsolationError('Expected local API and database port bindings were not found')
 
 
 def safe_start_output(output):
@@ -130,8 +230,31 @@ def run():
             threading.Thread(target=monitor_preview, daemon=True).start()
         code = 1
         fixture_keys = []
+        network_id = None
+        network_cleanup_target = None
+        fixture_started = False
         try:
-            command = [str(SUPABASE), 'start', '--workdir', str(workdir), '--exclude', EXCLUDED]
+            version = docker_output(['version', '--format', '{{.Server.Version}}'], child_env)
+            require_secure_docker_version(version)
+            server_os = docker_output(['info', '--format', '{{.OperatingSystem}}'], child_env)
+            docker_desktop = sys.platform == 'darwin' or 'docker desktop' in server_os.lower()
+            network_name = f'{project}-network'
+            network_id = docker_output([
+                'network', 'create', '--driver', 'bridge', '--opt', f'{LOOPBACK_BIND_OPTION}=127.0.0.1',
+                network_name,
+            ], child_env).strip()
+            # Only a successful create gives us ownership of this unique name.
+            network_cleanup_target = network_name
+            if not re.fullmatch(r'[0-9a-f]{64}', network_id):
+                raise FixtureIsolationError('Unexpected Docker network ID')
+            network_cleanup_target = network_id
+            verify_fixture_network(network_id, child_env)
+            verify_bind_probe(project, network_id, docker_desktop, child_env)
+            if degraded.is_set():
+                return 1
+            command = [str(SUPABASE), 'start', '--workdir', str(workdir), '--network-id', network_id,
+                       '--exclude', EXCLUDED]
+            fixture_started = True
             with current_lock:
                 current = subprocess.Popen(command, cwd=ROOT, env=child_env, stdout=subprocess.PIPE,
                                            stderr=subprocess.STDOUT, text=True, start_new_session=True)
@@ -142,7 +265,9 @@ def run():
                     print(safe_start_output(output), file=sys.stderr)
                 return 1
 
-            result = subprocess.run([str(SUPABASE), 'status', '--workdir', str(workdir), '-o', 'json'],
+            verify_fixture_bindings(project, network_id, port, docker_desktop, child_env)
+            result = subprocess.run([str(SUPABASE), 'status', '--workdir', str(workdir),
+                                     '--network-id', network_id, '-o', 'json'],
                                     cwd=ROOT, env=child_env, capture_output=True, text=True, check=True, timeout=30)
             if degraded.is_set():
                 return 1
@@ -192,14 +317,22 @@ def run():
                     except ProcessLookupError:
                         pass
                     current.wait(timeout=10)
-            # This project ID is freshly generated; never stop another project's stack.
-            stopped = subprocess.run([str(SUPABASE), 'stop', '--project-id', project, '--no-backup'],
-                                     cwd=ROOT, env=child_env, capture_output=True, text=True)
-            if stopped.returncode != 0:
-                print('Could not confirm cleanup of the isolated component fixture.', file=sys.stderr)
-                code = 1
-            else:
-                print('Isolated component fixture stopped.', flush=True)
+            # Only stop the random project and remove the network created by this invocation.
+            if fixture_started:
+                stopped = subprocess.run([str(SUPABASE), 'stop', '--project-id', project,
+                                          '--network-id', network_id, '--no-backup'],
+                                         cwd=ROOT, env=child_env, capture_output=True, text=True)
+                if stopped.returncode != 0:
+                    print('Could not confirm cleanup of the isolated component fixture.', file=sys.stderr)
+                    code = 1
+                else:
+                    print('Isolated component fixture stopped.', flush=True)
+            if network_cleanup_target:
+                removed = subprocess.run(['docker', 'network', 'rm', network_cleanup_target], cwd=ROOT, env=child_env,
+                                         capture_output=True, text=True)
+                if removed.returncode != 0:
+                    print('Could not remove the isolated component network.', file=sys.stderr)
+                    code = 1
             if fixture_keys and child_env.get('GITHUB_ACTIONS') == 'true':
                 redact_ci_artifacts(fixture_keys)
         return code
@@ -213,6 +346,9 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, interrupt)
     try:
         sys.exit(run())
+    except FixtureIsolationError as error:
+        print(f'Isolated component fixture failed: {error}', file=sys.stderr)
+        sys.exit(1)
     except (OSError, ValueError, KeyError, json.JSONDecodeError, subprocess.SubprocessError) as error:
         print(f'Isolated component fixture failed: {type(error).__name__}', file=sys.stderr)
         sys.exit(1)

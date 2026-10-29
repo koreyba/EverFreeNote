@@ -700,7 +700,7 @@ const buildStepSummary = ({
   const screenshots = collectScreenshots(screenshotsDir);
   if (screenshots.length > 0) {
     markdown += "<details>\n";
-    markdown += `<summary>Failed test screenshots (${screenshots.length})</summary>\n\n`;
+    markdown += `<summary>Test screenshots (${screenshots.length})</summary>\n\n`;
     for (const screenshot of screenshots) {
       const screenshotPath = `cypress/screenshots/${screenshot}`;
       markdown += `- <code>${escapeSummaryValue(screenshotPath)}</code>\n`;
