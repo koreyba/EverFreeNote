@@ -1,0 +1,1 @@
+{"id":"c185325fff2c005b4f782976065782b8","fullName":"everfreenote:core/tests/unit/offline-queue-additional-branches.test.ts#offline queue additional branches uses getRandomValues when randomUUID is unavailable","name":"uses getRandomValues when randomUUID is unavailable","status":"passed","testResultsByEnv":{"default":"0d58ad9eb8ab077fc4d24a7cd4e9593a"}}

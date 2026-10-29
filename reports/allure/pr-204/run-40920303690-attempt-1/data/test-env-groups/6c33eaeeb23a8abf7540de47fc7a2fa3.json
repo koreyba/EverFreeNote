@@ -1,0 +1,1 @@
+{"id":"6c33eaeeb23a8abf7540de47fc7a2fa3","fullName":"everfreenote:cypress/component/features/notes/NoteEditorNoopNormalization.cy.tsx#unchanged note content during editor transitions passes the unchanged body to the read transition","name":"passes the unchanged body to the read transition","status":"passed","testResultsByEnv":{"default":"1b9be414fc0a33a149d309e3b5ecc467"}}

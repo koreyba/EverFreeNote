@@ -1,0 +1,1 @@
+{"id":"ee65439e6f583a62bd497366db4cd8e3","fullName":"everfreenote:ui/web/tests/unit/lib/settingsNavigationState.test.ts#settingsNavigationState retains a local-only note when returning from Settings for its owner","name":"retains a local-only note when returning from Settings for its owner","status":"passed","testResultsByEnv":{"default":"ae3ed78a6f7362463ea2079e3a37c3d2"}}

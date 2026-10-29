@@ -1,0 +1,1 @@
+{"id":"26dd5d20d04a8d9e0c452e1440351f19","fullName":"everfreenote:cypress/component/features/notes/SignOutDraftSafety.cy.tsx#Safe sign out with local drafts lets the user cancel while a slow save is being checked","name":"lets the user cancel while a slow save is being checked","status":"passed","testResultsByEnv":{"default":"fe37677abf5ecbb0f32d9ddd04d62feb"}}

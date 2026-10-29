@@ -1,0 +1,1 @@
+{"id":"e8b8bf837b6026a22cbd31498b7a1167","fullName":"everfreenote:core/tests/unit/core-mcp-notebookServer.test.ts#core/mcp/notebookServer protocol create_note preserves editor superscript and subscript in a created note","name":"preserves editor superscript and subscript in a created note","status":"passed","testResultsByEnv":{"default":"6acc5ce4bf59e85331ae080752cf75fa"}}

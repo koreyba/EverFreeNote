@@ -1,0 +1,1 @@
+{"id":"e5a60d82a39572d5aeb4efd74a6dc989","fullName":"everfreenote:cypress/component/editor/EditorToolbarFocus.cy.tsx#Desktop toolbar focus keeps the stored bold mark when a keyboard command adds italic","name":"keeps the stored bold mark when a keyboard command adds italic","status":"passed","testResultsByEnv":{"default":"b26e9772bdb6291e09fc8f93cf6a43d8"}}
