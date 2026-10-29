@@ -24,7 +24,14 @@ function selectionFrom(doc: Document) {
   return selection
 }
 
-function fontMenuDiagnostic(doc: Document) {
+type EscapeTrace = {
+  event: KeyboardEvent | null
+  menu: Element | null
+  capture: { at: number; trusted: boolean; cancelable: boolean; defaultPrevented: boolean; targetTag: string | null; targetRole: string | null } | null
+  transitions: Array<{ at: number; target: 'trigger' | 'menu'; attribute: string; previous: string | null; current: string | null }>
+}
+
+function fontMenuDiagnostic(doc: Document, escapeTrace?: EscapeTrace) {
   const view = doc.defaultView
   const active = doc.activeElement
   const trigger = doc.querySelector('[data-cy="font-size-button"]')
@@ -50,6 +57,12 @@ function fontMenuDiagnostic(doc: Document) {
     activeLabel: active?.getAttribute('aria-label'),
     triggerExpanded: trigger?.getAttribute('aria-expanded'),
     menus,
+    escape: escapeTrace ? {
+      capture: escapeTrace.capture,
+      defaultPreventedAfter: escapeTrace.event?.defaultPrevented ?? null,
+      originalMenuConnected: escapeTrace.menu?.isConnected ?? null,
+      transitions: escapeTrace.transitions,
+    } : undefined,
   })
 }
 
@@ -142,12 +155,16 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   let mockSupabase: SupabaseClient
   let restoreViewport: (() => void) | undefined
   let restoreNavigator: (() => void) | undefined
+  let stopEscapeTrace: (() => void) | undefined
 
   afterEach(() => {
-    restoreViewport?.()
-    restoreViewport = undefined
-    restoreNavigator?.()
-    restoreNavigator = undefined
+    try { stopEscapeTrace?.() } finally {
+      stopEscapeTrace = undefined
+      restoreViewport?.()
+      restoreViewport = undefined
+      restoreNavigator?.()
+      restoreNavigator = undefined
+    }
   })
 
   beforeEach(() => {
@@ -1661,14 +1678,50 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
   })
 
   it('returns focus to the font size trigger when dismissed without a choice', () => {
+    const escapeTrace: EscapeTrace = { event: null, menu: null, capture: null, transitions: [] }
     cy.viewport(320, 740)
     mountLongEditor()
     cy.get('[data-cy="font-size-button"]').scrollIntoView().click({ scrollBehavior: false })
-    cy.get('[role="listbox"]').should('be.visible')
+    cy.get('[role="listbox"]').should('be.visible').then(($listbox) => {
+      const menu = $listbox[0]
+      const doc = menu.ownerDocument
+      const win = doc.defaultView
+      const trigger = doc.querySelector('[data-cy="font-size-button"]')
+      if (!win || !trigger) throw new Error('Missing font menu context')
+      escapeTrace.menu = menu
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape') return
+        const target = event.target instanceof win.Element ? event.target : null
+        escapeTrace.event = event
+        escapeTrace.capture = {
+          at: win.performance.now(), trusted: event.isTrusted, cancelable: event.cancelable,
+          defaultPrevented: event.defaultPrevented, targetTag: target?.tagName ?? null, targetRole: target?.getAttribute('role') ?? null,
+        }
+      }
+      const observer = new win.MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          const attribute = mutation.attributeName
+          if (!attribute) continue
+          const target = mutation.target === trigger ? trigger : menu
+          escapeTrace.transitions.push({
+            at: win.performance.now(), target: target === trigger ? 'trigger' : 'menu', attribute,
+            previous: mutation.oldValue, current: target.getAttribute(attribute),
+          })
+          if (escapeTrace.transitions.length > 20) escapeTrace.transitions.shift()
+        }
+      })
+      stopEscapeTrace = () => {
+        doc.removeEventListener('keydown', onKeyDown, true)
+        observer.disconnect()
+      }
+      doc.addEventListener('keydown', onKeyDown, { capture: true, passive: true })
+      observer.observe(trigger, { attributes: true, attributeFilter: ['aria-expanded'], attributeOldValue: true })
+      observer.observe(menu, { attributes: true, attributeFilter: ['data-state'], attributeOldValue: true })
+    })
     cy.press(Cypress.Keyboard.Keys.ESC)
     cy.get('body').should(($body) => {
       const doc = $body[0].ownerDocument
-      expect(Cypress.$(doc).find('[role="listbox"]').length, `font-size menu is removed; ${fontMenuDiagnostic(doc)}`).to.equal(0)
+      expect(Cypress.$(doc).find('[role="listbox"]').length, `font-size menu is removed; ${fontMenuDiagnostic(doc, escapeTrace)}`).to.equal(0)
     })
     cy.get('[data-cy="font-size-button"]').should('be.focused')
   })

@@ -16,8 +16,12 @@ const notes = [
   { id: 'other-long', title: 'Other long note', description: Array.from({ length: 40 }, (_, index) => `<p>Other paragraph ${index + 1}.</p>`).join(''), tags: [], user_id: user.id, created_at: '2026-10-28T07:00:00Z', updated_at: '2026-10-28T07:00:00Z' },
 ]
 
+let observeWorkspaceCommit: ((controller: ReturnType<typeof useNoteAppController>) => void) | undefined
+
 function TestApp() {
-  return <SplitViewPreferenceProvider><NotesShell controller={useNoteAppController()} /></SplitViewPreferenceProvider>
+  const controller = useNoteAppController()
+  React.useLayoutEffect(() => { observeWorkspaceCommit?.(controller) })
+  return <SplitViewPreferenceProvider><NotesShell controller={controller} /></SplitViewPreferenceProvider>
 }
 
 const openTwoNotes = () => {
@@ -28,7 +32,14 @@ const openTwoNotes = () => {
   cy.get('[data-testid="split-pane-right"]').should('contain', 'Second note body')
 }
 
-const scrollDiagnostic = (reader: HTMLElement) => {
+type SplitScrollTrace = {
+  commits: Array<{ at: number; active: boolean; scrollTop: number | null; readerPresent: boolean }>
+  firstReaderCommit: { at: number; scrollTop: number | null } | null
+  scrolls: Array<{ at: number; surface: 'preview' | 'reader'; scrollTop: number; connected: boolean }>
+  marker: { requested: boolean; fired: boolean; at: number | null; scrollTop: number | null; connected: boolean | null }
+}
+
+const scrollDiagnostic = (reader: HTMLElement, trace?: SplitScrollTrace) => {
   const doc = reader.ownerDocument
   const view = doc.defaultView
   const active = doc.activeElement
@@ -46,6 +57,7 @@ const scrollDiagnostic = (reader: HTMLElement) => {
     clientHeight: reader.clientHeight,
     display: style?.display,
     rendered: reader.getClientRects().length > 0,
+    trace,
   })
 }
 
@@ -54,6 +66,7 @@ describe('Desktop split view', { retries: 0 }, () => {
   let releasingWrites: boolean
   let heldWrites: Array<{ noteId: string; release: () => Promise<void> }>
   let expectedWriteErrors: Set<unknown>
+  let stopScrollTrace: (() => void) | undefined
 
   const holdQueueWrite = (noteId: string, write: () => Promise<void>, register: (release: () => Promise<void>) => void) => {
     if (releasingWrites) return write()
@@ -78,6 +91,8 @@ describe('Desktop split view', { retries: 0 }, () => {
   }
 
   beforeEach(() => {
+    observeWorkspaceCommit = undefined
+    stopScrollTrace = undefined
     restoreNetwork = undefined
     releasingWrites = false
     heldWrites = []
@@ -118,6 +133,9 @@ describe('Desktop split view', { retries: 0 }, () => {
     releasingWrites = true
     // Restore synchronously, even if subsequent asynchronous cleanup fails.
     const errors = new Set<unknown>()
+    try { stopScrollTrace?.() } catch (error) { errors.add(error) }
+    stopScrollTrace = undefined
+    observeWorkspaceCommit = undefined
     try { restoreNetwork?.() } catch (error) { errors.add(error) }
     const pendingBeforeUnmount = getPendingOwnerNotes(user.id).map(note => note.id)
     cy.mount(<></>)
@@ -335,11 +353,59 @@ describe('Desktop split view', { retries: 0 }, () => {
   })
 
   it('captures the live left pane position before delayed scroll events on activation', () => {
+    const trace: SplitScrollTrace = {
+      commits: [],
+      firstReaderCommit: null,
+      scrolls: [],
+      marker: { requested: false, fired: false, at: null, scrollTop: null, connected: null },
+    }
+    const record = <T,>(items: T[], item: T) => {
+      items.push(item)
+      if (items.length > 20) items.shift()
+    }
+    let requestMarker: ((reader: HTMLElement) => void) | undefined
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
     cy.get('[data-cy="workspace-split-button"]').click()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
     cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').then(($preview) => {
       const preview = $preview[0]
+      const doc = preview.ownerDocument
+      const win = doc.defaultView
+      if (!win) throw new Error('Missing preview window')
+      let markerId: number | undefined
+      const commit = (controller: ReturnType<typeof useNoteAppController>) => {
+        const tab = controller.tabs.find(item => item.noteId === 'long')
+        const at = win.performance.now()
+        const active = Boolean(tab && controller.activeTabId === tab.id)
+        const scrollTop = tab?.view.scrollTop ?? null
+        const readerPresent = Boolean(doc.querySelector('[data-testid="split-pane-left"] [data-cy="pull-to-refresh"] > div'))
+        record(trace.commits, { at, active, scrollTop, readerPresent })
+        if (active && readerPresent && !trace.firstReaderCommit) trace.firstReaderCommit = { at, scrollTop }
+      }
+      const onScroll = (event: Event) => {
+        const node = event.target as HTMLElement | null
+        if (!node || typeof node.closest !== 'function') return
+        const surface = node === preview ? 'preview'
+          : node.matches('[data-cy="pull-to-refresh"] > div') && node.closest('[data-testid="split-pane-left"]') ? 'reader' : null
+        if (surface) record(trace.scrolls, { at: win.performance.now(), surface, scrollTop: node.scrollTop, connected: node.isConnected })
+      }
+      observeWorkspaceCommit = commit
+      doc.addEventListener('scroll', onScroll, { capture: true, passive: true })
+      requestMarker = reader => {
+        if (trace.marker.requested) return
+        trace.marker.requested = true
+        markerId = win.requestAnimationFrame(() => {
+          trace.marker.fired = true
+          trace.marker.at = win.performance.now()
+          trace.marker.scrollTop = reader.scrollTop
+          trace.marker.connected = reader.isConnected
+        })
+      }
+      stopScrollTrace = () => {
+        doc.removeEventListener('scroll', onScroll, true)
+        if (markerId !== undefined && !trace.marker.fired) win.cancelAnimationFrame(markerId)
+        if (observeWorkspaceCommit === commit) observeWorkspaceCommit = undefined
+      }
       preview.scrollTop = 200
       preview.dispatchEvent(new Event('scroll'))
       preview.scrollTop = 600
@@ -351,7 +417,8 @@ describe('Desktop split view', { retries: 0 }, () => {
       activate.click()
     })
     cy.get('[data-testid="split-pane-left"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
-      expect($reader[0].scrollTop, `left reader restores the live preview position; ${scrollDiagnostic($reader[0])}`).to.be.greaterThan(500)
+      if ($reader[0]) requestMarker?.($reader[0])
+      expect($reader[0].scrollTop, `left reader restores the live preview position; ${scrollDiagnostic($reader[0], trace)}`).to.be.greaterThan(500)
     }).then(($reader) => {
       const reader = $reader[0]
       reader.scrollTop = 800
