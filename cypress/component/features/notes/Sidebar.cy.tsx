@@ -174,18 +174,18 @@ describe('Sidebar Component', () => {
   })
 
   describe('Sync Status Indicator', () => {
-    it('does not claim synchronization when no queue issue is reported', () => {
+    it('shows green for a checked empty local queue without claiming remote synchronization', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={0} failedCount={0} />))
 
-      cy.get('[title="Sync status"]').should('exist')
-      cy.get('[title="Sync status"]').should('have.class', 'bg-muted-foreground')
+      cy.get('[title="This account on this device: No waiting or failed changes reported"]').should('exist')
+        .and('have.class', 'bg-emerald-500')
     })
 
     it('shows waiting changes for the current account', () => {
       cy.mount(wrapWithProvider(<Sidebar {...createBaseProps()} isOffline={false} pendingCount={3} failedCount={0} />))
 
       cy.get('[title="This account on this device: 3 waiting"]').should('exist')
-      cy.get('[title="This account on this device: 3 waiting"]').should('have.class', 'bg-muted-foreground')
+      cy.get('[title="This account on this device: 3 waiting"]').should('have.class', 'bg-amber-500')
     })
 
     it('shows failed changes for the current account', () => {

@@ -455,9 +455,11 @@ export function useNoteAppController() {
     offlineCache,
     onCachedNotesUnavailable: missing => markLocalUnavailable(missing.map(note => note.id)),
     onCachedNotesAvailable: clearAvailableOnRefresh,
+    // Mobile Back keeps the clean editor mounted; editing mode alone is not pending work.
     hasPendingChanges: id => hasPendingLocalWrites(id) || tabs.some(tab => (
       tab.noteId === id && (tab.saveState !== 'saved' ||
-        tab.mode === 'editing')
+        mountedEditors().some(editor => editor.tabId === tab.id &&
+          (notePaneVisible || editor.handle.hasUnconfirmedChanges?.())))
     )),
     onNoteRefreshed: (note) => {
       clearLocalUnavailable(note.id)
