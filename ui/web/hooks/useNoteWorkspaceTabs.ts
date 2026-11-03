@@ -11,6 +11,7 @@ import {
   openNoteInWorkspace,
   openWorkspaceNoteInPane,
   placeWorkspaceTabInPane,
+  reorderWorkspaceTab,
   resetWorkspaceTabsForNotes,
   setWorkspaceSplit,
   updateWorkspaceTab,
@@ -157,6 +158,12 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
       return placeWorkspaceTabInPane(current, tabId, targetTabId)
     })
   }, [epoch, userId])
+  const reorderTab = useCallback((tabId: string, targetTabId: string, position: 'before' | 'after') => {
+    setState(current => {
+      if (!userId || current.userId !== userId || sessionRef.current.userId !== userId || sessionRef.current.epoch !== epoch) return current
+      return reorderWorkspaceTab(current, tabId, targetTabId, position)
+    })
+  }, [epoch, userId])
   const openNoteInPane = useCallback((note: NoteViewModel, targetTabId: string) => {
     const tabId = createNoteWorkspaceState().activeTabId
     setState(current => {
@@ -221,6 +228,7 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
     openNote,
     openNoteInPane,
     placeTabInPane,
+    reorderTab,
     updateTab,
     updateTabForNote,
     updateSavedTags,

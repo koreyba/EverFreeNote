@@ -269,6 +269,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       preserveWorkspaceForNavigation: cy.stub(),
       addTab: cy.stub().resolves(),
       activateTab: cy.stub().resolves(),
+      reorderTab: cy.stub(),
       closeTab: cy.stub().resolves(),
       tabPendingClose: null,
       hasPendingWorkspaceWrites: false,

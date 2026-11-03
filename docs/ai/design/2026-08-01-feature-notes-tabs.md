@@ -506,3 +506,20 @@ flowchart TD
 `NoteView` places `NoteMetadata` beneath the title, within the existing scrolling document. Each note owns a Radix popover exposing its created/edited timestamps in local date and time format. The visible label uses the existing date-fns dependency, refreshes once per minute, and treats future clock skew as just now. Invalid timestamps have an explicit unavailable state. Keying the component by note ID resets disclosure when the note changes.
 
 The under-title placement was selected over the document footer and a pinned status strip. It removes duplicate date labels and keeps mobile space available for the note and its tools. Scrolling closes the popover and suppresses trigger autofocus for that dismissal so the reader does not jump back up. Normal Escape/close dismissal restores keyboard focus.
+
+#### Tab order and compact metadata spacing (2026-11-03)
+
+Tab reordering is a pure workspace transition: move an existing tab relative to its target without changing active/split IDs or session objects. The existing workspace persistence records the reordered array. This presentation action does not flush or replace editors.
+
+Desktop tab dragging is enabled independently of note-to-pane dragging. Tab drags retain the existing owner-stamped note payload for pane placement and add a tab-specific MIME marker for strip insertion feedback. The strip reads and validates owner/tab identity at drop time; hover relies on the marker because browsers protect drag data until drop. Placement in a split pane and ordering in the tab strip remain distinct actions. A clipped strip scrolls at its edges while dragging and stops on drop, leave or cancellation.
+
+```mermaid
+flowchart LR
+  tab[Desktop tab drag] --> marker[Owner-stamped payload and tab marker]
+  marker --> strip[Tab strip insertion point]
+  strip --> order[Reorder existing tab array]
+  order --> storage[Owner-scoped workspace snapshot]
+  marker --> pane[Existing split-pane placement]
+```
+
+The metadata-to-tag margin becomes compact when tags exist. Untagged notes retain their existing separation from the body, and mobile date buttons retain their 44px touch target.

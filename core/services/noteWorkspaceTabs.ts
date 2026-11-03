@@ -240,6 +240,18 @@ export function placeWorkspaceTabInPane(state: NoteWorkspaceState, tabId: string
   return { ...state, activeTabId: tabId, split: next }
 }
 
+/** Reordering is presentation-only: retain every session and pane assignment. */
+export function reorderWorkspaceTab(state: NoteWorkspaceState, tabId: string, targetTabId: string, position: 'before' | 'after'): NoteWorkspaceState {
+  const from = state.tabs.findIndex(tab => tab.id === tabId)
+  const target = state.tabs.findIndex(tab => tab.id === targetTabId)
+  if (from < 0 || target < 0 || from === target) return state
+  const tabs = state.tabs.filter(tab => tab.id !== tabId)
+  const to = tabs.findIndex(tab => tab.id === targetTabId) + (position === 'after' ? 1 : 0)
+  if (from === to) return state
+  tabs.splice(to, 0, state.tabs[from])
+  return { ...state, tabs }
+}
+
 /** Open a dropped note without discarding the tab that previously filled the pane. */
 export function openWorkspaceNoteInPane(state: NoteWorkspaceState, note: NoteViewModel, targetTabId: string, idFactory: NoteWorkspaceIdFactory = defaultIdFactory): NoteWorkspaceState {
   if (!state.split || (targetTabId !== state.split.leftTabId && targetTabId !== state.split.rightTabId)) return state

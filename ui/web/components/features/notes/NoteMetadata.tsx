@@ -18,7 +18,7 @@ function ExactTimestamp({ value }: { value: string }) {
   return <time dateTime={value}>{date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>
 }
 
-export function NoteMetadata({ createdAt, updatedAt }: { createdAt: string; updatedAt: string }) {
+export function NoteMetadata({ createdAt, updatedAt, className = "mb-6" }: { createdAt: string; updatedAt: string; className?: string }) {
   const [now, setNow] = React.useState(() => Date.now())
   const [open, setOpen] = React.useState(false)
   const closedByScroll = React.useRef(false)
@@ -39,7 +39,7 @@ export function NoteMetadata({ createdAt, updatedAt }: { createdAt: string; upda
     return () => window.removeEventListener("scroll", dismiss, true)
   }, [open])
 
-  return <div className="mb-6">
+  return <div className={className}>
     <Popover open={open} onOpenChange={value => { closedByScroll.current = false; setOpen(value) }}>
       <PopoverTrigger asChild>
         <button type="button" aria-label="Note details" aria-describedby={labelId}

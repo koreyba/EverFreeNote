@@ -1,4 +1,5 @@
 export const NOTE_DRAG_TYPE = 'application/x-everfreenote-note'
+export const NOTE_TAB_DRAG_TYPE = 'application/x-everfreenote-tab'
 
 export type NoteDragPayload = {
   version: 1
@@ -9,6 +10,10 @@ export type NoteDragPayload = {
 
 export function isNoteDrag(data: Pick<DataTransfer, 'types'>): boolean {
   return Array.from(data.types).includes(NOTE_DRAG_TYPE)
+}
+
+export function isNoteTabDrag(data: Pick<DataTransfer, 'types'>): boolean {
+  return Array.from(data.types).includes(NOTE_TAB_DRAG_TYPE)
 }
 
 export function readNoteDrag(data: Pick<DataTransfer, 'getData'>, ownerId: string): NoteDragPayload | null {
