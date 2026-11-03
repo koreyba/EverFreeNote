@@ -3,6 +3,40 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "component"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Web Component"
+    ],
+    "path": "reports/allure/pr-207/run-41709999488-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-207/run-41709999488-attempt-1/",
+    "runId": "41709999488",
+    "runAttempt": "1",
+    "prNumber": "207",
+    "ref": "codex/tab-order-and-note-spacing",
+    "sha": "6ac5dacb2051462c1fd681946ed26ddabe1a11ed",
+    "outcome": "failure",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #207",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-11-03T20:29:03.216Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "e2e"
     ],
     "suiteLabels": [
@@ -615,40 +649,6 @@
     "scopeLabel": "PR #204",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-10-29T11:59:29.126Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/pr-204/run-40858178489-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-204/run-40858178489-attempt-1/",
-    "runId": "40858178489",
-    "runAttempt": "1",
-    "prNumber": "204",
-    "ref": "codex/resizable-notes-sidebar",
-    "sha": "476c485683fa68bc6323478d2044b4b42fe644da",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #204",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-10-29T10:59:56.598Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"

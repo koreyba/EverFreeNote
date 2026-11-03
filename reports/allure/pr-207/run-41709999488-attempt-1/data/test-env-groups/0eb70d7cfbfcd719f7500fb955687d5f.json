@@ -1,0 +1,1 @@
+{"id":"0eb70d7cfbfcd719f7500fb955687d5f","fullName":"everfreenote:cypress/component/editor/ManualSaveOverlap.cy.tsx#Manual save during a transition flush keeps the synchronous void-save contract without autosave","name":"keeps the synchronous void-save contract without autosave","status":"passed","testResultsByEnv":{"default":"64ba8ec3e2a862867ea1d3e6af9dd8d2"}}
