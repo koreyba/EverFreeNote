@@ -7,6 +7,8 @@ import { NotesShell } from '@/components/features/notes/NotesShell'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 
+jest.mock('uuid', () => ({ v4: () => '00000000-0000-4000-8000-000000000001' }))
+
 const mockRouterPush = jest.fn()
 const mockWordPressGetStatus = jest.fn()
 const mockApiKeysGetStatus = jest.fn()

@@ -27,6 +27,7 @@ function TestApp() {
 
 const openTwoNotes = () => {
   cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'First note').click()
+  cy.get('[data-testid="editor-container"]').should('contain', 'First note body')
   cy.get('[data-cy="workspace-split-button"]').click()
   cy.get('[data-testid="split-pane-right"]').should('contain', 'Choose a note')
   cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
@@ -226,8 +227,8 @@ describe('Desktop split view', { retries: 0 }, () => {
   it('activates the already-open note instead of opening a duplicate', () => {
     openTwoNotes()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'First note').click()
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
-    cy.get('[data-testid="split-pane-right"]').contains('Activate').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
+    cy.get('[data-testid="split-pane-right"]').should('not.have.attr', 'data-active-pane')
     cy.get('[data-tab-id] [data-cy="workspace-tab"]').should('have.length', 2)
     cy.get('[data-testid="split-pane-right"]').should('contain', 'Second note body')
   })
@@ -237,26 +238,39 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
     const failedWrite = cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').as('failedWrite')
     failedWrite.rejects(expectedWriteFailure())
+    const waitForSaveFailure = () => {
+      cy.get('@failedWrite').should('have.been.called')
+      cy.then(async () => { await Promise.allSettled(failedWrite.returnValues) })
+      cy.get('[aria-label="Storage unavailable"]').should('exist')
+      cy.then(() => failedWrite.resetHistory())
+    }
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second changed')
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('@failedWrite').should('have.been.called')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    waitForSaveFailure()
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Second changed')
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
-    cy.get('[data-testid="split-pane-left"]').contains('Activate').should('be.visible')
-    cy.focused().should('have.attr', 'aria-label', 'Activate First note')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
+    cy.get('[data-testid="split-pane-left"]').should('not.have.attr', 'data-active-pane')
+    cy.get('[aria-label="Storage unavailable"]').should('exist')
     cy.get('[data-tab-id] [data-cy="workspace-tab"]').should('have.length', 2)
     cy.get('[data-testid="nav-item-tags"]').click()
+    waitForSaveFailure()
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Second changed')
     cy.get('[data-testid="nav-action-settings"]').click()
+    waitForSaveFailure()
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Second changed')
     cy.get('[data-cy="workspace-split-button"]').click()
+    waitForSaveFailure()
+    cy.get('[data-cy="workspace-split-button"]').should('have.attr', 'aria-pressed', 'true')
     cy.get('[aria-label="Note title"]').should('have.value', 'Second changed')
     cy.get('[data-tab-id] [data-cy="workspace-tab"]').should('have.length', 2)
     cy.get('[data-cy="workspace-split-button"]').click()
+    waitForSaveFailure()
+    cy.get('[data-cy="workspace-split-button"]').should('have.attr', 'aria-pressed', 'true')
     cy.get('[aria-label="Note title"]').should('have.value', 'Second changed')
     cy.then(() => failedWrite.restore())
-    cy.contains('button', 'Activate').click()
-    cy.contains('[data-testid^="split-pane-"]', 'Second changed').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('be.visible').and('have.value', 'Second changed')
   })
 
   it('does not create a second tab when opening split cannot save the draft', () => {
@@ -294,6 +308,7 @@ describe('Desktop split view', { retries: 0 }, () => {
 
   it('preserves a pane position when switching again before its first animation frame', () => {
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Paragraph 40 of the long note.')
     cy.get('[data-cy="workspace-split-button"]').click()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
     cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').then(($preview) => {
@@ -308,13 +323,14 @@ describe('Desktop split view', { retries: 0 }, () => {
       const originalFrame = win.requestAnimationFrame
       win.requestAnimationFrame = () => 2147483647
       restoreAnimationFrame = () => { win.requestAnimationFrame = originalFrame }
-      const activate = preview.closest('[data-testid="split-pane-left"]')?.querySelector<HTMLButtonElement>('button[aria-label^="Activate"]')
-      if (!activate) throw new Error('Missing activation button')
+      const activate = preview.closest<HTMLElement>('[data-testid="split-pane-left"]')
+      if (!activate) throw new Error('Missing target pane')
       activate.click()
     })
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-left"] [data-cy="pull-to-refresh"] > div').should('exist')
     cy.then(() => { restoreAnimationFrame?.(); restoreAnimationFrame = undefined })
-    cy.get('[data-testid="split-pane-right"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-right"]').click('topLeft')
     cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').should(($preview) => {
       expect($preview[0].scrollTop, 'the original pane restores its live position').to.be.greaterThan(500)
     })
@@ -322,9 +338,11 @@ describe('Desktop split view', { retries: 0 }, () => {
 
   it('retains a scrolled pane mounted while the workspace is narrow', () => {
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Paragraph 40 of the long note.')
     cy.get('[data-cy="workspace-split-button"]').click()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-left"] [data-cy="pull-to-refresh"] > div').scrollTo(0, 600)
     cy.viewport(1000, 900)
     cy.contains('Enlarge the workspace to show both notes.').should('be.visible')
@@ -339,19 +357,22 @@ describe('Desktop split view', { retries: 0 }, () => {
   it('retains each note scroll position while its pane is activated', () => {
     openTwoNotes()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Paragraph 40 of the long note.')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').scrollTo(0, 600)
     cy.viewport(390, 844)
     cy.viewport(1440, 900)
     cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').should(($surface) => {
       expect($surface[0].scrollTop).to.be.greaterThan(500)
     })
-    cy.get('[data-testid="split-pane-right"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-right"]').click('topLeft')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').should(($surface) => {
       expect($surface[0].scrollTop).to.be.greaterThan(500)
     })
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').scrollTo(0, 1200)
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').should(($surface) => {
       expect($surface[0].scrollTop).to.be.greaterThan(1000)
     })
@@ -365,7 +386,8 @@ describe('Desktop split view', { retries: 0 }, () => {
   it('captures each live pane position before delayed scroll events on activation', () => {
     openTwoNotes()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Paragraph 40 of the long note.')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').then(($preview) => {
       const preview = $preview[0]
       preview.scrollTop = 200
@@ -374,10 +396,11 @@ describe('Desktop split view', { retries: 0 }, () => {
       expect(preview.scrollTop, 'live preview position before activation').to.be.greaterThan(500)
       const pane = preview.closest('[data-testid="split-pane-right"]')
       if (!pane) throw new Error('Missing right pane')
-      const activate = pane.querySelector<HTMLButtonElement>('button[aria-label^="Activate"]')
-      if (!activate) throw new Error('Missing activation button')
+      const activate = pane as HTMLElement
+      if (!activate) throw new Error('Missing target pane')
       activate.click()
     })
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
       expect($reader[0].scrollTop, `active reader restores the live preview position; ${scrollDiagnostic($reader[0])}`).to.be.greaterThan(500)
     }).then(($reader) => {
@@ -386,8 +409,8 @@ describe('Desktop split view', { retries: 0 }, () => {
       reader.dispatchEvent(new Event('scroll'))
       reader.scrollTop = 1200
       expect(reader.scrollTop, 'live reader position before activation').to.be.greaterThan(1000)
-      const activate = reader.ownerDocument.querySelector<HTMLButtonElement>('[data-testid="split-pane-left"] button[aria-label^="Activate"]')
-      if (!activate) throw new Error('Missing activation button')
+      const activate = reader.ownerDocument.querySelector<HTMLElement>('[data-testid="split-pane-left"]')
+      if (!activate) throw new Error('Missing target pane')
       activate.click()
     })
     cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').should(($preview) => {
@@ -413,6 +436,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     }
     let requestMarker: ((reader: HTMLElement) => void) | undefined
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Paragraph 40 of the long note.')
     cy.get('[data-cy="workspace-split-button"]').click()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Second note').click()
     cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').then(($preview) => {
@@ -460,10 +484,11 @@ describe('Desktop split view', { retries: 0 }, () => {
       expect(preview.scrollTop, 'live left preview position before activation').to.be.greaterThan(500)
       const pane = preview.closest('[data-testid="split-pane-left"]')
       if (!pane) throw new Error('Missing left pane')
-      const activate = pane.querySelector<HTMLButtonElement>('button[aria-label^="Activate"]')
-      if (!activate) throw new Error('Missing activation button')
+      const activate = pane as HTMLElement
+      if (!activate) throw new Error('Missing target pane')
       activate.click()
     })
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-left"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
       if ($reader[0]) requestMarker?.($reader[0])
       expect($reader[0].scrollTop, `left reader restores the live preview position; ${scrollDiagnostic($reader[0], trace)}`).to.be.greaterThan(500)
@@ -473,8 +498,8 @@ describe('Desktop split view', { retries: 0 }, () => {
       reader.dispatchEvent(new Event('scroll'))
       reader.scrollTop = 1200
       expect(reader.scrollTop, 'live left reader position before activation').to.be.greaterThan(1000)
-      const activate = reader.ownerDocument.querySelector<HTMLButtonElement>('[data-testid="split-pane-right"] button[aria-label^="Activate"]')
-      if (!activate) throw new Error('Missing activation button')
+      const activate = reader.ownerDocument.querySelector<HTMLElement>('[data-testid="split-pane-right"]')
+      if (!activate) throw new Error('Missing target pane')
       activate.click()
     })
     cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').should(($preview) => {
@@ -485,12 +510,15 @@ describe('Desktop split view', { retries: 0 }, () => {
   it('does not apply the previous note scroll position to another note in the same tab', () => {
     openTwoNotes()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Paragraph 40 of the long note.')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').scrollTo(0, 800)
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Other long note').click()
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').should(($surface) => {
       expect($surface[0].scrollTop).to.equal(0)
     })
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [data-cy="split-note-preview"]').should(($surface) => {
       expect($surface[0].scrollTop).to.equal(0)
     })
@@ -499,7 +527,10 @@ describe('Desktop split view', { retries: 0 }, () => {
   it('does not apply delayed scroll from the previous note to its replacement', () => {
     openTwoNotes()
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Paragraph 40 of the long note.')
+    cy.get('[data-testid="split-pane-right"]').should('contain', 'Paragraph 40 of the long note.')
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').then(($reader) => {
       const reader = $reader[0]
       reader.scrollTop = 200
@@ -512,10 +543,12 @@ describe('Desktop split view', { retries: 0 }, () => {
       replacement.click()
     })
     cy.get('[data-testid="split-pane-right"]').should('contain.text', 'Other long note')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
       expect($reader[0].scrollTop, 'replacement starts at the top').to.equal(0)
     })
     cy.tick(500)
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="pull-to-refresh"] > div').should(($reader) => {
       expect($reader[0].scrollTop, 'delayed old-note event does not change the replacement').to.equal(0)
     })
@@ -529,10 +562,10 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-cy="editor-content"] .ProseMirror').type(paragraphs, { delay: 0 })
     cy.get('[data-cy="editor-content"]').parents('.overflow-y-auto').first().scrollTo(0, 600)
     cy.get('[data-cy="workspace-split-button"]').click()
-    cy.get('[data-testid="split-pane-left"] [data-cy="split-note-preview"]').should(($surface) => {
+    cy.get('[data-testid="split-pane-left"] [data-cy="editor-content"]').parents('.overflow-y-auto').first().should(($surface) => {
       expect($surface[0].scrollTop).to.be.greaterThan(400)
     })
-    cy.get('[data-testid="split-pane-left"]').should('contain', 'New scrolling draft')
+    cy.get('[data-testid="split-pane-left"] [aria-label="Note title"]').should('have.value', 'New scrolling draft')
   })
 
   it('preserves an unfinished editor through mobile and back to desktop', () => {
@@ -560,6 +593,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-cy="add-tab-button"]').click()
     cy.get('[data-testid="split-pane-right"]').should('contain', 'Choose a note')
     cy.contains('[data-testid="sidebar-container"] [data-testid="note-card"] button', 'Long note').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Paragraph 40 of the long note.')
     cy.get('[data-testid="split-pane-left"]').should('contain', 'First note body')
     cy.get('[data-testid="split-pane-right"]').should('contain', 'Paragraph 1')
     cy.get('[data-tab-id] [data-cy="workspace-tab"]').should('have.length', 3)
@@ -577,14 +611,14 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.spy(webOfflineStorageAdapter, 'saveNote').as('noteWrites')
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second changed')
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.focused().should('have.attr', 'data-testid', 'split-pane-left')
-    cy.get('[data-testid="split-pane-right"]').should('contain', 'Second changed')
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Second changed')
     cy.get('[data-testid="split-pane-left"] [data-cy="note-edit-button"]').click()
     cy.get('[data-testid="split-pane-left"] [aria-label="Note title"]').clear().type('First changed')
-    cy.get('[data-testid="split-pane-right"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-right"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Second changed')
-    cy.get('[data-testid="split-pane-left"]').should('contain', 'First changed')
+    cy.get('[data-testid="split-pane-left"] [aria-label="Note title"]').should('have.value', 'First changed')
     cy.get('@noteWrites').should((spy) => {
       const calls = (spy as unknown as { getCalls: () => Array<{ args: Array<{ id: string, title: string }> }> }).getCalls()
       const writes = calls.map((call) => call.args[0])
@@ -623,17 +657,17 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.tick(4000)
     cy.wrap(null).should(() => expect(releases, `Synthetic save state: ${saveDiagnostic()}`).to.have.length(1))
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second version')
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     // Typing remains possible while the transition is waiting for storage.
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Latest version')
     cy.then(() => releases[0]())
 
     cy.wrap(null).should(() => expect(releases, `Synthetic save state: ${saveDiagnostic()}`).to.have.length(2))
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => releases[1]())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
-    cy.get('[data-testid="split-pane-right"]').should('contain', 'Latest version')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
+    cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'Latest version')
     cy.get('@saved').should(spy => {
       const writes = (spy as unknown as { getCalls: () => Array<{ args: Array<{ id: string, title: string }> }> }).getCalls().map(call => call.args[0])
       expect(writes.some(note => note.id === 'second' && note.title === 'Latest version')).to.equal(true)
@@ -691,17 +725,17 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.tick(4000)
     cy.wrap(null).should(() => expect(release).to.be.a('function'))
     cy.get('[aria-label="Note title"]').clear().type('Latest failed edit')
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.then(() => release!())
     cy.get('@write').should(spy => {
       const calls = (spy as unknown as { getCalls: () => Array<{ args: Array<{ payload?: { title?: string } }> }> }).getCalls()
       expect(calls.some(call => call.args[0].payload?.title === 'Latest failed edit')).to.equal(true)
     })
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[aria-label="Note title"]').should('have.value', 'Latest failed edit')
     cy.then(() => write.restore())
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
       expect(cached.find(note => note.id === 'second')?.title).to.equal('Latest failed edit')
     })
@@ -727,13 +761,13 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.wrap(null).should(() => expect(releases).to.have.length(1))
     cy.get('[aria-label="Note title"]').clear().type('Latest manual save')
     cy.get('[data-cy="note-save-button"]').click()
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => releases[0]())
     cy.wrap(null).should(() => expect(releases).to.have.length(2))
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => releases[1]())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
       expect(cached.find(note => note.id === 'second')?.title).to.equal('Latest manual save')
     })
@@ -761,14 +795,14 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[aria-label="Note title"]').clear().type('Older offline')
     cy.tick(4000)
     cy.wrap(null).should(() => expect(releases).to.have.length(1))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[aria-label="Note title"]').clear().type('Manual offline')
     cy.get('[data-cy="note-save-button"]').click()
     cy.then(() => releases[0]())
     cy.wrap(null).should(() => expect(releases).to.have.length(2))
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => releases[1]())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => waitForOwnerNoteWrites(user.id, 'second'))
     cy.then(() => expect(titles.filter(title => title === 'Manual offline')).to.have.length(1))
     cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
@@ -803,14 +837,14 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[aria-label="Note title"]').clear().type('Older online')
     cy.tick(4000)
     cy.wrap(null).should(() => expect(releases).to.have.length(1))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[aria-label="Note title"]').clear().type('Manual online')
     cy.get('[data-cy="note-save-button"]').click()
     cy.then(() => releases[0]())
     cy.wrap(null).should(() => expect(releases).to.have.length(2))
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => releases[1]())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => waitForOwnerNoteWrites(user.id, 'second'))
     cy.then(() => expect(titles.filter(title => title === 'Manual online')).to.have.length(1))
     cy.wrap(null).should(() => expect(remoteTitles).to.include('Manual online'))
@@ -836,7 +870,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[aria-label="Note title"]').clear().type('Stable offline')
     cy.tick(4000)
     cy.wrap(null).should(() => expect(release).to.be.a('function'))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[aria-label="Note title"]').clear().type('Failed manual')
     cy.get('[data-cy="note-save-button"]').click()
     cy.get('[aria-label="Note title"]').clear().type('Stable offline')
@@ -848,11 +882,11 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
       expect(cached.find(note => note.id === 'second')?.title).to.equal('Failed manual')
     })
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[aria-label="Note title"]').should('have.value', 'Stable offline')
     cy.then(() => write.restore())
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
       expect(cached.find(note => note.id === 'second')?.title).to.equal('Stable offline')
     })
@@ -956,8 +990,8 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
     cy.tick(4000)
     cy.wrap(null).should(() => expect(releases).to.have.length(1))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tag"]').click()
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tags"]').type('first,second{enter}')
     cy.contains('[data-testid="split-pane-right"] [data-cy="interactive-tag"]', 'first').find('button').click()
@@ -966,9 +1000,9 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.tick(300)
     cy.then(() => releases[0]())
     cy.wrap(null).should(() => expect(releases, 'a second durable write for the latest tags').to.have.length(2))
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => releases[1]())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
       const writes = queue.filter(item => item.noteId === 'second').sort((a, b) => a.clientUpdatedAt.localeCompare(b.clientUpdatedAt))
       expect(writes[writes.length - 1]?.payload?.tags).to.deep.equal(['third', 'second'])
@@ -1002,11 +1036,11 @@ describe('Desktop split view', { retries: 0 }, () => {
     })
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tag"]').click()
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tags"]').type('temporary{enter}')
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.wrap(null).should(() => expect(releases).to.have.length(1))
     cy.contains('[data-testid="split-pane-right"] [data-cy="interactive-tag"]', 'temporary').find('button').click()
     cy.then(() => releases[0]())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => webOfflineStorageAdapter.loadNotes()).should(cached => {
       expect(cached.find(note => note.id === 'second')?.tags).to.deep.equal([])
     })
@@ -1035,16 +1069,16 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
     cy.tick(4000)
     cy.wrap(null).should(() => expect(release).to.be.a('function'))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tag"]').click()
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tags"]').type('late-tag{enter}')
     cy.then(() => release!())
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="interactive-tag"]').should('contain', 'late-tag')
     cy.get('[aria-label="Storage unavailable"]').should('exist')
     cy.then(() => stub.restore())
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
       expect(queue.some(item => item.noteId === 'second' && item.payload?.tags?.includes('late-tag'))).to.equal(true)
     })
@@ -1068,11 +1102,11 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
     cy.tick(4000)
     cy.wrap(null).should(() => expect(release).to.be.a('function'))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tag"]').click()
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tags"]').type('online-tag{enter}')
     cy.then(() => release!())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.wrap(null).should(() => expect(remoteWrites.some(tags => tags.includes('online-tag')), JSON.stringify(remoteWrites)).to.equal(true))
   })
 
@@ -1097,17 +1131,23 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
     cy.tick(4000)
     cy.wrap(null).should(() => expect(release).to.be.a('function'))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tag"]').click()
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tags"]').type('offline-safe{enter}')
     cy.then(() => release!())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.wrap(null).should(() => expect(remoteWrites.some(tags => tags.includes('offline-safe')), JSON.stringify(remoteWrites)).to.equal(true))
     cy.wrap(null).should(() => {
       expect(latestWriteId).to.be.a('string')
       expect(markStatus).to.have.been.calledWith(latestWriteId, 'failed')
     })
-    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+    cy.then(async () => {
+      // A spy records the call before IndexedDB commits the failed status.
+      await Promise.all(markStatus.getCalls()
+        .filter(call => call.args[0] === latestWriteId && call.args[1] === 'failed')
+        .map(call => call.returnValue))
+      return webOfflineStorageAdapter.getQueue()
+    }).should(queue => {
       expect(queue.some(item => item.id === latestWriteId && item.payload?.tags?.includes('offline-safe') && item.status === 'failed'), JSON.stringify(queue)).to.equal(true)
     })
   })
@@ -1335,11 +1375,11 @@ describe('Desktop split view', { retries: 0 }, () => {
       fileName: 'synthetic.png', mimeType: 'image/png',
     }, { force: true })
     cy.wrap(null).should(() => expect(releaseRead).to.be.a('function'))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.contains('[data-testid="split-pane-right"] [role="status"]', 'Adding image...').should('be.visible')
     cy.then(() => releaseRead!())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] img').should('have.attr', 'src').and('include', 'data:image/png;base64,')
     cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
       expect(queue.some(item => item.noteId === 'second' && item.payload?.description?.includes('data:image/png;base64,'))).to.equal(true)
@@ -1389,7 +1429,7 @@ describe('Desktop split view', { retries: 0 }, () => {
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Before image')
     cy.tick(4000)
     cy.wrap(null).should(() => expect(releaseWrite).to.be.a('function'))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     let releaseRead: (() => void) | undefined
     cy.window().then(win => {
       const originalRead = win.FileReader.prototype.readAsDataURL
@@ -1403,10 +1443,10 @@ describe('Desktop split view', { retries: 0 }, () => {
     }, { force: true })
     cy.wrap(null).should(() => expect(releaseRead).to.be.a('function'))
     cy.then(() => releaseWrite!())
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.contains('[data-testid="split-pane-right"] [role="status"]', 'Adding image...').should('be.visible')
     cy.then(() => releaseRead!())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] img').should('exist')
     cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
       expect(queue.some(item => item.noteId === 'second' && item.payload?.description?.includes('data:image/png;base64,'))).to.equal(true)
@@ -1428,14 +1468,14 @@ describe('Desktop split view', { retries: 0 }, () => {
       contents: Cypress.Buffer.from('not a PNG'), fileName: 'broken.png', mimeType: 'image/png',
     }, { force: true })
     cy.wrap(null).should(() => expect(releaseRead).to.be.a('function'))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => releaseRead!())
     cy.get('@imageError').should('have.been.calledWith', 'Could not read the image')
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] [data-cy="note-read-button"]').should('be.enabled')
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
   })
 
   it('does not let a simultaneous Read bypass an image save during pane activation', () => {
@@ -1463,13 +1503,13 @@ describe('Desktop split view', { retries: 0 }, () => {
       fileName: 'synthetic.png', mimeType: 'image/png',
     }, { force: true })
     cy.wrap(null).should(() => expect(releaseRead).to.be.a('function'))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [data-cy="note-read-button"]').click()
     cy.then(() => releaseRead!())
     cy.wrap(null).should(() => expect(releaseWrite, 'the image must enter the durable queue').to.be.a('function'))
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => releaseWrite!())
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('[data-testid="split-pane-right"] img').should('exist')
     cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
       expect(queue.some(item => item.noteId === 'second' && item.payload?.description?.includes('data:image/png;base64,'))).to.equal(true)
@@ -1572,17 +1612,17 @@ describe('Desktop split view', { retries: 0 }, () => {
       contents: Cypress.Buffer.from('not a PNG'), fileName: 'broken.png', mimeType: 'image/png',
     }, { force: true })
     cy.wrap(null).should(() => expect(releaseRead).to.be.a('function'))
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.then(() => releaseRead!())
     cy.get('@imageError').should('have.been.calledWith', 'Could not read the image')
-    cy.get('[data-testid="split-pane-right"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-right"]').should('have.attr', 'data-active-pane', 'true')
     cy.wrap(null).should(() => expect(saveState).to.equal('dirty'))
     cy.tick(4000)
     cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
       expect(queue.some(item => item.noteId === 'second' && item.payload?.tags?.includes('pending-tag'))).to.equal(false)
     })
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
       expect(queue.some(item => item.noteId === 'second' && item.payload?.tags?.includes('pending-tag'))).to.equal(true)
     })

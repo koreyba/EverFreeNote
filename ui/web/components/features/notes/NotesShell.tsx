@@ -27,6 +27,9 @@ import { SearchResultsPanel } from "@/components/features/notes/SearchResultsPan
 import type { SearchResultsPanelHandle } from "@/components/features/notes/SearchResultsPanel"
 import type { Note } from "@core/types/domain"
 import type { NoteAppController } from "@ui/web/hooks/useNoteAppController"
+import { useNotePaneSession } from "@ui/web/hooks/useNotePaneSession"
+import { NoteDragProvider } from "@ui/web/providers/NoteDragProvider"
+import { isNoteDrag, readNoteDrag } from "@ui/web/lib/noteDrag"
 import { normalizeTag, normalizeTagList } from "@ui/web/lib/tags"
 import { useAllTagsQuery } from "@ui/web/hooks/useNotesQuery"
 import { useIsMobile } from "@ui/web/hooks/use-mobile"
@@ -35,19 +38,18 @@ import { WordPressSettingsService } from "@core/services/wordpressSettings"
 import { ApiKeysSettingsService } from "@core/services/apiKeysSettings"
 import { saveSettingsReturnState } from "@ui/web/lib/settingsNavigationState"
 import { consumeActiveSettingsNoteReturnPath, readActiveSettingsNoteReturnPath } from "@ui/web/lib/aiIndexNavigationState"
-import { getTabLabel, NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
+import { NotesTabStrip } from "@/components/features/notes/NotesTabStrip"
 import { MobileNotesTabMenu } from "@/components/features/notes/MobileNotesTabMenu"
-import { SplitEmptyPane, SplitNotePreview } from "@/components/features/notes/SplitNotePreview"
+import { SplitEmptyPane } from "@/components/features/notes/SplitNotePreview"
 import type { RegisterViewScrollSurface } from "@/components/features/notes/viewScrollSurface"
 import { useSplitViewPreference } from "@ui/web/providers/SplitViewPreferenceProvider"
 import { DeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
-import { Button } from "@/components/ui/button"
 import { SignOutGuardDialog } from "@/components/features/auth/SignOutGuardDialog"
 
 import { MobileWorkspace } from "@/components/features/navigation/MobileWorkspace"
 import { NavRail } from "@/components/features/navigation/NavRail"
 import { TagsPage } from "@/components/features/tags/TagsPage"
-import { MAX_NOTE_WORKSPACE_TABS } from "@core/services/noteWorkspaceTabs"
+import { MAX_NOTE_WORKSPACE_TABS, type NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -106,11 +108,18 @@ export function NotesShell({ controller }: NotesShellProps) {
   const workspaceRef = React.useRef<HTMLDivElement | null>(null)
   const [workspaceWidth, setWorkspaceWidth] = React.useState(0)
   const [splitOpening, setSplitOpening] = React.useState(false)
+  const [dropTarget, setDropTarget] = React.useState<string | null>(null)
   const [pendingSplit, setPendingSplit] = React.useState<{ leftTabId: string, rightTabId: string, session?: { userId: string | null, epoch: number } } | null>(null)
   const splitOpeningRef = React.useRef(false)
-  const paneFocusTargetRef = React.useRef<string | null>(null)
+  const paneFocusPendingRef = React.useRef<string | null>(null)
   const viewScrollsRef = React.useRef(new Map<string, ViewScrollPosition>())
   const viewScrollSurfacesRef = React.useRef(new Map<string, ViewScrollSurface>())
+
+  React.useEffect(() => {
+    const clearDropTarget = () => setDropTarget(null)
+    window.addEventListener('dragend', clearDropTarget)
+    return () => window.removeEventListener('dragend', clearDropTarget)
+  }, [])
 
   React.useEffect(() => {
     try {
@@ -181,6 +190,8 @@ export function NotesShell({ controller }: NotesShellProps) {
     registerWorkspaceViewCapture,
     canAddTab = true,
     workspaceHydrated = true,
+    hasUnconfirmedWorkspaceChanges,
+    prepareTagManagement,
     handleSelectNote,
     hideNotePane,
     isSearchPanelOpen,
@@ -205,13 +216,13 @@ export function NotesShell({ controller }: NotesShellProps) {
   React.useLayoutEffect(() => { activeTabIdRef.current = activeTabId }, [activeTabId])
   React.useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
-      if (tabs.some(tab => tab.saveState !== 'saved') || noteEditorRef.current?.hasUnconfirmedChanges?.()) {
+      if (tabs.some(tab => tab.saveState !== 'saved') || hasUnconfirmedWorkspaceChanges?.() || noteEditorRef.current?.hasUnconfirmedChanges?.()) {
         event.preventDefault()
       }
     }
     window.addEventListener('beforeunload', beforeUnload)
     return () => window.removeEventListener('beforeunload', beforeUnload)
-  }, [tabs])
+  }, [hasUnconfirmedWorkspaceChanges, tabs])
   const registerViewScrollSurface = React.useCallback<RegisterViewScrollSurface>((tabId, noteId, node, cancelPending) => {
     const surface = { noteId, node, cancelPending, session: getSessionSnapshot?.() }
     viewScrollSurfacesRef.current.set(tabId, surface)
@@ -219,7 +230,7 @@ export function NotesShell({ controller }: NotesShellProps) {
       cancelPending()
       if (viewScrollSurfacesRef.current.get(tabId) !== surface) return
       const tab = tabsRef.current.find(item => item.id === tabId)
-      const editing = tabId === activeTabIdRef.current && tab?.mode === "editing"
+      const editing = tab?.mode === "editing"
       if (tab && tab.noteId === noteId && !editing && isCurrentSession(surface.session) && isVisibleScrollSurface(node)) {
         const scrollTop = node.scrollTop
         viewScrollsRef.current.set(tabId, { noteId, scrollTop, session: surface.session })
@@ -237,7 +248,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   }, [isCurrentSession])
   const captureViewScrolls = React.useCallback(() => {
     for (const tab of tabsRef.current) {
-      const editing = tab.id === activeTabIdRef.current && tab.mode === "editing"
+      const editing = tab.mode === "editing"
       if (editing) continue
       const surface = viewScrollSurfacesRef.current.get(tab.id)
       if (surface?.noteId === tab.noteId && isCurrentSession(surface.session)) {
@@ -318,20 +329,19 @@ export function NotesShell({ controller }: NotesShellProps) {
     })
   }, [activeTabId, setSplit, splitEnabled, tabs])
 
-  React.useEffect(() => {
-    if (paneFocusTargetRef.current !== activeTabId) return
-    paneFocusTargetRef.current = null
-    workspaceRef.current?.querySelector<HTMLElement>('[data-active-pane="true"]')?.focus()
-  }, [activeTabId])
-
   const handleActivatePane = React.useCallback(async (tabId: string) => {
-    paneFocusTargetRef.current = tabId
-    if (!(await activateTab(tabId))) paneFocusTargetRef.current = null
+    if (tabId === activeTabIdRef.current || paneFocusPendingRef.current === tabId) return
+    paneFocusPendingRef.current = tabId
+    try { await activateTab(tabId) } finally {
+      if (paneFocusPendingRef.current === tabId) paneFocusPendingRef.current = null
+    }
   }, [activateTab])
 
   const handleToggleSplit = React.useCallback(async () => {
     if (!splitEnabled || !isSplitEnabled()) return
     if (split) {
+      const started = getSessionSnapshot?.()
+      if (!(await prepareTagManagement()) || !isCurrentSession(started)) return
       captureViewScrolls()
       setSplit?.(null)
       return
@@ -353,7 +363,7 @@ export function NotesShell({ controller }: NotesShellProps) {
       splitOpeningRef.current = false
       setSplitOpening(false)
     }
-  }, [activeTabId, addTab, captureViewScrolls, getSessionSnapshot, isCurrentSession, isSplitEnabled, pendingSplit, setSplit, split, splitEnabled, tabs])
+  }, [activeTabId, addTab, captureViewScrolls, getSessionSnapshot, isCurrentSession, isSplitEnabled, pendingSplit, prepareTagManagement, setSplit, split, splitEnabled, tabs])
 
   const checkTagCoverageRef = React.useRef(checkTagCoverage)
   React.useEffect(() => { checkTagCoverageRef.current = checkTagCoverage }, [checkTagCoverage])
@@ -499,9 +509,16 @@ export function NotesShell({ controller }: NotesShellProps) {
       : { ...displayedSplit, rightTabId: activeTabId, focusedTabId: activeTabId }
   }
   const showBothPanes = Boolean(displayedSplit && !isMobile && workspaceWidth >= MIN_SPLIT_WORKSPACE_WIDTH)
-  const paneIds = displayedSplit ? [displayedSplit.leftTabId, displayedSplit.rightTabId] : [activeTabId]
+  // A preference change can arrive from another browser tab during typing.
+  // Keep paired sessions mounted while presenting only the focused one.
+  const retainedSplit = !splitEnabled && split
+    && (activeTabId === split.leftTabId || activeTabId === split.rightTabId)
+    && tabs.some(tab => tab.id === split.leftTabId) && tabs.some(tab => tab.id === split.rightTabId) ? split : null
+  const mountedSplit = displayedSplit ?? retainedSplit
+  const paneIds = mountedSplit ? [mountedSplit.leftTabId, mountedSplit.rightTabId] : [activeTabId]
 
   return (
+    <NoteDragProvider ownerId={user?.id ?? null} enabled={showBothPanes}>
     <MobileWorkspace
       viewKey={`${activeMainView}:${activeTabId}:${selectedNote?.id ?? "list"}:${isEditing}:${isSearchPanelOpen}`}
       className="flex h-[100dvh] max-h-[100dvh] min-h-[100svh] bg-muted/20 overflow-hidden relative"
@@ -578,7 +595,8 @@ export function NotesShell({ controller }: NotesShellProps) {
               onBulkDelete={deleteSelectedNotes}
               onClearTagFilter={handleClearTagFilter}
               onOpenSettings={() => void handleOpenSettings()}
-              onCreateNote={handleCreateNote}
+              onCreateNote={() => void handleCreateNote()}
+              createNoteDestination={showBothPanes ? (activeTabId === displayedSplit?.leftTabId ? "left" : "right") : undefined}
               onSignOut={handleSignOut}
               noteListLayout={noteListLayout}
               onChangeNoteListLayout={handleChangeNoteListLayout}
@@ -631,33 +649,52 @@ export function NotesShell({ controller }: NotesShellProps) {
                   const tab = tabs.find((item) => item.id === tabId)
                   const active = tabId === activeTabId
                   const label = index === 0 ? "left" : "right"
+                  const Pane = controller.paneSaveServices && tab ? WorkspaceEditorPane : EditorPane
                   return (
                     <section
                       key={tabId}
                       aria-label={displayedSplit ? `${label === "left" ? "Left" : "Right"} note pane` : undefined}
                       data-testid={displayedSplit ? `split-pane-${label}` : undefined}
                       data-active-pane={active ? "true" : undefined}
-                      tabIndex={-1}
-                      className={cn("flex min-h-0 min-w-0 flex-1 flex-col", displayedSplit && index === 1 && showBothPanes && "border-l border-border", displayedSplit && !showBothPanes && !active && "hidden")}
+                      data-drop-target={dropTarget === tabId ? "true" : undefined}
+                      onDragOverCapture={event => {
+                        if (!showBothPanes || !isNoteDrag(event.dataTransfer)) return
+                        event.preventDefault()
+                        event.stopPropagation()
+                        event.dataTransfer.dropEffect = event.dataTransfer.effectAllowed === "move" ? "move" : "copy"
+                        setDropTarget(tabId)
+                      }}
+                      onDragLeave={event => {
+                        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(current => current === tabId ? null : current)
+                      }}
+                      onDropCapture={event => {
+                        if (!showBothPanes || !isNoteDrag(event.dataTransfer)) return
+                        event.preventDefault()
+                        event.stopPropagation()
+                        setDropTarget(null)
+                        const payload = user && readNoteDrag(event.dataTransfer, user.id)
+                        if (payload) void controller.openDraggedNoteInPane(payload, tabId)
+                      }}
+                      tabIndex={displayedSplit ? 0 : -1}
+                      onClickCapture={() => {
+                        if (displayedSplit) void handleActivatePane(tabId)
+                      }}
+                      onFocusCapture={(event) => {
+                        if (displayedSplit && !event.currentTarget.contains(event.relatedTarget as Node | null)) void handleActivatePane(tabId)
+                      }}
+                      className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col", displayedSplit && index === 1 && showBothPanes && "border-l border-border", !showBothPanes && !active && "hidden")}
                     >
-                      {displayedSplit && showBothPanes && (
-                        <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-border/50 bg-muted/20 px-4">
-                          <span className="min-w-0 truncate text-xs font-medium text-muted-foreground">
-                            {label === "left" ? "Left" : "Right"} · {tab ? getTabLabel(tab) : "Note"}
-                          </span>
-                          {active ? (
-                            <span className="shrink-0 text-xs font-medium text-primary">Active</span>
-                          ) : (
-                            <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 text-xs" aria-label={`Activate ${tab ? getTabLabel(tab) : "note"}`} onClick={() => void handleActivatePane(tabId)}>
-                              Activate
-                            </Button>
-                          )}
+                      {dropTarget === tabId && (
+                        <div className="pointer-events-none absolute inset-1 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/5">
+                          <span className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm">Open note in {label} pane</span>
                         </div>
                       )}
-                      {active ? (
+                      {
                         displayedSplit && tab && !tab.note && tab.mode !== "editing" ? <SplitEmptyPane /> : (
-                          <EditorPane
+                          <Pane
                             controller={controller}
+                            tab={tab}
+                            visible={showBothPanes || active}
                             onBack={() => { void handleBackFromNote().catch(() => undefined) }}
                             noteEditorRef={noteEditorRef}
                             wordpressConfigured={wordpressConfigured}
@@ -667,9 +704,7 @@ export function NotesShell({ controller }: NotesShellProps) {
                             registerViewScrollSurface={registerViewScrollSurface}
                           />
                         )
-                      ) : tab && (
-                        <SplitNotePreview key={tab.noteId === null ? "empty" : `note:${tab.noteId}`} tab={tab} visible={showBothPanes} onViewSessionChange={(view) => handleTabViewSessionChange?.(tabId, tab.noteId, view)} onViewScrollCapture={(scrollTop, node) => recordViewScroll(tabId, tab.noteId, scrollTop, node)} registerViewScrollSurface={registerViewScrollSurface} />
-                      )}
+                      }
                     </section>
                   )
                 })}
@@ -686,6 +721,7 @@ export function NotesShell({ controller }: NotesShellProps) {
         onCancel={controller.cancelSignOut ?? (() => {})}
         onDiscard={() => void controller.discardAndSignOut?.()} />
     </MobileWorkspace>
+    </NoteDragProvider>
   )
 }
 
@@ -723,8 +759,25 @@ function ListPane({ controller, layout }: { controller: NoteAppController; layou
   )
 }
 
+function WorkspaceEditorPane(props: React.ComponentProps<typeof EditorPane>) {
+  const tab = props.tab ?? props.controller.activeTab
+  const controller = useNotePaneSession(tab, props.controller)
+  const editorRef = React.useRef<NoteEditorHandle | null>(null)
+  const focused = tab.id === props.controller.activeTabId
+  const register = props.controller.registerPaneEditorRef
+  React.useLayoutEffect(() => {
+    register(tab.id, editorRef)
+    return () => register(tab.id, null)
+  }, [register, tab.id])
+  React.useImperativeHandle<NoteEditorHandle | null, NoteEditorHandle | null>(focused ? props.noteEditorRef : undefined, () => editorRef.current)
+  return <EditorPane {...props} controller={controller} noteEditorRef={editorRef} focused={focused} />
+}
+
 function EditorPane({
   controller,
+  tab,
+  visible,
+  focused = true,
   onBack,
   noteEditorRef,
   wordpressConfigured,
@@ -734,6 +787,9 @@ function EditorPane({
   registerViewScrollSurface,
 }: {
   controller: NoteAppController
+  tab?: NoteWorkspaceTab
+  visible: boolean
+  focused?: boolean
   onBack: () => void
   noteEditorRef: React.RefObject<NoteEditorHandle | null>
   wordpressConfigured: boolean
@@ -743,10 +799,6 @@ function EditorPane({
   registerViewScrollSurface: RegisterViewScrollSurface
 }) {
   const {
-    selectedNote,
-    activeTab,
-    activeTabId,
-    isEditing,
     saving,
     autoSaving,
     lastSavedAt,
@@ -757,6 +809,10 @@ function EditorPane({
     handleRemoveTagFromNote,
     notes,
   } = controller
+  const activeTab = tab ?? controller.activeTab
+  const activeTabId = activeTab.id
+  const isEditing = controller.isEditing
+  const selectedNote = controller.selectedNote
 
   const { user, getSessionSnapshot } = useSupabase()
   const allTagsQuery = useAllTagsQuery({ userId: user?.id, enabled: !!user })
@@ -839,14 +895,16 @@ function EditorPane({
       <NoteView
         key={`workspace-tab-${activeTabId}-note-${selectedNote.id}`}
         note={selectedNote}
-        onEdit={() => handleEditNote(selectedNote)}
+        onEdit={() => void handleEditNote(selectedNote)}
         onDelete={() => handleDeleteNote(selectedNote)}
         onTagClick={controller.handleTagClick}
         onRemoveTag={(tag) => handleRemoveTagFromNote(selectedNote.id, tag)}
         onBack={onBack}
         wordpressConfigured={wordpressConfigured}
         initialScrollTop={activeTab.view.scrollTop}
-        onRefresh={controller.refreshSelectedNote}
+        onRefresh={focused ? controller.refreshSelectedNote : undefined}
+        visible={visible}
+        preview={!focused}
         onViewSessionChange={(view) => controller.handleTabViewSessionChange(activeTabId, activeTab.noteId, view)}
         onViewScrollCapture={onReaderScroll}
         viewTabId={activeTabId}

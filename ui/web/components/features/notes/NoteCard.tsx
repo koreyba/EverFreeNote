@@ -10,6 +10,7 @@ import type { Note, SearchResult } from "@core/types/domain"
 import { cn } from "@ui/web/lib/utils"
 import { useLongPress } from "@ui/web/hooks/useLongPress"
 import { selectableSurfaceStateClasses } from "@ui/web/lib/selectableSurfaceStyles"
+import { useNoteDragSource } from "@ui/web/providers/NoteDragProvider"
 
 type NoteRecord = Note & {
   content?: string | null
@@ -72,9 +73,12 @@ function CompactNoteCard({
   longPressHandlers,
   formatDate,
 }: CardInternalProps) {
+  const drag = useNoteDragSource()
   return (
     <div
       data-testid="note-card"
+      draggable={drag.enabled && !selectionMode}
+      onDragStart={event => { if (selectionMode) event.preventDefault(); else drag.start(event, { noteId: note.id }) }}
       onClick={handleCardClick}
       role="none"
       className={cn(
@@ -155,6 +159,7 @@ function SearchNoteCard({
   longPressHandlers,
   formatDate,
 }: CardInternalProps) {
+  const drag = useNoteDragSource()
   const searchNote = note as SearchResult
   const rank = searchNote.rank ?? 0
 
@@ -172,6 +177,8 @@ function SearchNoteCard({
   return (
     <article
       data-testid="note-card"
+      draggable={drag.enabled && !selectionMode}
+      onDragStart={event => { if (selectionMode) event.preventDefault(); else drag.start(event, { noteId: note.id }) }}
       onClick={handleCardClick}
       role="none"
       {...longPressHandlers}

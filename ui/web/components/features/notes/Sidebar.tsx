@@ -41,6 +41,7 @@ interface SidebarProps {
   onOpenSearch: () => void
   onOpenSettings: () => void
   onCreateNote: () => void
+  createNoteDestination?: "left" | "right"
   onSignOut: () => void
   noteListLayout?: NoteListLayout
   onChangeNoteListLayout?: (layout: NoteListLayout) => void
@@ -74,6 +75,7 @@ export function Sidebar({
   onOpenSearch,
   onOpenSettings,
   onCreateNote,
+  createNoteDestination,
   onSignOut,
   noteListLayout = "list",
   onChangeNoteListLayout,
@@ -192,6 +194,11 @@ export function Sidebar({
               New Note
             </Button>
           </div>
+          {createNoteDestination && (
+            <p className="text-center text-xs text-muted-foreground" aria-live="polite">
+              Opens in {createNoteDestination} pane
+            </p>
+          )}
           <div className="notes-sidebar-count flex items-center justify-between gap-3">
             <p className="min-w-0 text-[11px] text-muted-foreground tracking-wide uppercase font-semibold">
               {notesCountText}

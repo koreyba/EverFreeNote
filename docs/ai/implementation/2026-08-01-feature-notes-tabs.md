@@ -175,3 +175,16 @@ Bulk tag checks and reconciliation retain the initiating account's session epoch
 ### Manual save acknowledgements and created IDs
 
 After a successful local write the controller returns the saved note ID. The editor acknowledges only the submitted snapshot and only while its account and editor session still match. Pending input and newer autosaves remain independent. For a manual create, the confirmed ID bridges the null-to-ID transition without resetting the editor; the submitted snapshot remains the baseline even if a newer draft has already reached the workspace. Identical frozen initial props are not treated as a fresh remote update after this acknowledgement.
+
+## Independent Split View sessions and dragging (2026-11-03)
+
+- `WorkspaceEditorPane` / `useNotePaneSession`: independent mode, note ref, editor ref, autosave/manual save, and first-create identity per tab. The full reader remains mounted through reading focus changes.
+- The controller editor registry captures and flushes all mounted sessions before navigation, closing split/tabs, deletion, and sign-out. Each pane exposes its own note tools; Sidebar names the destination of the shared New Note action. Local review removed the duplicate pane heading/creation row.
+- `NoteDragProvider` adds native dragging to compact/search note cards, AI note/chunk cards, and open tabs only when two desktop panes are visible.
+- Responsive mobile keeps one pane visible and uses the compact tab menu. The hidden peer stays mounted so desktop-to-mobile-to-desktop resizing preserves both editor instances, modes, and drafts; split controls and dragging remain unavailable on mobile.
+- `openDraggedNoteInPane` and atomic core transitions preserve displaced tabs, swap visible neighbors, deduplicate notes, enforce capacity, and recheck owner/layout after asynchronous work. Other drag types are left to the editor.
+- Local review uses the untracked `/split-preview/` fixture with synthetic notes and an in-memory backend on loopback port 3137. It is separate from feature source and personal/cloud notes.
+
+### Under-title note dates (2026-11-03)
+
+`NoteMetadata` replaces the reading footer with a clock, a relative edit date, and an information icon below the title. Its native button opens the existing Radix popover with Created and Last edited values (`time` elements), formatted in local time without seconds. The mobile target is at least 44px tall; collision padding and a viewport-bound width keep the popover usable on a 320px phone. Every reading pane uses the same component. A minute timer refreshes the label and is cleared on unmount. Scroll dismissal prevents autofocus to the off-screen trigger; normal dismissal keeps Radix focus restoration.

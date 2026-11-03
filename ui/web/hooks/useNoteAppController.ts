@@ -15,13 +15,14 @@ import { getTagMutationRecovery, setTagMutationRecovery, subscribeTagMutationRec
 import { useNoteData } from './useNoteData'
 import { useNoteRefresh } from './useNoteRefresh'
 import { useRestoredNoteValidation } from './useRestoredNoteValidation'
-import { useNoteSaveHandlers } from './useNoteSaveHandlers'
+import { useNoteSaveHandlers, type UseNoteSaveHandlersParams } from './useNoteSaveHandlers'
 import { useNoteBulkActions } from './useNoteBulkActions'
 import { useLocalDeletionRecovery } from './useLocalDeletionRecovery'
 import { useNoteWorkspaceTabs } from './useNoteWorkspaceTabs'
 import { useGuardedSignOut } from './useGuardedSignOut'
 import { MOBILE_BREAKPOINT } from './use-mobile'
-import { NOTE_WORKSPACE_VERSION, updateWorkspaceTab, type NoteDraftSnapshot, type NoteViewSession, type NoteWorkspaceState } from '@core/services/noteWorkspaceTabs'
+import { MAX_NOTE_WORKSPACE_TABS, NOTE_WORKSPACE_VERSION, updateWorkspaceTab, type NoteDraftSnapshot, type NoteViewSession, type NoteWorkspaceState } from '@core/services/noteWorkspaceTabs'
+import type { NoteDragPayload } from '@ui/web/lib/noteDrag'
 import type { NoteEditorHandle } from '@ui/web/components/features/notes/NoteEditor'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { useWorkspaceMemory } from '@ui/web/providers/WorkspaceMemoryProvider'
@@ -135,6 +136,8 @@ export function useNoteAppController() {
     isWorkspacePersisted,
     activateTab,
     openNote,
+    openNoteInPane,
+    placeTabInPane,
     updateTab,
     updateTabForNote,
     updateSavedTags,
@@ -145,6 +148,9 @@ export function useNoteAppController() {
   } = workspace
   const currentTabsRef = useRef(tabs)
   useLayoutEffect(() => { currentTabsRef.current = tabs }, [tabs])
+  const currentSplitRef = useRef(split)
+  useLayoutEffect(() => { currentSplitRef.current = split }, [split])
+  const openingDropRef = useRef(false)
   const workspaceContextRef = useRef({ userId: workspaceUserId, tabId: activeTabId, mode: activeTab.mode, revision: 0 })
   useEffect(() => {
     const previous = workspaceContextRef.current
@@ -201,6 +207,7 @@ export function useNoteAppController() {
 
   // -- Editor ref (cross-cutting: bridges UI editor with save/navigation logic) --
   const noteEditorRef = useRef<React.RefObject<NoteEditorHandle | null> | null>(null)
+  const paneEditorRefs = useRef(new Map<string, React.RefObject<NoteEditorHandle | null>>())
   const workspaceViewCaptureRef = useRef<(() => void) | null>(null)
   const addingTabRef = useRef(false)
   const tagMutationInProgressRef = useRef(false)
@@ -209,6 +216,17 @@ export function useNoteAppController() {
   const registerNoteEditorRef = useCallback((ref: React.RefObject<NoteEditorHandle | null>) => {
     noteEditorRef.current = ref
   }, [])
+
+  const registerPaneEditorRef = useCallback((tabId: string, ref: React.RefObject<NoteEditorHandle | null> | null) => {
+    if (ref) paneEditorRefs.current.set(tabId, ref)
+    else paneEditorRefs.current.delete(tabId)
+  }, [])
+  const mountedEditors = useCallback(() => {
+    const editors = [...paneEditorRefs.current].flatMap(([tabId, ref]) => ref.current ? [{ tabId, handle: ref.current }] : [])
+    if (!editors.length && isEditing && noteEditorRef.current?.current) editors.push({ tabId: activeTabId, handle: noteEditorRef.current.current })
+    return editors
+  }, [activeTabId, isEditing])
+  const hasUnconfirmedWorkspaceChanges = useCallback(() => mountedEditors().some(({ handle }) => handle.hasUnconfirmedChanges?.()), [mountedEditors])
 
   const registerWorkspaceViewCapture = useCallback((capture: (() => void) | null) => {
     workspaceViewCaptureRef.current = capture
@@ -225,40 +243,35 @@ export function useNoteAppController() {
       tabs: tabs.map(tab => tab.saveState === 'saving' ? { ...tab, saveState: 'dirty' } : tab),
       ...(split ? { split } : {}),
     }
-    const active = snapshot.tabs.find(tab => tab.id === activeTabId)
-    const session = isEditing ? noteEditorRef.current?.current?.captureSession?.() : undefined
-    if (active && session) {
-      const changed = active.draft.title !== session.draft.title ||
-        active.draft.description !== session.draft.description || active.draft.tags !== session.draft.tags
-      snapshot = updateWorkspaceTab(snapshot, activeTabId, {
+    for (const { tabId, handle } of mountedEditors()) {
+      const tab = snapshot.tabs.find(tab => tab.id === tabId)
+      const session = handle.captureSession?.()
+      if (!tab || !session) continue
+      const changed = tab.draft.title !== session.draft.title ||
+        tab.draft.description !== session.draft.description || tab.draft.tags !== session.draft.tags
+      snapshot = updateWorkspaceTab(snapshot, tabId, {
         draft: session.draft,
         view: session.view,
-        ...(changed && active.saveState !== 'error' ? { saveState: 'dirty' as const } : {}),
+        ...(changed && tab.saveState !== 'error' ? { saveState: 'dirty' as const } : {}),
       })
     }
     if (snapshot.split || (!isWorkspacePersisted() && workspaceMemory.hasRetainedSplitSession(workspaceUserId)) || snapshot.tabs.some(tab => tab.saveState !== 'saved')) workspaceMemory.remember(snapshot, workspaceEpoch)
     else workspaceMemory.clear(workspaceUserId, workspaceEpoch)
-  }, [activeTabId, isEditing, isWorkspacePersisted, split, tabs, workspaceEpoch, workspaceHydrated, workspaceMemory, workspaceUserId])
+  }, [activeTabId, isWorkspacePersisted, mountedEditors, split, tabs, workspaceEpoch, workspaceHydrated, workspaceMemory, workspaceUserId])
 
   const flushPendingEditorSave = useCallback(async () => {
-    if (!isEditing) return
-    const handle = noteEditorRef.current?.current
-    if (!handle) return
-    await handle.flushPendingSave()
-  }, [isEditing])
+    await Promise.all(mountedEditors().map(({ handle }) => handle.flushPendingSave()))
+  }, [mountedEditors])
 
   const captureActiveTabSession = useCallback(() => {
     // Reading panes debounce their scroll persistence. Capture their latest
     // positions before a transition mounts a different presenter for a tab.
     workspaceViewCaptureRef.current?.()
-    const session = noteEditorRef.current?.current?.captureSession?.()
-    if (!session) return
-
-    updateTab(activeTabId, {
-      draft: session.draft as NoteDraftSnapshot,
-      view: session.view as NoteViewSession,
-    })
-  }, [activeTabId, updateTab])
+    for (const { tabId, handle } of mountedEditors()) {
+      const session = handle.captureSession?.()
+      if (session) updateTab(tabId, { draft: session.draft as NoteDraftSnapshot, view: session.view as NoteViewSession })
+    }
+  }, [mountedEditors, updateTab])
 
   /**
    * Captures the outgoing tab session and flushes pending autosave work.
@@ -443,7 +456,7 @@ export function useNoteAppController() {
     onCachedNotesAvailable: clearAvailableOnRefresh,
     hasPendingChanges: id => hasPendingLocalWrites(id) || tabs.some(tab => (
       tab.noteId === id && (tab.saveState !== 'saved' ||
-        (tab.mode === 'editing' && tab.id === activeTabId && notePaneVisible))
+        tab.mode === 'editing')
     )),
     onNoteRefreshed: (note) => {
       clearLocalUnavailable(note.id)
@@ -578,9 +591,8 @@ export function useNoteAppController() {
   const prepareNotesForDeletion = useCallback(async (noteIds: readonly string[]) => {
     const started = getSessionSnapshot?.()
     if (!isCurrentSession(started)) throw new Error('Account changed before deletion.')
-    // The only mounted editor belongs to the active tab, even in split view.
-    // Keep its live draft and finish autosave before touching its delete.
-    if (activeTab.noteId && noteIds.includes(activeTab.noteId)) {
+    // Every visible editing pane can have live input or an image in flight.
+    if (tabs.some(tab => tab.noteId && noteIds.includes(tab.noteId) && tab.mode === 'editing')) {
       if (!(await flushAndCaptureActiveTab())) {
         throw new Error('Could not save the open note. Retry before deleting.')
       }
@@ -591,7 +603,7 @@ export function useNoteAppController() {
       throw new Error('Could not save the selected note. Retry before deleting.')
     }
     if (!isCurrentSession(started)) throw new Error('Account changed before deletion.')
-  }, [activeTab.noteId, flushAndCaptureActiveTab, getSessionSnapshot, isCurrentSession, waitForPendingNoteWrites])
+  }, [flushAndCaptureActiveTab, getSessionSnapshot, isCurrentSession, tabs, waitForPendingNoteWrites])
 
   const confirmDeleteNoteWithWorkspace = useCallback(async () => {
     const deletedNoteId = noteToDelete?.id ?? null
@@ -649,6 +661,15 @@ export function useNoteAppController() {
   const savedTabRevisionRef = useRef(new Map<string, number>())
   const markTabSaved = useCallback((tabId: string) => {
     savedTabRevisionRef.current.set(tabId, (savedTabRevisionRef.current.get(tabId) ?? 0) + 1)
+  }, [])
+  const rememberPaneCreate = useCallback((tabId: string, note: NoteViewModel) => {
+    if (workspaceHydrated && workspaceUserId) workspaceMemory.rememberCreate(workspaceUserId, tabId, note, workspaceEpoch)
+  }, [workspaceEpoch, workspaceHydrated, workspaceMemory, workspaceUserId])
+  const beginPaneWrite = useCallback((tabId: string) => (
+    workspaceHydrated && workspaceUserId ? workspaceMemory.beginWrite(workspaceUserId, tabId, workspaceEpoch) : undefined
+  ), [workspaceEpoch, workspaceHydrated, workspaceMemory, workspaceUserId])
+  const assertPaneSaveAllowed = useCallback(() => {
+    if (tagMutationInProgressRef.current) throw new Error('Wait for the tag update to finish, then retry saving.')
   }, [])
 
   const handleAutoSaveWithWorkspace = useCallback(async (data: {
@@ -725,26 +746,25 @@ export function useNoteAppController() {
 
   const prepareSignOut = useCallback(async () => {
     if (!workspaceHydrated) return false
-    const revision = savedTabRevisionRef.current.get(activeTabId) ?? 0
+    const revisions = new Map(savedTabRevisionRef.current)
     if (!(await flushAndCaptureActiveTab())) return false
     try {
       await waitForPendingNoteWrites(tabs.flatMap(tab => tab.noteId ? [tab.noteId] : []))
     } catch {
       return false
     }
-    const activeSavedDuringCheck = (savedTabRevisionRef.current.get(activeTabId) ?? 0) > revision
-    return workspaceStorageReadable && tabs.every(tab => tab.saveState === 'saved' || (tab.id === activeTabId && activeSavedDuringCheck))
-  }, [activeTabId, flushAndCaptureActiveTab, tabs, waitForPendingNoteWrites, workspaceHydrated, workspaceStorageReadable])
+    return workspaceStorageReadable && tabs.every(tab => tab.saveState === 'saved' || (savedTabRevisionRef.current.get(tab.id) ?? 0) > (revisions.get(tab.id) ?? 0))
+  }, [flushAndCaptureActiveTab, tabs, waitForPendingNoteWrites, workspaceHydrated, workspaceStorageReadable])
   const signOutGuard = useGuardedSignOut(workspaceUserId, prepareSignOut, performSignOut, getSessionSnapshot)
   const discardGuardedSignOut = signOutGuard.discardAndSignOut
   const discardAndSignOut = useCallback(async () => {
     const started = getSessionSnapshot?.()
     if (!isCurrentSession(started)) return
     // The explicit discard choice must not start a new save during unmount.
-    noteEditorRef.current?.current?.cancelPendingSave?.()
+    mountedEditors().forEach(({ handle }) => handle.cancelPendingSave?.())
     if (workspaceUserId) workspaceMemory.cancelOwnerWrites(workspaceUserId, workspaceEpoch)
     await discardGuardedSignOut()
-  }, [discardGuardedSignOut, getSessionSnapshot, isCurrentSession, workspaceEpoch, workspaceMemory, workspaceUserId])
+  }, [discardGuardedSignOut, getSessionSnapshot, isCurrentSession, mountedEditors, workspaceEpoch, workspaceMemory, workspaceUserId])
 
   // -- Bulk actions --
   const handleNotesDeleted = useCallback((noteIds: string[]) => {
@@ -864,12 +884,14 @@ export function useNoteAppController() {
     hideNotePane,
   ])
 
-  const wrappedHandleCreateNote = useCallback(async () => {
+  const createNoteInTab = useCallback(async (targetTabId: string) => {
     const started = getSessionSnapshot?.()
     if (!(await flushAndCaptureActiveTab()) || !isCurrentSession(started)) return
+    if (!currentTabsRef.current.some(tab => tab.id === targetTabId)) return
     clearActiveSettingsNoteReturnPath()
-    if (workspaceUserId) workspaceMemory.forgetCreate(workspaceUserId, activeTabId, workspaceEpoch)
-    updateTab(activeTabId, {
+    if (workspaceUserId) workspaceMemory.forgetCreate(workspaceUserId, targetTabId, workspaceEpoch)
+    activateTab(targetTabId)
+    updateTab(targetTabId, {
       note: null,
       noteId: null,
       mode: 'editing',
@@ -881,7 +903,56 @@ export function useNoteAppController() {
     handleCreateNote()
     setNotePaneVisible(true)
     setLastSavedAt(null)
-  }, [activeTabId, flushAndCaptureActiveTab, getSessionSnapshot, handleCreateNote, isCurrentSession, setLastSavedAt, updateTab, workspaceEpoch, workspaceMemory, workspaceUserId])
+  }, [activateTab, flushAndCaptureActiveTab, getSessionSnapshot, handleCreateNote, isCurrentSession, setLastSavedAt, updateTab, workspaceEpoch, workspaceMemory, workspaceUserId])
+
+  const wrappedHandleCreateNote = useCallback(() => createNoteInTab(activeTabId), [activeTabId, createNoteInTab])
+
+  const openDraggedNoteInPane = useCallback(async (payload: NoteDragPayload, targetTabId: string): Promise<boolean> => {
+    const started = getSessionSnapshot?.()
+    const layout = currentSplitRef.current
+    if (!workspaceHydrated || !workspaceUserId || payload.ownerId !== workspaceUserId || openingDropRef.current || !isCurrentSession(started)) return false
+    if (!layout || (targetTabId !== layout.leftTabId && targetTabId !== layout.rightTabId)) return false
+    const targetIsCurrent = () => {
+      const current = currentSplitRef.current
+      return isCurrentSession(started) && current?.leftTabId === layout.leftTabId && current.rightTabId === layout.rightTabId
+    }
+    openingDropRef.current = true
+    try {
+      if (!(await flushAndCaptureActiveTab()) || !targetIsCurrent()) return false
+      const existing = currentTabsRef.current.find(tab => payload.tabId ? tab.id === payload.tabId : tab.noteId === payload.noteId)
+      if (existing) {
+        placeTabInPane(existing.id, targetTabId)
+        setNotePaneVisible(Boolean(existing.note || existing.mode === 'editing'))
+        return true
+      }
+      if (payload.tabId || !payload.noteId) return false
+      let note = notesRef.current.find(note => note.id === payload.noteId && note.user_id === workspaceUserId) ?? null
+      if (!note) {
+        const cached = (await offlineCache.loadNotes()).find(note => note.id === payload.noteId && note.user_id === workspaceUserId && !note.deleted)
+        if (cached) note = {
+          id: cached.id, user_id: workspaceUserId, title: cached.title ?? 'Untitled',
+          description: cached.description ?? cached.content ?? '', tags: cached.tags ?? [],
+          created_at: cached.created_at ?? cached.updatedAt, updated_at: cached.updatedAt,
+        }
+      }
+      if (note) note = await resolveOpenableNote(note)
+      else {
+        const result = await noteService.getNoteStatus(payload.noteId)
+        if (result.status === 'found') note = result.note
+      }
+      if (!targetIsCurrent() || !note || note.user_id !== workspaceUserId) return false
+      if (currentTabsRef.current.length >= MAX_NOTE_WORKSPACE_TABS && !currentTabsRef.current.some(tab => tab.noteId === note.id)) {
+        toast.warning(`Close a tab before opening another note (limit: ${MAX_NOTE_WORKSPACE_TABS}).`)
+        return false
+      }
+      openNoteInPane(note, targetTabId)
+      setNotePaneVisible(true)
+      return true
+    } catch {
+      if (isCurrentSession(started)) toast.error('Could not open this note. Try again.')
+      return false
+    } finally { openingDropRef.current = false }
+  }, [flushAndCaptureActiveTab, getSessionSnapshot, isCurrentSession, noteService, notesRef, offlineCache, openNoteInPane, placeTabInPane, resolveOpenableNote, workspaceHydrated, workspaceUserId])
 
   const wrappedHandleEditNote = useCallback(async (note: NoteViewModel) => {
     const started = getSessionSnapshot?.()
@@ -1017,27 +1088,31 @@ export function useNoteAppController() {
       ? (tabs[tabIndex + 1] ?? tabs[tabIndex - 1] ?? null)
       : tabs.find((candidate) => candidate.id === activeTabId) ?? null
 
-    if (tab.id === activeTabId && !discardFailedSave) {
+    if (!discardFailedSave) {
       if (!(await flushAndCaptureActiveTab())) return
+    } else {
+      try {
+        await Promise.all(mountedEditors().filter(editor => editor.tabId !== tabId).map(({ handle }) => handle.flushPendingSave()))
+      } catch { return }
     }
     if (!isCurrentSession(started)) return
 
     if (discardFailedSave) {
-      if (tab.id === activeTabId) noteEditorRef.current?.current?.cancelPendingSave?.()
+      const editor = paneEditorRefs.current.get(tabId)?.current ?? (tab.id === activeTabId ? noteEditorRef.current?.current : null)
+      editor?.cancelPendingSave?.()
       if (workspaceUserId) workspaceMemory.cancelTabWrites(workspaceUserId, tabId, workspaceEpoch)
     }
     closeTab(tabId)
     setNotePaneVisible(Boolean(nextVisibleTab?.note || nextVisibleTab?.mode === 'editing'))
     setLastSavedAt(null)
-  }, [activeTabId, closeTab, flushAndCaptureActiveTab, getSessionSnapshot, isCurrentSession, setLastSavedAt, tabs, workspaceEpoch, workspaceMemory, workspaceUserId])
+  }, [activeTabId, closeTab, flushAndCaptureActiveTab, getSessionSnapshot, isCurrentSession, mountedEditors, setLastSavedAt, tabs, workspaceEpoch, workspaceMemory, workspaceUserId])
 
   const handleCloseTab = useCallback(async (tabId: string) => {
     const tab = tabs.find((candidate) => candidate.id === tabId)
     if (!tab) return
 
-    // An inactive tab has no mounted editor to flush. Ask before losing any
-    // unfinished draft, even if it was restored as dirty or saving.
-    if (tab.saveState === 'error' || (tab.id !== activeTabId && tab.saveState !== 'saved')) {
+    // Offscreen tabs need explicit discard; mounted panes can flush their live editor.
+    if (tab.saveState === 'error' || (tab.id !== activeTabId && tab.saveState !== 'saved' && !paneEditorRefs.current.get(tabId)?.current)) {
       // A failed save may be a brand-new note that never reached the server,
       // so the saved title can be missing — fall back to the live draft.
       setTabPendingClose({
@@ -1093,7 +1168,7 @@ export function useNoteAppController() {
     if (!workspaceHydrated || !workspaceUserId) return null
     const contextRevision = workspaceContextRef.current.revision
     const contextIsCurrent = () => workspaceContextRef.current.revision === contextRevision
-    const revision = savedTabRevisionRef.current.get(activeTabId) ?? 0
+    const revisions = new Map(savedTabRevisionRef.current)
     if (!(await flushAndCaptureActiveTab())) return null
     if (!contextIsCurrent()) return null
     try {
@@ -1110,8 +1185,7 @@ export function useNoteAppController() {
     // A tab can be evicted from sessionStorage when the workspace exceeds
     // its budget, or a write can fail while an older snapshot remains readable.
     // Only navigate if each unfinished draft survives an actual read-back.
-    const activeSavedDuringCheck = (savedTabRevisionRef.current.get(activeTabId) ?? 0) > revision
-    const unsavedTabs = tabs.filter(tab => tab.saveState !== 'saved' && !(tab.id === activeTabId && activeSavedDuringCheck))
+    const unsavedTabs = tabs.filter(tab => tab.saveState !== 'saved' && (savedTabRevisionRef.current.get(tab.id) ?? 0) <= (revisions.get(tab.id) ?? 0))
     if (unsavedTabs.length > 0) {
       let storageReadable = true
       const restored = readNoteWorkspaceState({ userId: workspaceUserId, onStorageFailure: () => { storageReadable = false } })
@@ -1138,7 +1212,7 @@ export function useNoteAppController() {
       searchQuery,
       filterByTag,
     }
-  }, [activeTabId, filterByTag, flushAndCaptureActiveTab, isEditing, isSearchPanelOpen, searchQuery, selectedNoteRef, tabs, waitForPendingNoteWrites, workspaceHydrated, workspaceUserId])
+  }, [filterByTag, flushAndCaptureActiveTab, isEditing, isSearchPanelOpen, searchQuery, selectedNoteRef, tabs, waitForPendingNoteWrites, workspaceHydrated, workspaceUserId])
 
   const resolveSettingsReturnNote = useCallback(async (snapshot: NotesUiStateSnapshot) => {
     if (!snapshot.selectedNoteId) return null
@@ -1604,8 +1678,27 @@ export function useNoteAppController() {
     runTagMutation(cleanUnusedOrEmptyTagsInNotes, 'Cleaned up empty and duplicate tags')
   ), [runTagMutation])
 
+  const paneSaveServices: Omit<UseNoteSaveHandlersParams,
+    'selectedNote' | 'selectedNoteRef' | 'setSelectedNote' | 'setIsEditing' | 'setLastSavedAt' | 'rememberPendingCreate' | 'beginWorkspaceWrite'
+  > = {
+    user, isOffline, offlineCache, enqueueMutation, offlineQueueRef,
+    setOfflineOverlay, setPendingCount, setFailedCount,
+    createNoteMutation, updateNoteMutation, deleteNoteMutation, removeTagMutation,
+    noteToDelete, setDeleteDialogOpen, setNoteToDelete, notes, notesRef,
+    localDeletion, isDeleteSessionCurrent,
+    onQueueStateNeedsRefresh: () => { void retryLocalVerification() },
+  }
+
   return {
     registerNoteEditorRef,
+    registerPaneEditorRef,
+    hasUnconfirmedWorkspaceChanges,
+    paneSaveServices: paneSaveServices as typeof paneSaveServices | undefined,
+    updatePaneTab: updateTab,
+    rememberPaneCreate,
+    beginPaneWrite,
+    assertPaneSaveAllowed,
+    markTabSaved,
     registerWorkspaceViewCapture,
     preserveWorkspaceForNavigation,
     refreshNotes,
@@ -1701,6 +1794,8 @@ export function useNoteAppController() {
     discardAndSignOut,
     handleDeleteAccount,
     handleCreateNote: wrappedHandleCreateNote,
+    createNoteInTab,
+    openDraggedNoteInPane,
     handleEditNote: wrappedHandleEditNote,
     handleSaveNote: handleSaveNoteWithWorkspace,
     handleReadNote: handleReadNoteWithWorkspace,

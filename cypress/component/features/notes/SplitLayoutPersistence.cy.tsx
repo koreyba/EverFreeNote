@@ -116,8 +116,8 @@ describe('Restoring a split workspace', { retries: 0 }, () => {
     cy.spy(webOfflineStorageAdapter, 'saveNote').as('savedNote')
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('A second edited')
-    cy.get('[data-testid="split-pane-left"] button').contains('Activate').click()
-    cy.get('[data-testid="split-pane-left"]').contains('Active').should('be.visible')
+    cy.get('[data-testid="split-pane-left"]').click('topLeft')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
     cy.get('@savedNote').should((spy) => {
       const calls = (spy as unknown as { getCalls: () => Array<{ args: Array<{ id: string, title: string }> }> }).getCalls()
       expect(calls.some(call => call.args[0].id === 'a-second' && call.args[0].title === 'A second edited')).to.equal(true)
@@ -126,7 +126,7 @@ describe('Restoring a split workspace', { retries: 0 }, () => {
     cy.mount(<TestApp client={client} />, { wrapWithSupabase: false })
     cy.get('[data-testid="split-pane-left"]').should('contain', 'A first body')
     cy.get('[data-testid="split-pane-right"]').should('contain', 'A second edited')
-    cy.get('[data-testid="split-pane-right"] button').contains('Activate').click()
+    cy.get('[data-testid="split-pane-right"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').should('have.value', 'A second edited')
   })
 

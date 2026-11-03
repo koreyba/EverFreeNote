@@ -37,6 +37,8 @@ type NoteViewTestOverrides = Partial<{
   description: string
   content: string
   initialScrollTop: number
+  created_at: string
+  updated_at: string
   onViewSessionChange: (view: { scrollTop?: number }) => void
 }>
 
@@ -49,8 +51,8 @@ function renderNoteView(overrides: NoteViewTestOverrides = {}) {
         description: overrides.description ?? '<p>Copied body</p>',
         content: overrides.content ?? '<p>Copied body</p>',
         tags: ['tag-a'],
-        created_at: '2025-01-01T10:00:00.000Z',
-        updated_at: '2025-01-01T10:00:00.000Z',
+        created_at: overrides.created_at ?? '2025-01-01T10:00:00.000Z',
+        updated_at: overrides.updated_at ?? '2025-01-01T10:00:00.000Z',
       } as never}
       onEdit={jest.fn()}
       onDelete={jest.fn()}
@@ -166,5 +168,52 @@ describe('NoteView copy action', () => {
     } finally {
       jest.useRealTimers()
     }
+  })
+})
+
+describe('NoteView dates', () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ now: new Date('2025-01-01T12:00:00.000Z') })
+  })
+  afterEach(() => { jest.useRealTimers() })
+
+  it('keeps the compact edit date beneath the title and reveals both exact timestamps on demand', () => {
+    const { container } = renderNoteView({ created_at: '2024-12-20T09:30:00.000Z' })
+    const title = screen.getByRole('heading', { name: 'Test note' })
+    const details = screen.getByRole('button', { name: 'Note details' })
+    expect(details.textContent).toContain('Edited 2 hours ago')
+    expect(title.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(details.compareDocumentPosition(screen.getByText('tag-a')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Note details' })).toBeNull()
+    expect(container.textContent).not.toContain('Created:')
+    expect(container.textContent).not.toContain('Updated:')
+
+    fireEvent.click(details)
+    const dialog = screen.getByRole('dialog', { name: 'Note details' })
+    expect(dialog.textContent).toContain('Created')
+    expect(dialog.textContent).toContain('Last edited')
+    expect(Array.from(dialog.querySelectorAll('time'), time => time.dateTime)).toEqual([
+      '2024-12-20T09:30:00.000Z', '2025-01-01T10:00:00.000Z',
+    ])
+    expect(dialog.textContent).toContain('Your local time')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    act(() => { jest.runOnlyPendingTimers() })
+    expect(screen.queryByRole('dialog', { name: 'Note details' })).toBeNull()
+  })
+
+  it('refreshes the relative edit date while the note stays open', () => {
+    renderNoteView({ updated_at: '2025-01-01T11:59:30.000Z' })
+    expect(screen.getByRole('button', { name: 'Note details' }).textContent).toContain('Edited just now')
+    act(() => { jest.advanceTimersByTime(60_000) })
+    expect(screen.getByRole('button', { name: 'Note details' }).textContent).toContain('Edited 1 minute ago')
+  })
+
+  it('keeps reading available when imported timestamps are invalid', () => {
+    renderNoteView({ created_at: 'invalid', updated_at: 'invalid' })
+    expect(screen.getByText('Copied body')).toBeTruthy()
+    const details = screen.getByRole('button', { name: 'Note details' })
+    expect(details.textContent).toContain('Date unavailable')
+    fireEvent.click(details)
+    expect(screen.getAllByText('Unavailable')).toHaveLength(2)
   })
 })

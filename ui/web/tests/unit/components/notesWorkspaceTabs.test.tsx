@@ -57,6 +57,23 @@ describe('Notes workspace tab controls', () => {
     restoreDefaultClientWidth = null
   })
 
+  it('changes the split toggle icon and action when returning between single and split view', () => {
+    const props = { tabs, activeTabId: 'tab-1', onAddTab: jest.fn(), onActivateTab: jest.fn(), onCloseTab: jest.fn(), onToggleSplit: jest.fn() }
+    const { rerender } = render(<NotesTabStrip {...props} splitView={false} />)
+    const open = screen.getByRole('button', { name: 'Open split view' })
+    const openIcon = open.querySelector('svg')?.innerHTML
+    expect(openIcon).toBeTruthy()
+    expect(open.getAttribute('aria-pressed')).toBe('false')
+
+    rerender(<NotesTabStrip {...props} splitView />)
+    const close = screen.getByRole('button', { name: 'Close split view' })
+    expect(close.getAttribute('aria-pressed')).toBe('true')
+    expect(close.querySelector('svg')?.innerHTML).not.toBe(openIcon)
+
+    rerender(<NotesTabStrip {...props} splitView={false} />)
+    expect(screen.getByRole('button', { name: 'Open split view' }).querySelector('svg')?.innerHTML).toBe(openIcon)
+  })
+
   it('renders desktop tabs, save indicators, add, activation, and close actions', () => {
     const onAddTab = jest.fn()
     const onActivateTab = jest.fn()

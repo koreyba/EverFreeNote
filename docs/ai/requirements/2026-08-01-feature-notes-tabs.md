@@ -97,12 +97,23 @@ All template sections are complete. The supplied concept provides the problem, t
 
 ## Desktop split view follow-up (2026-10-28)
 
+### Direct pane interaction (2026-11-03)
+
+- Both visible notes expose their reading tools: Edit, Copy, Delete, tags, and More actions.
+- Clicking a pane or moving keyboard focus into it makes it the destination for shared workspace actions; no separate Activate button is required.
+- The shared New Note action names its destination (left/right). Pane-local creation rows and duplicate titles are omitted; the user explicitly removed this extra chrome after local review.
+- Each pane retains its independently chosen reading/editing mode: read/read, edit/edit, read/edit, and edit/read. Focus changes never close a neighboring editor. Each editor owns its draft, selection, save status, and note identity. Transitions capture and flush every mounted editor; failed writes preserve the drafts.
+- Pane actions always address their own note. Opening a new note preserves the neighboring pane, and reading focus changes preserve scroll and open menus.
+- The existing default-off preference, account isolation, tab limits, and narrow/mobile fallback remain in force.
+- Split View is desktop-only. Mobile shows one active note and the compact tab menu, without split controls or note dragging. Returning to desktop restores the pair with each note's selected mode and draft.
+- The split toggle visibly changes with the mode: two columns to open split, a single rectangle to return to one pane, and a clear primary highlight while split is enabled. Accessible action names and pressed state remain in sync.
+
 The earlier split-view non-goal applied to the first tab release. Desktop users
 can now display two different open notes side by side. A split starts with the
 active tab on the left and another open tab on the right, or creates an empty
-right tab for choosing a note. One pane is active for editing and the other is
-independently scrollable for reading. Switching or creating a tab must first
-save the current editor; on failure, the current draft remains visible and the
+right tab for choosing a note. Both panes have independent reading/editing
+modes and scrolling. Switching or creating a tab must first
+save the mounted editors; on failure, the current draft remains visible and the
 transition is blocked. Selecting an already-open note activates its existing
 tab. Exiting split does not close either tab. On mobile or when the available
 workspace is too narrow, only the active pane is shown until space returns.
@@ -139,3 +150,18 @@ cannot be saved locally, Settings must explain that the choice may reset.
 - A browser warning is best effort when leaving the document; it cannot make
   failed local storage durable or guarantee recovery after reload, browser
   termination or mobile process eviction.
+
+### Drag notes into a split pane (2026-11-03)
+
+- Desktop drag sources include the note list/grid, regular search results, AI note results, AI fragments, and open tabs.
+- Hover highlights the exact destination pane. A new note opens there in a new tab, retaining the displaced tab and the neighboring pane.
+- An already-open note uses its existing session and mode. Moving the visible neighbor swaps the panes; a third open tab replaces only the target pane.
+- Flush every mounted editor before changing pane assignments. Failed saves, stale layouts, missing tabs, foreign-account payloads, and the 32-tab limit must not discard sessions or create orphan tabs.
+- Text, image, and file drops keep their normal editor behavior. Native note dragging is enabled only while both desktop panes are visible.
+
+### Note dates (2026-11-03)
+
+- The user selected the under-title design for reading views, including each Split View pane and a single mobile note.
+- Show one quiet relative edit date between the title and tags; remove the Created/Updated footer. The metadata scrolls with its note.
+- Clicking or tapping reveals both exact dates in the user's local time, without seconds. Support keyboard dismissal, a phone-sized touch target, and viewport-safe positioning.
+- Refresh the relative time while a note stays open. Scrolling dismisses the details without jumping back to the title. Invalid imported dates must not prevent reading.
