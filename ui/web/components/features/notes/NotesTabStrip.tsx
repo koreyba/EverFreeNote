@@ -6,6 +6,7 @@ import { MAX_NOTE_WORKSPACE_TABS, type NoteWorkspaceTab } from "@core/services/n
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 import { useAnimatedTabList, TAB_TRANSITION_MS } from "@ui/web/hooks/useAnimatedTabList"
+import type { useNoteWorkspaceTabs } from "@ui/web/hooks/useNoteWorkspaceTabs"
 import { useNoteDragSource } from "@ui/web/providers/NoteDragProvider"
 import { isNoteTabDrag } from "@ui/web/lib/noteDrag"
 
@@ -15,7 +16,7 @@ export type NotesTabStripProps = {
   onAddTab: () => void
   onActivateTab: (tabId: string) => void | Promise<void>
   onCloseTab: (tabId: string) => void | Promise<void>
-  onReorderTab?(tabId: string, targetTabId: string, position: 'before' | 'after'): void
+  onReorderTab?: ReturnType<typeof useNoteWorkspaceTabs>['reorderTab']
   addTabDisabled?: boolean
   addTabCapacityPending?: boolean
   maximumTabCount?: number
