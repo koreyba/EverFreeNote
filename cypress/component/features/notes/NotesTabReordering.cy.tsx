@@ -19,7 +19,7 @@ function Harness({ count = 20, width = 360 }: { count?: number; width?: number }
     }) }
   })
   return <div style={{ width }}><NoteDragProvider ownerId="owner" enabled={false} tabsEnabled>
-    <NotesTabStrip tabs={state.tabs} activeTabId={state.activeTabId} onAddTab={() => {}} onCloseTab={() => {}}
+    <NotesTabStrip tabs={state.tabs} activeTabId={state.activeTabId} onAddTab={() => undefined} onCloseTab={() => undefined}
       onActivateTab={id => setState(current => ({ ...current, activeTabId: id }))}
       onReorderTab={(id, target, position) => setState(current => reorderWorkspaceTab(current, id, target, position))} />
   </NoteDragProvider></div>

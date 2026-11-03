@@ -15,7 +15,7 @@ export type NotesTabStripProps = {
   onAddTab: () => void
   onActivateTab: (tabId: string) => void | Promise<void>
   onCloseTab: (tabId: string) => void | Promise<void>
-  onReorderTab?: (tabId: string, targetTabId: string, position: 'before' | 'after') => void
+  onReorderTab?(tabId: string, targetTabId: string, position: 'before' | 'after'): void
   addTabDisabled?: boolean
   addTabCapacityPending?: boolean
   maximumTabCount?: number
@@ -32,10 +32,11 @@ function findTabDropTarget(viewport: HTMLElement, clientX: number): TabDropTarge
   const rows = Array.from(viewport.querySelectorAll<HTMLElement>('[data-tab-id]'))
   for (const row of rows) {
     const bounds = row.getBoundingClientRect()
-    if (clientX < bounds.left + bounds.width / 2) return { tabId: row.dataset.tabId!, position: 'before' }
+    const tabId = row.dataset.tabId
+    if (tabId && clientX < bounds.left + bounds.width / 2) return { tabId, position: 'before' }
   }
-  const last = rows.at(-1)
-  return last ? { tabId: last.dataset.tabId!, position: 'after' } : null
+  const lastTabId = rows.at(-1)?.dataset.tabId
+  return lastTabId ? { tabId: lastTabId, position: 'after' } : null
 }
 
 /**
