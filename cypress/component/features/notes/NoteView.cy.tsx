@@ -1,4 +1,5 @@
 import React from 'react'
+import '../../../../app/globals.css'
 import { NoteView } from '../../../../ui/web/components/features/notes/NoteView'
 import type { Note } from '../../../../core/types/domain'
 import { SupabaseTestProvider } from '../../../../ui/web/providers/SupabaseProvider'
@@ -29,8 +30,44 @@ describe('NoteView Component', () => {
     cy.contains('Test Content').should('be.visible')
     cy.contains('tag1').should('be.visible')
     cy.contains('tag2').should('be.visible')
-    cy.contains('Created:').should('be.visible')
-    cy.contains('Updated:').should('be.visible')
+    cy.get('[aria-label="Note details"]').should('be.visible').and('contain', 'Edited')
+    cy.get('[aria-label="Note details"]').click()
+    cy.get('[role="dialog"][aria-label="Note details"]').should('contain', 'Created').and('contain', 'Last edited')
+    cy.get('[role="dialog"] time').should('have.length', 2)
+  })
+
+  it('keeps metadata attached to a long note rather than pinned to the viewport', { retries: 0 }, () => {
+    cy.viewport(1440, 900)
+    cy.mount(<div style={{ height: 600, display: 'flex' }}><NoteView note={{ ...mockNote, description: '<p>A long paragraph.</p>'.repeat(60) }}
+      onEdit={cy.stub()} onDelete={cy.stub()} onTagClick={cy.stub()} onRemoveTag={cy.stub()} /></div>)
+    cy.get('[aria-label="Note details"]').should('be.visible')
+      // It is already visible; top-aligning it would scroll it under the action bar.
+      .click({ scrollBehavior: false })
+    cy.get('[role="dialog"][aria-label="Note details"]').should('be.visible')
+    cy.get('[aria-label="Note details"]').filter('button').closest('.overflow-y-auto').scrollTo(0, 800)
+      .should($scroll => { expect($scroll[0].scrollTop).to.equal(800) })
+    cy.get('[role="dialog"][aria-label="Note details"]').should('not.exist')
+    cy.get('[aria-label="Note details"]').should('not.be.visible')
+    cy.get('[data-cy="note-edit-button"]').should('be.visible')
+  })
+
+  it('opens readable exact dates on a narrow phone without horizontal overflow', { retries: 0 }, () => {
+    cy.viewport(320, 700)
+    cy.mount(<div style={{ height: 600, display: 'flex' }}><NoteView note={mockNote}
+      onEdit={cy.stub()} onDelete={cy.stub()} onTagClick={cy.stub()} onRemoveTag={cy.stub()} /></div>)
+    cy.get('[aria-label="Note details"]').should('be.visible').and($button => {
+      expect($button[0].getBoundingClientRect().height, 'date touch target').to.be.at.least(44)
+    }).click()
+    cy.get('[role="dialog"][aria-label="Note details"]').should('be.visible').and($dialog => {
+      const bounds = $dialog[0].getBoundingClientRect()
+      expect(bounds.left).to.be.at.least(0)
+      expect(bounds.right).to.be.at.most(320)
+    })
+    cy.document().should(doc => { expect(doc.documentElement.scrollWidth).to.be.at.most(320) })
+    cy.get('[role="dialog"]').type('{esc}')
+    cy.get('[role="dialog"]').should('not.exist')
+    cy.get('[aria-label="Note details"]').should('be.focused')
+    cy.screenshot('note-dates-mobile', { capture: 'viewport' })
   })
 
   it('handles actions', () => {

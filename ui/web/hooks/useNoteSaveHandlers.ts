@@ -13,7 +13,7 @@ import { enqueueOwnerNoteWrite, waitForOwnerNoteWrites } from '@ui/web/lib/owner
 import type { useLocalDeletionRecovery } from './useLocalDeletionRecovery'
 import { snapshotEvidence } from '@ui/web/lib/offlineOwnership'
 
-type UseNoteSaveHandlersParams = {
+export type UseNoteSaveHandlersParams = {
   user: { id: string } | null
   isOffline: boolean
   offlineCache: Pick<ReturnType<typeof useNoteSync>['offlineCache'], 'saveNote' | 'deleteNote'>

@@ -17,6 +17,7 @@ import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import type { Note } from "@core/types/domain"
 import type { NoteViewSession } from "@core/services/noteWorkspaceTabs"
 import { restoreViewScroll, type RegisterViewScrollSurface } from "./viewScrollSurface"
+import { NoteMetadata } from "./NoteMetadata"
 
 // Reading scroll fires per frame; batch updates before they hit workspace state.
 const SCROLL_SYNC_DELAY_MS = 250
@@ -42,6 +43,8 @@ interface NoteViewProps {
   onViewScrollCapture?: (scrollTop: number, node: HTMLElement) => boolean | void
   viewTabId?: string
   registerViewScrollSurface?: RegisterViewScrollSurface
+  visible?: boolean
+  preview?: boolean
 }
 
 export const NoteView = React.memo(function NoteView({
@@ -58,6 +61,8 @@ export const NoteView = React.memo(function NoteView({
   onViewScrollCapture,
   viewTabId,
   registerViewScrollSurface,
+  visible = true,
+  preview = false,
 }: NoteViewProps) {
   const bodyHtml = note.description || note.content || ''
 
@@ -76,6 +81,8 @@ export const NoteView = React.memo(function NoteView({
   const [expandedTagsNoteId, setExpandedTagsNoteId] = React.useState<string | null>(null)
   const tagsExpanded = expandedTagsNoteId === note.id
   const initialScrollTopRef = React.useRef(initialScrollTop)
+  const restored = React.useRef(false)
+  const pendingRestore = React.useRef<{ applied: number; changed: boolean; requested: number } | null>(null)
   // A workspace captures the live node before transitions. Standalone readers
   // still flush their last reported scroll when they unmount.
   const debouncedViewNotify = useDebouncedSessionCallback<Partial<NoteViewSession>>(
@@ -86,21 +93,37 @@ export const NoteView = React.memo(function NoteView({
 
   // Restore before exposing this surface to workspace capture. A delayed
   // animation frame otherwise lets a quick pane switch save its initial zero.
+  React.useLayoutEffect(() => { initialScrollTopRef.current = initialScrollTop }, [initialScrollTop])
   React.useLayoutEffect(() => {
-    if (contentRef.current) return restoreViewScroll(contentRef.current, initialScrollTopRef.current)
+    restored.current = false
+    pendingRestore.current = null
   }, [note.id])
+  React.useLayoutEffect(() => {
+    if (!visible || restored.current || !contentRef.current) return
+    const node = contentRef.current
+    restored.current = true
+    const previous = pendingRestore.current
+    if (previous && previous.requested === initialScrollTopRef.current && node.scrollTop !== previous.applied) {
+      pendingRestore.current = null
+      return
+    }
+    const state = { applied: 0, changed: false, requested: initialScrollTopRef.current }
+    const cancel = restoreViewScroll(node, initialScrollTopRef.current, () => { state.changed = true })
+    state.applied = node.scrollTop
+    const pending = cancel ? state : null
+    pendingRestore.current = pending
+    return () => {
+      cancel?.()
+      if (pending && !pending.changed) restored.current = false
+      else if (pendingRestore.current === pending) pendingRestore.current = null
+    }
+  }, [note.id, visible])
 
   React.useLayoutEffect(() => {
     const node = contentRef.current
     if (!node || !viewTabId || !registerViewScrollSurface) return
     return registerViewScrollSurface(viewTabId, note.id, node, debouncedViewNotify.cancel)
   }, [debouncedViewNotify.cancel, note.id, registerViewScrollSurface, viewTabId])
-
-  // Форматирование дат для предотвращения повторных вычислений
-  const formattedDates = React.useMemo(() => ({
-    created: new Date(note.created_at).toLocaleString(),
-    updated: new Date(note.updated_at).toLocaleString()
-  }), [note.created_at, note.updated_at])
 
   const getExportNote = React.useCallback(() => ({
     id: note.id,
@@ -202,15 +225,19 @@ export const NoteView = React.memo(function NoteView({
           // shows up alongside that bar. Reading and editing hide it the same
           // way, otherwise only one of the two modes has a stray edge line.
           className={`scrollbar-none relative min-h-0 flex-1 overflow-y-auto pb-10 pt-6 bg-card ${findOpen ? "md:pt-36" : "md:pt-24"}`}
+          data-cy={preview ? "split-note-preview" : undefined}
           onScroll={(event) => {
             const scrollTop = event.currentTarget.scrollTop
+            const pending = pendingRestore.current
+            if (pending && scrollTop !== pending.applied) pending.changed = true
             if (onViewScrollCapture?.(scrollTop, event.currentTarget) !== false) debouncedViewNotify.schedule({ scrollTop })
           }}
         >
           <div className="note-document-width">
-            <h1 ref={titleRef} className="note-document-title mb-3">
+            <h1 ref={titleRef} className="note-document-title mb-1">
               {note.title}
             </h1>
+            <NoteMetadata key={note.id} createdAt={note.created_at} updatedAt={note.updated_at} />
 
             {note.tags && note.tags.length > 0 && (
               <div className="mb-8">
@@ -225,11 +252,6 @@ export const NoteView = React.memo(function NoteView({
               className={NOTE_CONTENT_CLASS}
               html={sanitizedContent}
             />
-
-            <div className="mt-12 pt-6 border-t border-border/40 text-[11px] text-foreground/70 flex flex-wrap gap-x-6 gap-y-2">
-              <span>Created: {formattedDates.created}</span>
-              <span>Updated: {formattedDates.updated}</span>
-            </div>
           </div>
         </div>
       </PullToRefresh>

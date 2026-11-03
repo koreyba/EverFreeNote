@@ -4,6 +4,9 @@ import {
   createNoteWorkspaceState,
   hydrateNoteWorkspaceState,
   openNoteInWorkspace,
+  openWorkspaceNoteInPane,
+  MAX_NOTE_WORKSPACE_TABS,
+  placeWorkspaceTabInPane,
   serializeNoteWorkspaceState,
   serializeNoteWorkspaceStateWithinLimit,
 } from '@core/services/noteWorkspaceTabs'
@@ -22,6 +25,53 @@ function workspace() {
 const layout = { leftTabId: 'left', rightTabId: 'right', focusedTabId: 'right' }
 
 describe('persisted note workspace split layout', () => {
+  it('opens a new dropped note in a new tab while retaining both existing sessions', () => {
+    const state = { ...workspace(), split: layout }
+    const next = openWorkspaceNoteInPane(state, note('three'), 'left', () => 'third')
+    expect(next.split).toEqual({ leftTabId: 'third', rightTabId: 'right', focusedTabId: 'third' })
+    expect(next.tabs.map(tab => tab.noteId)).toEqual(['one', 'two', 'three'])
+    expect(next.tabs[0]).toBe(state.tabs[0])
+  })
+
+  it('deduplicates a dropped note by moving its existing editing session', () => {
+    const state = { ...workspace(), split: layout }
+    state.tabs[0] = { ...state.tabs[0], mode: 'editing', saveState: 'dirty', draft: { title: 'Unfinished', description: '<p>Draft</p>', tags: '' } }
+    const next = openWorkspaceNoteInPane(state, note('one'), 'right', () => 'unused')
+    expect(next.tabs).toBe(state.tabs)
+    expect(next.tabs[0].draft.title).toBe('Unfinished')
+    expect(next.split?.rightTabId).toBe('left')
+  })
+
+  it('does not create orphan tabs when a drop target disappears or the tab limit is reached', () => {
+    let state = { ...workspace(), split: layout }
+    expect(openWorkspaceNoteInPane(state, note('three'), 'missing', () => 'unused')).toBe(state)
+    for (let index = 2; index < MAX_NOTE_WORKSPACE_TABS; index++) state = { ...addWorkspaceTab(state, () => `spare-${index}`), split: layout }
+    expect(openWorkspaceNoteInPane(state, note('three'), 'left', () => 'unused')).toBe(state)
+    expect(openWorkspaceNoteInPane(state, note('one'), 'right').split?.rightTabId).toBe('left')
+  })
+  it('swaps the two visible tabs when a tab is dropped onto its opposite pane', () => {
+    const state = { ...workspace(), split: layout }
+    const next = placeWorkspaceTabInPane(state, 'left', 'right')
+    expect(next.split).toEqual({ leftTabId: 'right', rightTabId: 'left', focusedTabId: 'left' })
+    expect(next.activeTabId).toBe('left')
+    expect(next.tabs).toBe(state.tabs)
+  })
+
+  it('places an already-open third tab in the requested pane without closing the displaced tab', () => {
+    let state = addWorkspaceTab(workspace(), () => 'third')
+    state = openNoteInWorkspace(state, note('three'))
+    state = { ...state, split: layout }
+    const next = placeWorkspaceTabInPane(state, 'third', 'left')
+    expect(next.split).toEqual({ leftTabId: 'third', rightTabId: 'right', focusedTabId: 'third' })
+    expect(next.tabs.map(tab => tab.id)).toEqual(['left', 'right', 'third'])
+  })
+
+  it('ignores drops onto a stale pane or of a tab that no longer exists', () => {
+    const state = { ...workspace(), split: layout }
+    expect(placeWorkspaceTabInPane(state, 'missing', 'left')).toBe(state)
+    expect(placeWorkspaceTabInPane(state, 'left', 'missing')).toBe(state)
+    expect(placeWorkspaceTabInPane(workspace(), 'left', 'right').split).toBeUndefined()
+  })
   it('round-trips the owner-scoped pane IDs while preserving tabs and active note', () => {
     const state = { ...workspace(), split: layout }
     const restored = hydrateNoteWorkspaceState(serializeNoteWorkspaceState(state), () => 'fallback', 'owner-a')

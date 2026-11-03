@@ -9,6 +9,8 @@ import {
   findWorkspaceTabByNoteId,
   getActiveWorkspaceTab,
   openNoteInWorkspace,
+  openWorkspaceNoteInPane,
+  placeWorkspaceTabInPane,
   resetWorkspaceTabsForNotes,
   setWorkspaceSplit,
   updateWorkspaceTab,
@@ -149,6 +151,20 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
     setState((current) => updateWorkspaceTab(current, tabId, patch))
   }, [])
 
+  const placeTabInPane = useCallback((tabId: string, targetTabId: string) => {
+    setState(current => {
+      if (current.userId !== userId || sessionRef.current.userId !== userId || sessionRef.current.epoch !== epoch) return current
+      return placeWorkspaceTabInPane(current, tabId, targetTabId)
+    })
+  }, [epoch, userId])
+  const openNoteInPane = useCallback((note: NoteViewModel, targetTabId: string) => {
+    const tabId = createNoteWorkspaceState().activeTabId
+    setState(current => {
+      if (current.userId !== userId || sessionRef.current.userId !== userId || sessionRef.current.epoch !== epoch) return current
+      return openWorkspaceNoteInPane(current, note, targetTabId, () => tabId)
+    })
+  }, [epoch, userId])
+
   const updateTabForNote = useCallback((tabId: string, noteId: string | null, patch: NoteWorkspaceTabPatch) => {
     setState((current) => {
       const tab = current.tabs.find((candidate) => candidate.id === tabId)
@@ -203,6 +219,8 @@ export function useNoteWorkspaceTabs(userId: string | null = null, epoch?: numbe
     isWorkspacePersisted,
     activateTab,
     openNote,
+    openNoteInPane,
+    placeTabInPane,
     updateTab,
     updateTabForNote,
     updateSavedTags,

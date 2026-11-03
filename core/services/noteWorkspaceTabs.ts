@@ -224,6 +224,33 @@ export function openNoteInWorkspace(
   return { ...state, tabs, activeTabId: nextTab.id }
 }
 
+/** Move an existing session to a pane; moving its neighbor swaps the two. */
+export function placeWorkspaceTabInPane(state: NoteWorkspaceState, tabId: string, targetTabId: string): NoteWorkspaceState {
+  const current = state.split
+  if (!current || !state.tabs.some(tab => tab.id === tabId)) return state
+  if (targetTabId !== current.leftTabId && targetTabId !== current.rightTabId) return state
+  const left = targetTabId === current.leftTabId
+  const neighbor = left ? current.rightTabId : current.leftTabId
+  const next = validateWorkspaceSplit({
+    leftTabId: left ? tabId : neighbor === tabId ? targetTabId : current.leftTabId,
+    rightTabId: left ? neighbor === tabId ? targetTabId : current.rightTabId : tabId,
+    focusedTabId: tabId,
+  }, state.tabs)
+  if (!next) return state
+  return { ...state, activeTabId: tabId, split: next }
+}
+
+/** Open a dropped note without discarding the tab that previously filled the pane. */
+export function openWorkspaceNoteInPane(state: NoteWorkspaceState, note: NoteViewModel, targetTabId: string, idFactory: NoteWorkspaceIdFactory = defaultIdFactory): NoteWorkspaceState {
+  if (!state.split || (targetTabId !== state.split.leftTabId && targetTabId !== state.split.rightTabId)) return state
+  const existing = findWorkspaceTabByNoteId(state, note.id)
+  if (existing) return placeWorkspaceTabInPane(state, existing.id, targetTabId)
+  if (!canAddWorkspaceTab(state)) return state
+  const added = addWorkspaceTab(state, idFactory)
+  const opened = openNoteInWorkspace(added, note)
+  return placeWorkspaceTabInPane(opened, opened.activeTabId, targetTabId)
+}
+
 export function updateWorkspaceTab(
   state: NoteWorkspaceState,
   tabId: string,

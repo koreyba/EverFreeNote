@@ -228,6 +228,16 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
 
       return ({
       activeMainView: 'notes',
+      createNoteInTab: cy.stub().resolves(),
+      openDraggedNoteInPane: cy.stub().resolves(true),
+      paneSaveServices: undefined,
+      registerPaneEditorRef: cy.stub(),
+      hasUnconfirmedWorkspaceChanges: cy.stub().returns(false),
+      updatePaneTab: cy.stub(),
+      rememberPaneCreate: cy.stub(),
+      beginPaneWrite: cy.stub(),
+      assertPaneSaveAllowed: cy.stub(),
+      markTabSaved: cy.stub(),
       setActiveMainView: cy.stub(),
       handleRenameTag: cy.stub().resolves(),
       handleDeleteTag: cy.stub().resolves(),

@@ -3,6 +3,7 @@ import { ChunkSnippet } from './ChunkSnippet'
 import { cn } from '@ui/web/lib/utils'
 import { getRagChunkBodyLength } from '@core/rag/chunkTemplate'
 import type { RagChunk } from '@core/types/ragSearch'
+import { useNoteDragSource } from '@ui/web/providers/NoteDragProvider'
 
 interface ChunkSearchItemProps {
   chunk: RagChunk
@@ -23,6 +24,7 @@ function getScoreClass(score: number) {
 }
 
 export function ChunkSearchItem({ chunk, onOpenInContext, highlightQuery = '' }: ChunkSearchItemProps) {
+  const drag = useNoteDragSource()
   const chunkText = chunk.bodyContent ?? chunk.content ?? ''
   const chunkLength = Math.max(1, getRagChunkBodyLength(chunkText))
   const handleOpen = () => onOpenInContext(chunk.noteId, chunk.charOffset, chunkLength)
@@ -30,6 +32,8 @@ export function ChunkSearchItem({ chunk, onOpenInContext, highlightQuery = '' }:
   return (
     <div
       role="listitem"
+      draggable={drag.enabled}
+      onDragStart={event => drag.start(event, { noteId: chunk.noteId })}
       className={cn(
         'group rounded-lg border border-border/60 bg-card border-l-[3px] overflow-hidden transition-all hover:border-primary/30 hover:shadow-sm',
         getAccentClass(chunk.similarity)

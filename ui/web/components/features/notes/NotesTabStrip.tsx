@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useRef, useState, type KeyboardEvent, type WheelEvent } from "react"
-import { WarningCircle as AlertCircle, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CircleNotch as Loader2, Columns, Plus, Circle, X } from "@phosphor-icons/react"
+import { WarningCircle as AlertCircle, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CircleNotch as Loader2, Columns, Rectangle, Plus, Circle, X } from "@phosphor-icons/react"
 import { MAX_NOTE_WORKSPACE_TABS, type NoteWorkspaceTab } from "@core/services/noteWorkspaceTabs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 import { useAnimatedTabList, TAB_TRANSITION_MS } from "@ui/web/hooks/useAnimatedTabList"
+import { useNoteDragSource } from "@ui/web/providers/NoteDragProvider"
 
 export type NotesTabStripProps = {
   tabs: NoteWorkspaceTab[]
@@ -140,6 +141,7 @@ export function NotesTabStrip({
   splitView = false,
   splitDisabled = false,
 }: ReadonlyNotesTabStripProps) {
+  const drag = useNoteDragSource()
   const tabViewportRef = useRef<HTMLDivElement | null>(null)
   const tabButtonRefs = useRef(new Map<string, HTMLButtonElement>())
   const [overflow, setOverflow] = useState({ left: false, right: false })
@@ -298,6 +300,8 @@ export function NotesTabStrip({
                 inert={closing}
                 data-tab-id={closing ? undefined : tab.id}
                 data-closing={closing || undefined}
+                draggable={drag.enabled && !closing}
+                onDragStart={event => drag.start(event, { tabId: tab.id, noteId: tab.noteId ?? undefined })}
               >
                 <Button
                   type="button"
@@ -315,7 +319,7 @@ export function NotesTabStrip({
                     isActive && "font-semibold text-foreground hover:bg-transparent",
                   )}
                   title={label}
-                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseDown={(event) => { if (!drag.enabled) event.preventDefault() }}
                   onClick={() => onActivateTab(tab.id)}
                   onKeyDown={(event) => activateWithKeyboard(event, index, tabs, onActivateTab, focusTab)}
                 >
@@ -344,7 +348,7 @@ export function NotesTabStrip({
       {onToggleSplit && (
         <Button
           type="button"
-          variant={splitView ? "secondary" : "ghost"}
+          variant={splitView ? "default" : "ghost"}
           size="icon"
           className="h-8 w-8 shrink-0"
           data-cy="workspace-split-button"
@@ -354,7 +358,7 @@ export function NotesTabStrip({
           disabled={splitDisabled}
           onClick={onToggleSplit}
         >
-          <Columns className="h-4 w-4" aria-hidden="true" />
+          {splitView ? <Rectangle className="h-4 w-4" aria-hidden="true" /> : <Columns className="h-4 w-4" aria-hidden="true" />}
         </Button>
       )}
     </div>

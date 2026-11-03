@@ -7,6 +7,7 @@ import { cn } from '@ui/web/lib/utils'
 import { useLongPress } from '@ui/web/hooks/useLongPress'
 import { getRagChunkBodyLength } from '@core/rag/chunkTemplate'
 import type { RagNoteGroup } from '@core/types/ragSearch'
+import { useNoteDragSource } from '@ui/web/providers/NoteDragProvider'
 
 interface NoteSearchItemProps {
   group: RagNoteGroup
@@ -39,6 +40,7 @@ export function NoteSearchItem({
   isSelected = false,
   onToggleSelect,
 }: NoteSearchItemProps) {
+  const drag = useNoteDragSource()
   const [expanded, setExpanded] = useState(false)
   const containerRef = useRef<HTMLElement>(null)
 
@@ -111,6 +113,8 @@ export function NoteSearchItem({
   return (
     <article
       ref={containerRef}
+      draggable={drag.enabled && !selectionMode}
+      onDragStart={event => { if (selectionMode) event.preventDefault(); else drag.start(event, { noteId: group.noteId }) }}
       className={cn(
         'group relative rounded-lg border border-border/60 bg-card border-l-[3px] overflow-hidden transition-all hover:border-primary/30 hover:shadow-sm',
         getAccentClass(group.topScore)

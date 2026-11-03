@@ -103,8 +103,15 @@ These are engineering estimates only; autosave/editor lifecycle and native navig
 
 ### Desktop split view follow-up (2026-10-28)
 
-- Reuse tab identities and the existing flush boundary; expose two panes with a
-  single active editor and a read-only secondary note.
+#### Direct pane interaction (2026-11-03)
+
+- [x] Show full tools on both notes and retain readers while focus changes.
+- [x] Replace Activate with click/keyboard focus, retaining the save boundary.
+- [x] Keep the destination hint on shared New Note and remove the duplicate pane creation row following local review.
+- [x] Validate direct actions, focus, draft safety, scroll, narrow layout, and feature preference; provide a local preview.
+
+- Reuse tab identities and the existing flush boundary; expose two panes with independent
+  reading/editing modes and durable save sessions for both panes.
 - Preserve both tabs on exit and on desktop/mobile resizing; block navigation
   when the active draft cannot be saved.
 - Verify separate writes, duplicate selection, error and recovery, resizing,
@@ -116,3 +123,18 @@ These are engineering estimates only; autosave/editor lifecycle and native navig
 - Add a browser-local, default-off Split View setting to My Account →
   Workspace. Hide split when disabled without closing tabs, and verify failed
   storage, account switches, responsive layout, pending saves and reload.
+
+### Independent pane modes and drag/drop follow-up (2026-11-03)
+
+- [x] Keep read/read, edit/edit, and both mixed modes independently.
+- [x] Bind each editor's save lifecycle and new-note identity to its own tab.
+- [x] Capture and flush every mounted editor before destructive view transitions.
+- [x] Add all requested native drag sources and highlighted pane destinations.
+- [x] Preserve displaced tabs and atomically move/swap existing sessions.
+- [x] Finish unit/component regression and local desktop/mobile viewport verification; record reruns and scope limits in testing docs.
+
+### Under-title metadata (2026-11-03)
+
+- [x] Implement the selected compact edit date and exact-date disclosure within each reading document; remove the footer.
+- [x] Verify relative-time refresh, malformed imports, local-time formatting, and existing web unit coverage.
+- [x] Finish browser checks for per-pane dates, narrow mobile touch targets, dismissal/focus, and scrolling; refresh local preview evidence.

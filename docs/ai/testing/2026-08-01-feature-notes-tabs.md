@@ -373,3 +373,49 @@ test against a production static export and an intercepted synthetic backend
 passed an actual reload after enabling split, then disabling and reloading
 again before re-enabling the retained layout. It does not validate Stage or a
 real Supabase backend.
+
+### Independent panes, drag/drop, and mobile regression (2026-11-03)
+
+New coverage:
+
+- Core split transitions retain displaced tabs, reuse existing sessions, swap visible peers, and reject stale targets or a full workspace without orphan tabs.
+- Drag payload parsing rejects invalid, oversized, wrong-version, and foreign-owner data; ordinary text/file drops remain outside the note-drop handler.
+- `SplitPaneInteractions.cy.tsx` exercises the real controller/shell: all reading tools, direct actions without Activate, the shared New Note destination, absence of the duplicate pane creation row, all four reading/editing combinations, separate title/body saves and first-create IDs, retained editor instances, all list/search/AI/tab drag sources, failed saves, and foreign-owner drops.
+- At both 320 and 390 px, a live desktop pair becomes one visible mobile editor with a compact tab menu, hidden split controls, and no horizontal page overflow. Switching mobile tabs, editing, reduced viewport height, and saving work before desktop resizing restores both original editor instances and drafts.
+- `MobileLayout.cy.tsx` covers mobile navigation, reading/editing actions, scrolling, toolbar selection/formatting, tab switching/closing, expanded editing, viewport/keyboard resizing, and failed-save dialogs.
+
+Local evidence:
+
+- Full core/web Jest run through Allure: 239 suites, 2,142 tests passed. One unchanged ENEX large-inline-image case failed in an earlier run, passed in isolation, then passed in the complete rerun; no ENEX fix is claimed.
+- The six-spec browser regression ran 161 cases: all 73 mobile cases and both additional real-controller responsive cases passed, as did the other interaction, preference, hydration and persistence cases except one desktop save-failure test. That test needed to await each rejected durable write before triggering its next transition; its focused rerun passed 1/1 with complete Allure modeling and no findings. The broad run remains recorded as 160/161, rather than relabeled as a green run.
+- Manual loopback preview at 390 and 320 px: one visible editor, compact tab menu, usable reading/editing tools, successful local save, and no horizontal page overflow. Returning to desktop displayed both editors. The extra pane heading/creation row was also visually absent.
+- Final focused Jest regression after the shell compatibility adjustment: eight suites, 83/83 tests passed; Allure expectations matched with complete modeling and no findings.
+- Production type-check, full ESLint, and `git diff --check` passed.
+
+Reproduction commands (prefix each test command with `npx allure agent --goal "<scope>" --`):
+
+```sh
+npx jest --config jest.config.cjs --selectProjects unit-core unit-web --runInBand
+npx cypress run --component --browser electron --spec "cypress/component/features/notes/DesktopSplitView.cy.tsx,cypress/component/features/notes/SplitPaneInteractions.cy.tsx,cypress/component/features/notes/SplitLayoutPersistence.cy.tsx,cypress/component/features/notes/SplitViewPreference.cy.tsx,cypress/component/features/notes/WorkspaceAuthHydration.cy.tsx,cypress/component/features/mobile/MobileLayout.cy.tsx"
+```
+
+Scope limits: network responses and notes are synthetic. Cypress drag/drop tests use native `DataTransfer` and the real source/target handlers; native pointer dragging was not independently established by the browser automation. Responsive checks emulate browser viewport dimensions, not a physical iOS/Android device or its keyboard. No CI, deployment, backend/auth integration, or new line-coverage percentage is claimed by this local pass.
+
+### Under-title note dates (2026-11-03)
+
+- TDD: three new reader tests first failed because the Note details trigger did not exist; all ten reader unit tests then passed. Coverage includes title/metadata/tag order, disclosure of both original timestamp values, Escape dismissal, refreshing relative time, and invalid imported timestamps.
+- Full web unit regression through Allure (`npx jest --config jest.config.cjs --selectProjects unit-web --runInBand`): 148 suites and 1,290 tests passed; expectations matched, complete modeling, no findings.
+- Five-spec Cypress regression: 154/156 initially passed. The two new layout cases lacked application CSS and a constrained scroll fixture; after fixing the fixture, the desktop click also needed `scrollBehavior: false` so Cypress would not top-align an already-visible trigger underneath the action bar. Assertions were retained.
+- Final `NoteView.cy.tsx` rerun: 11/11 passed, no retries, complete Allure modeling, matched expectations and no findings. It proves a 44px mobile target, exact-date disclosure within 320px, Escape focus restoration, and scroll dismissal at offset 800 without jumping back to the title. Report retained as `note-dates-report.html` in this chat's local evidence directory.
+- The other 145 browser regressions passed: adaptive tags 5, split interactions 21 (including per-note timestamps), desktop split 46, mobile layout 73.
+- The initial browser bootstrap rejected the date-fns barrel's export-all declarations in the Next/Cypress loader. Importing the documented `date-fns/formatDistanceStrict` entry resolved that integration issue without changing test runner settings.
+- Manual preview confirmed the actual application at desktop, 390px and 320px: compact dates beneath titles, no old footer, local-time details, and no horizontal overflow. The 320px popover remained between x=16 and x=304.
+- Production type-check, full ESLint, focused final ESLint and `git diff --check` passed. No physical-device or CI claim is made.
+
+### Pre-PR verification and split-toggle feedback (2026-11-03)
+
+- The reported toggle regression was reproduced by a failing unit assertion: both modes rendered the same Columns icon. Split now uses a primary highlight and a rectangle action icon to return to single view; single view offers the Columns icon to open split. Action names and `aria-pressed` stay synchronized. Manual preview confirmed distinct SVG shapes, distinct backgrounds, and a successful round trip.
+- The complete core/web checkpoint passed 239 suites and 2,145 tests. Its first run repeated the unchanged ENEX large-inline-image failure; that case passed in isolation and in the complete rerun. The ENEX implementation and assertions remain unchanged; this is an existing intermittent validation issue, not a fix in this feature.
+- After the final toggle regression was added and fixed, the complete web suite passed 148 suites and 1,291 tests with matched Allure expectations, complete modeling and no findings.
+- The final combined Electron run passed 178/178 cases across NoteView, NoteTagLayout, SplitPaneInteractions, DesktopSplitView, MobileLayout, SplitLayoutPersistence, SplitViewPreference and WorkspaceAuthHydration. Allure expectations matched with complete modeling and no findings. The report is retained as `split-view-pr-report.html` in the local evidence directory.
+- Final production type-check, full ESLint and staged whitespace checks passed. The local `/split-preview/` demo is excluded from the feature commit. CI status is separate from these local results.

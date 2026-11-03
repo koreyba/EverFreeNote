@@ -283,11 +283,29 @@ so its latest value is flushed on unmount instead.
 
 ### Desktop split view (2026-10-28)
 
+#### Direct pane interaction (2026-11-03)
+
+Render the same full reader in each reading pane so focus changes do not replace the reader's DOM or close its menu. Each `WorkspaceEditorPane` owns a `useNotePaneSession`, editor ref, note ref, save callbacks, and save status. Both editors stay mounted across focus changes. A click or keyboard focus requests the existing guarded tab transition; interactive note actions keep their explicit note identity. The shared New Note action captures its destination tab ID before asynchronous saves, avoiding a callback bound to a previous focus. There is no extra pane header or pane-local creation row.
+
+```mermaid
+flowchart LR
+  interaction[Click or keyboard focus in pane] --> boundary[Capture and flush mounted editors]
+  boundary -->|saved| focus[Set focused tab]
+  boundary -->|failed| retain[Keep draft and current destination]
+  focus --> shared[Shared New Note names left or right]
+  local[Shared New Note with captured destination] --> boundary
+  boundary -->|saved with target tab ID| create[Create draft in requested pane]
+```
+
+This follows the active group convention in [Obsidian tabs](https://obsidian.md/help/tabs) and [VS Code editor groups](https://code.visualstudio.com/docs/configure/custom-layout), with a visible destination hint to make note creation predictable.
+
 `NotesShell` presents two existing workspace tab IDs side by side. The active
-tab owns the sole editor/controller session; the other tab uses a sanitized,
-read-only, scrollable preview. Activating another pane goes through the same
-controller flush and capture boundary as the normal tab strip. This avoids two
-editor references and competing writes to the same note. Selecting an already
+tab identifies the destination of shared actions. Each displayed tab owns an
+independent reader or editor, according to its saved mode. Activating another pane goes through the same
+controller flush and capture boundary as the normal tab strip. The controller registers every mounted editor and flushes/captures all of
+them before a transition. Save callbacks keep explicit tab and note identities;
+the owner/note queue serializes writes and note deduplication prevents competing
+sessions for the same note. Selecting an already
 open note retains the existing deduplication rule. A third selected tab
 replaces the currently active pane; closing either displayed tab leaves split.
 Exit keeps all tabs, and temporarily hiding a pane below 680px of workspace
@@ -297,8 +315,8 @@ snapshots without this field retain their original behavior. Hydration accepts
 the layout only when both distinct tab IDs still exist, they do not refer to
 the same note, and the focused ID belongs to the pair. A missing second note
 is permitted so the empty pane can still be used to choose one.
-After keyboard or pointer activation, focus moves to the newly active pane;
-if saving fails, focus stays on the activation button.
+Keyboard and pointer interactions select the destination pane without an
+activation button. A failed save keeps drafts and the current destination.
 
 For same-document navigation and account switching, the existing owner- and
 epoch-scoped workspace memory retains active split sessions. If persisting an
@@ -326,12 +344,12 @@ including when their first save assigns an ID.
 
 ```mermaid
 flowchart LR
-  list[Note list or tab strip] --> boundary[Capture and flush active editor]
+  list[Note list or tab strip] --> boundary[Capture and flush mounted editors]
   boundary -->|success| tabs[Workspace tab sessions]
   boundary -->|failure| active[Keep active draft and report error]
   tabs --> active
-  tabs --> preview[Read-only pane]
-  preview -->|Activate| boundary
+  tabs --> other[Independent reader or editor]
+  other -->|Click or keyboard focus| boundary
 ```
 
 ## Sign-out with local drafts
@@ -386,7 +404,7 @@ The design covers every requirements goal and transition:
 | Reload and browser-tab isolation | versioned `sessionStorage` adapter with in-memory fallback |
 | Tags/Search/Settings/internal opens | one controller boundary and a mounted workspace hook |
 | Desktop/mobile views | separate presentation components consuming the same hook/model |
-| Split View follow-up | independent tab sessions, one active editor and one read-only presenter |
+| Split View follow-up | independent tab sessions, each with its own reader/editor and save lifecycle |
 
 The only intentionally deferred behavior is native-mobile persistence policy; native UI can reuse the model without changing web `sessionStorage` semantics. No design gap blocks implementation.
 
@@ -465,3 +483,26 @@ another browser window, or a mobile process killed without a warning.
 ## Confirming manual saves
 
 The editor keeps the exact submitted snapshot separate from later typing. Only a successful durable manual write in the same account and editor session advances its saved baseline; failed or stale completions cannot clear newer drafts. Creation of a new note uses its confirmed ID to connect the existing editor session to the saved note without remounting. Autosave acknowledgements are ordered so an older completion cannot replace a newer confirmed save.
+
+#### Independent editors and native note drops (2026-11-03)
+
+`useNotePaneSession` reuses the established durable save handlers with a pane-local note ref and creation promise. The workspace controller retains its public single-selection API for navigation, while an editor-ref registry captures both panes for Settings, deletion, split closing, and sign-out. Workspace snapshots retain each tab's mode and draft.
+
+`NoteDragProvider` supplies the current owner and desktop split availability to shared card components. Sources write only owner and note/tab identifiers into a versioned app MIME payload. Pane handlers intercept only that MIME type; text and file drops reach the editor normally. `openDraggedNoteInPane` revalidates the owner and layout after async saves/loading. Pure workspace transitions atomically place or swap existing sessions, or add a deduplicated note tab within the shared limit.
+
+```mermaid
+flowchart TD
+  left[Left editor and note ref] --> saves[Owner/note durable write queue]
+  right[Right editor and note ref] --> saves
+  sources[Note list, regular search, AI note/fragment, open tab] --> payload[Versioned owner and identifiers]
+  payload --> target[Highlighted left or right pane]
+  target --> gate[Capture and flush all mounted editors]
+  gate --> identity[Revalidate owner, layout, note and capacity]
+  identity --> placement[Atomic place or swap, preserve tab sessions]
+```
+
+#### Note metadata (2026-11-03)
+
+`NoteView` places `NoteMetadata` beneath the title, within the existing scrolling document. Each note owns a Radix popover exposing its created/edited timestamps in local date and time format. The visible label uses the existing date-fns dependency, refreshes once per minute, and treats future clock skew as just now. Invalid timestamps have an explicit unavailable state. Keying the component by note ID resets disclosure when the note changes.
+
+The under-title placement was selected over the document footer and a pinned status strip. It removes duplicate date labels and keeps mobile space available for the note and its tools. Scrolling closes the popover and suppresses trigger autofocus for that dismissal so the reader does not jump back up. Normal Escape/close dismissal restores keyboard focus.
