@@ -1,0 +1,1 @@
+{"id":"48d9d6677447bcea77a6d9c3b3814e1f","fullName":"everfreenote:core/tests/unit/notes-refresh-cancellation.test.ts#rejects incomplete ID results instead of treating truncated rows as deletions","name":"rejects incomplete ID results instead of treating truncated rows as deletions","status":"passed","testResultsByEnv":{"default":"0c9244416bd0a31e3dfac4a92becc1f5"}}
