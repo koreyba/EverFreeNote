@@ -6,6 +6,19 @@ description: Define the technical architecture, components, and data models
 
 # Offline writes and native Back design
 
+## Device status color mapping (2026-11-03)
+
+`describeDeviceSyncStatus` owns the text, severity and dot color used by both Sidebar layouts and the status announcement. Priority is error → warning → checking → clear.
+
+| Color | Conditions |
+| --- | --- |
+| Red | Failed writes, unreadable local storage, unqueued edits, blocked ownership, pending deletion cleanup, or failed restored-note verification |
+| Yellow | Waiting writes, offline device, unverified legacy data, a locally edited note unavailable remotely, or restored notes awaiting an online check |
+| Gray | Local data or restored notes are being checked, with no known error/warning |
+| Green | Checks complete and no reported local queue/data issue |
+
+Keep existing account-scoped text and recovery actions. The clear tooltip states that no waiting or failed changes were reported; it does not infer remote connectivity from `navigator.onLine`.
+
 ## Architecture Overview
 ```mermaid
 flowchart TD

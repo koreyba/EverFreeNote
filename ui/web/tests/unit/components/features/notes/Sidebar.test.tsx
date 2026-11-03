@@ -71,12 +71,13 @@ describe("Sidebar", () => {
   })
 
   describe("Sync Status Indicator", () => {
-    it("does not claim synchronization when no queue issue is reported", () => {
+    it("shows green for a checked empty queue without claiming server synchronization", () => {
       const { container } = render(<Sidebar {...defaultProps} isOffline={false} pendingCount={0} failedCount={0} />)
 
-      const statusOutput = container.querySelector('[title="Sync status"]')
+      const statusOutput = container.querySelector('[title="This account on this device: No waiting or failed changes reported"]')
       expect(statusOutput).toBeTruthy()
-      expect(statusOutput?.className).toContain("bg-muted-foreground")
+      expect(statusOutput?.className).toContain("bg-emerald-500")
+      expect(statusOutput?.getAttribute('title')).not.toMatch(/synchronized|online|connected/i)
     })
 
     it("renders Offline mode status dot when isOffline is true", () => {
@@ -87,12 +88,12 @@ describe("Sidebar", () => {
       expect(statusOutput?.className).toContain("bg-amber-500")
     })
 
-    it("describes queued changes as waiting", () => {
+    it("shows yellow for queued changes and describes them as waiting", () => {
       const { container } = render(<Sidebar {...defaultProps} pendingCount={3} />)
 
       const statusOutput = container.querySelector('[title="This account on this device: 3 waiting"]')
       expect(statusOutput).toBeTruthy()
-      expect(statusOutput?.className).toContain("bg-muted-foreground")
+      expect(statusOutput?.className).toContain("bg-amber-500")
     })
 
     it("renders Sync failed count status dot when failedCount > 0", () => {
@@ -101,6 +102,22 @@ describe("Sidebar", () => {
       const statusOutput = container.querySelector('[title="This account on this device: 2 failed"]')
       expect(statusOutput).toBeTruthy()
       expect(statusOutput?.className).toContain("bg-destructive")
+    })
+
+    it("stays gray until both local data and restored-note checks finish", () => {
+      const { container, rerender } = render(<Sidebar {...defaultProps} syncStateReady={false} />)
+      expect(container.querySelector('[title="Checking local data"]')?.className).toContain('bg-muted-foreground')
+      rerender(<Sidebar {...defaultProps} restoredNoteCheck="checking" />)
+      expect(container.querySelector('[title="Checking restored notes"]')?.className).toContain('bg-muted-foreground')
+      rerender(<Sidebar {...defaultProps} />)
+      expect(container.querySelector('[title="This account on this device: No waiting or failed changes reported"]')?.className).toContain('bg-emerald-500')
+    })
+
+    it("keeps errors red when the device is offline, checking and waiting", () => {
+      const { container, rerender } = render(<Sidebar {...defaultProps} isOffline syncStateReady={false} pendingCount={2} failedCount={1} />)
+      expect(container.querySelector('[title*="1 failed"]')?.className).toContain('bg-destructive')
+      rerender(<Sidebar {...defaultProps} isOffline syncStateReady={false} pendingCount={2} storageReadError />)
+      expect(container.querySelector('[title*="Local data could not be read"]')?.className).toContain('bg-destructive')
     })
   })
 

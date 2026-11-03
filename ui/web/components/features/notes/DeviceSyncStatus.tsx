@@ -19,6 +19,14 @@ type DeviceSyncStatusProps = Readonly<{
   onRetryRestoredNoteCheck?: () => void
 }>
 
+const CLEAR_QUEUE_LABEL = "This account on this device: No waiting or failed changes reported"
+const DOT_COLORS = {
+  error: "bg-destructive",
+  warning: "bg-amber-500",
+  neutral: "bg-muted-foreground",
+  success: "bg-emerald-500",
+} as const
+
 // Counts cover this account's local queue. navigator.onLine does not prove that
 // the server is reachable, so do not infer an individual note's sync state.
 export function describeDeviceSyncStatus({ isOffline, pendingCount, failedCount, syncStateReady = true, storageReadError = false, legacyUnverifiedCount = 0, unqueuedLocalCount = 0, unavailableRemoteEdits = false, legacyClaimBlocked = false, localCleanupCount = 0, restoredNoteCheck = 'idle' }: DeviceSyncStatusProps) {
@@ -39,10 +47,17 @@ export function describeDeviceSyncStatus({ isOffline, pendingCount, failedCount,
   if (pendingCount > 0) queued.push(`${pendingCount} waiting`)
   if (queued.length) parts.push(`This account on this device: ${queued.join(" · ")}`)
 
+  // Known problems take priority over ongoing checks. Green only describes
+  // the checked local queue; it does not confirm server reachability.
+  const hasError = failedCount > 0 || storageReadError || unqueuedLocalCount > 0 || legacyClaimBlocked || localCleanupCount > 0 || restoredNoteCheck === 'error'
+  const hasWarning = pendingCount > 0 || isOffline || legacyUnverifiedCount > 0 || unavailableRemoteEdits || restoredNoteCheck === 'offline'
+  const tone = hasError ? "error" : hasWarning ? "warning" : parts.length > 0 ? "neutral" : "success"
+
   return {
-    text: parts.join(" · ") || "Sync status",
+    text: parts.join(" · ") || CLEAR_QUEUE_LABEL,
     hasIssue: parts.length > 0,
-    tone: failedCount > 0 || storageReadError || unqueuedLocalCount > 0 || legacyClaimBlocked || localCleanupCount > 0 || restoredNoteCheck === 'error' ? "error" : isOffline || legacyUnverifiedCount > 0 || unavailableRemoteEdits || restoredNoteCheck === 'offline' ? "offline" : "neutral",
+    tone,
+    dotClassName: DOT_COLORS[tone],
   } as const
 }
 
@@ -55,13 +70,13 @@ export function DeviceSyncStatus(props: DeviceSyncStatusProps) {
       className={cn(
         !status.hasIssue ? "sr-only" : "shrink-0 border-b px-3 py-1.5 text-xs font-medium leading-4",
         status.hasIssue && status.tone === "error" && "border-destructive/20 bg-destructive/5 text-destructive",
-        status.hasIssue && status.tone === "offline" && "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
+        status.hasIssue && status.tone === "warning" && "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200",
         status.hasIssue && status.tone === "neutral" && "border-border/60 bg-muted/40 text-foreground/80",
       )}
     >
       <div role="status" aria-live="polite" aria-atomic="true" className="flex items-center gap-2">
         {status.hasIssue && <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-current" />}
-        <span>{status.hasIssue ? status.text : "This account on this device: No waiting or failed changes reported"}</span>
+        <span>{status.text}</span>
       </div>
       {(props.legacyUnverifiedCount || props.unqueuedLocalCount || props.unavailableRemoteEdits || props.storageReadError || props.legacyClaimBlocked || props.localCleanupCount || props.restoredNoteCheck === 'error' || props.restoredNoteCheck === 'offline') ? (
         <details className="mt-1">

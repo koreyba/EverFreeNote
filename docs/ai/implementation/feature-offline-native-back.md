@@ -6,6 +6,10 @@ description: Technical implementation notes, patterns, and code guidelines
 
 # Implementation
 
+## Device status colors (2026-11-03)
+
+The shared status descriptor returns the existing recovery text plus a severity and dot class. Sidebar uses that class in both layouts. Green is restored for a checked empty local queue, yellow includes waiting writes, gray remains for ongoing checks, and existing errors remain red even while offline or checking. The empty-queue tooltip now explains its account/device scope instead of the generic “Sync status”. The banner stays visually hidden for the clear state; waiting warnings use the same amber treatment as other warnings. Queue/network behavior is unchanged.
+
 Every new/edit save writes the local cache and mutation queue before returning to the editor, including when navigator.onLine is stale. Concurrent creation shares one promise/ID. Remote mutations run in the background with silent callbacks; sync preserves the local ID and recovers an insert whose response was lost by updating that same ID. Missing remotely deleted notes retain existing recreate behavior.
 
 While visible, a 15-second retry plus focus/visibility restoration recovers transport without requiring an online event. Sync starts after authentication restoration and tears down its network listener on unmount/account change. New cache/queue records include the owner; known foreign-owned drafts are excluded from the overlay and cannot be uploaded by the current account. Legacy unowned records retain their prior behavior.
