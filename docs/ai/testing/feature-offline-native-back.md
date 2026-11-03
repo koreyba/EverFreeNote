@@ -6,6 +6,21 @@ description: Define testing approach, test cases, and quality assurance
 
 # Offline saves and native Back validation
 
+## PR #207 queued-deletion synchronization (2026-11-03)
+
+The exact-head `69348f18d98` component failure was reproduced by seeding a
+same-owner pending update before confirming deletion. The card disappeared
+after durable local deletion while IndexedDB correctly retained a pending
+tombstone. Waiting only for HTTP 204 and an empty queue was still insufficient:
+the acknowledged tombstone remained until asynchronous cache cleanup finished.
+
+The existing create/reconnect/delete/remount scenario now forces this queued
+branch, waits for the DELETE response and completed adapter cleanup, and keeps
+the exact zero-queue, zero-cache and no-resurrection assertions. The deterministic
+reproduction failed before synchronization and passed afterwards with coverage
+enabled, without retries or Allure findings. No production deletion behavior
+or assertion was relaxed.
+
 ## Test Coverage Goals
 Cover local durability, restart/reconnect identity, overlapping writes, native Back priority and failure-safe navigation. Keep browser storage/transport simulation distinct from an installed Android run. Coverage percentages will come from the final instrumented Jest run; do not infer 100% coverage from green tests.
 

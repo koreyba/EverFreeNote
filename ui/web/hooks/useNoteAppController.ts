@@ -773,7 +773,7 @@ export function useNoteAppController() {
   const handleNotesDeleted = useCallback((noteIds: string[]) => {
     if (!workspaceUserId || !isCurrentSession(sessionSnapshot)) return
     if (noteIds.length) advanceNoteListRevision(queryClient, workspaceUserId)
-    noteIds.forEach(clearLocalUnavailable)
+    noteIds.forEach(noteId => clearLocalUnavailable(noteId))
     resetTabsForNotes(noteIds)
   }, [clearLocalUnavailable, isCurrentSession, queryClient, resetTabsForNotes, sessionSnapshot, workspaceUserId])
 

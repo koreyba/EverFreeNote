@@ -6,6 +6,36 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy
 
+## PR #207 CI save-barrier follow-up (2026-11-03)
+
+Exact-head `69348f18d98` CI recorded 1,140/1,146 passing component tests:
+five Split View cases timed out before reaching their controlled queue-write
+barrier, and the offline reconnect/delete case read a retained tombstone.
+All six passed locally with coverage enabled. Four storage cases also passed
+at 6x CPU throttling; the separately instrumented slow-save case passed at
+20x throttling. Those experiments do not establish the Linux timeout cause.
+
+The seven storage-concurrency scenarios affected across the two CI runs now
+leave timers running and wait for their existing held queue writes. Exact
+write counts, newest-draft/tag/image persistence, active-pane retention and
+failure/retry assertions are unchanged. Debounce-specific tests retain their
+fake clocks. This fixture adjustment requires a new exact-head CI result;
+a local pass alone does not prove the previous CI timeouts are resolved.
+
+After the fixture changes and three Sonar fixes, the exact three-spec Cypress
+scope passed 67/67 with coverage enabled and no retries. The first invocation
+misspelled the Sidebar path and ran 52/52; Allure rejected its expected count,
+so the corrected full scope was run before acceptance. Controller, Sidebar and
+NotesShell unit tests passed 126/126. Both final reports have matched scope,
+complete runtime modeling and no findings. Production type-check, full ESLint
+and whitespace checks passed. Reports are retained as `final-component-green`
+and `final-unit-green` in the chat's `pr-207-ci-69348f` evidence directory.
+
+Sonar's direct callback warning is addressed by explicitly forwarding only the
+note ID, and the status-color priority uses flat conditions. Qodana did not
+analyze this CI head: its Cloud server rejected the configured license token.
+That external failure and Codacy's complexity budget remain independent gates.
+
 ## Test Coverage Goals
 
 - 100% branch coverage for new pure workspace transitions and hydration guards.

@@ -66,6 +66,7 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
           remoteNotes.set(id, { ...remoteNotes.get(id), ...req.body, id })
           req.reply({ body: remoteNotes.get(id) })
         } else if (req.method === 'DELETE') {
+          req.alias = 'deleteSavedNote'
           const id = new URL(req.url).searchParams.get('id')?.replace('eq.', '') ?? ''
           remoteNotes.delete(id)
           req.reply({ statusCode: 204, body: '', delay: 500 })
@@ -108,13 +109,27 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
     cy.get('[data-sonner-toast][data-type="error"]').should('not.exist')
     cy.get('[data-cy="note-read-button"]').click()
     cy.get('[data-cy="queue-state"]').should('have.text', '0')
+    const cleanup = cy.spy(webOfflineStorageAdapter, 'removeSyncedTombstones')
     cy.get('[data-cy="note-delete-button"]').click()
+    // Make the queued-delete branch deterministic instead of racing a Read write.
+    cy.then(() => webOfflineStorageAdapter.upsertQueueItem({
+      id: 'overlapping-read-update', noteId: localId, operation: 'update',
+      payload: { user_id: user.id, title: 'Saved without internet', description: '<p>My offline text</p>', tags: [] },
+      clientUpdatedAt: new Date().toISOString(), status: 'pending',
+    }))
     cy.get('[role="alertdialog"]').contains('button', 'Delete').click()
     cy.get('[role="alertdialog"]').should('not.exist')
     // The dialog closes on click; the reading pane clears only after durable deletion.
     cy.contains('No Note Selected').should('be.visible')
     cy.get('[data-testid="note-card"]').should('not.exist')
-    cy.then(() => webOfflineStorageAdapter.loadNotes()).should('have.length', 0)
+    // A queued deletion hides the card before its tombstone is acknowledged.
+    cy.wait('@deleteSavedNote').its('response.statusCode').should('equal', 204)
+    cy.get('[data-cy="queue-state"]').should('have.text', '0')
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should('have.length', 0)
+    // Queue acknowledgement precedes the asynchronous tombstone cleanup.
+    cy.wrap(cleanup).should('have.been.called')
+    cy.then(() => Promise.all(cleanup.getCalls().map(call => call.returnValue)))
+    cy.then(() => webOfflineStorageAdapter.loadNotes()).should(notes => expect(notes, JSON.stringify(notes)).to.have.length(0))
     mountApp()
     cy.contains('Saved without internet').should('not.exist')
   })

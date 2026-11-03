@@ -51,7 +51,10 @@ export function describeDeviceSyncStatus({ isOffline, pendingCount, failedCount,
   // the checked local queue; it does not confirm server reachability.
   const hasError = failedCount > 0 || storageReadError || unqueuedLocalCount > 0 || legacyClaimBlocked || localCleanupCount > 0 || restoredNoteCheck === 'error'
   const hasWarning = pendingCount > 0 || isOffline || legacyUnverifiedCount > 0 || unavailableRemoteEdits || restoredNoteCheck === 'offline'
-  const tone = hasError ? "error" : hasWarning ? "warning" : parts.length > 0 ? "neutral" : "success"
+  let tone: keyof typeof DOT_COLORS = "success"
+  if (hasError) tone = "error"
+  else if (hasWarning) tone = "warning"
+  else if (parts.length > 0) tone = "neutral"
 
   return {
     text: parts.join(" · ") || CLEAR_QUEUE_LABEL,

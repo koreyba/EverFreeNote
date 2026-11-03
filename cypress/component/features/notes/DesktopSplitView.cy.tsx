@@ -630,13 +630,13 @@ describe('Desktop split view', { retries: 0 }, () => {
   })
 
   it('persists edits made during a slow save before activating another pane', () => {
+    // Storage ordering is controlled by held writes, independently of debounce timing.
     openTwoNotes()
     cy.window().then(win => {
       Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false })
       win.dispatchEvent(new Event('offline'))
     })
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
-    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
 
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
     const releases: Array<() => Promise<unknown>> = []
@@ -654,7 +654,6 @@ describe('Desktop split view', { retries: 0 }, () => {
     })
 
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
-    cy.tick(4000)
     cy.wrap(null).should(() => expect(releases, `Synthetic save state: ${saveDiagnostic()}`).to.have.length(1))
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Second version')
     cy.get('[data-testid="split-pane-left"]').click('topLeft')
@@ -780,7 +779,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       win.dispatchEvent(new Event('offline'))
     })
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
-    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     const releases: Array<() => Promise<unknown>> = []
     const titles: string[] = []
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
@@ -793,7 +791,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       return holdQueueWrite(item.noteId, () => original(item), release => releases.push(release))
     })
     cy.get('[aria-label="Note title"]').clear().type('Older offline')
-    cy.tick(4000)
     cy.wrap(null).should(() => expect(releases).to.have.length(1))
     cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[aria-label="Note title"]').clear().type('Manual offline')
@@ -822,7 +819,6 @@ describe('Desktop split view', { retries: 0 }, () => {
     })
     openTwoNotes()
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
-    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     const releases: Array<() => Promise<unknown>> = []
     const titles: string[] = []
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
@@ -835,7 +831,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       return holdQueueWrite(item.noteId, () => original(item), release => releases.push(release))
     })
     cy.get('[aria-label="Note title"]').clear().type('Older online')
-    cy.tick(4000)
     cy.wrap(null).should(() => expect(releases).to.have.length(1))
     cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[aria-label="Note title"]').clear().type('Manual online')
@@ -858,7 +853,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       win.dispatchEvent(new Event('offline'))
     })
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
-    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
     const error = expectedWriteFailure()
     let release: (() => Promise<unknown>) | undefined
@@ -868,7 +862,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       return original(item)
     })
     cy.get('[aria-label="Note title"]').clear().type('Stable offline')
-    cy.tick(4000)
     cy.wrap(null).should(() => expect(release).to.be.a('function'))
     cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[aria-label="Note title"]').clear().type('Failed manual')
@@ -1057,7 +1050,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       win.dispatchEvent(new Event('offline'))
     })
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
-    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
     let release: (() => Promise<unknown>) | undefined
     const error = expectedWriteFailure()
@@ -1067,7 +1059,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       return original(item)
     })
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
-    cy.tick(4000)
     cy.wrap(null).should(() => expect(release).to.be.a('function'))
     cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tag"]').click()
@@ -1118,7 +1109,6 @@ describe('Desktop split view', { retries: 0 }, () => {
     })
     openTwoNotes()
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
-    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     const original = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
     let release: (() => Promise<unknown>) | undefined
     let latestWriteId: string | undefined
@@ -1129,7 +1119,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       return holdQueueWrite(item.noteId, () => original(item), held => { release = held })
     })
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('First version')
-    cy.tick(4000)
     cy.wrap(null).should(() => expect(release).to.be.a('function'))
     cy.get('[data-testid="split-pane-left"]').click('topLeft')
     cy.get('[data-testid="split-pane-right"] [aria-label="Add tag"]').click()
@@ -1419,7 +1408,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       win.dispatchEvent(new Event('offline'))
     })
     cy.get('[data-testid="split-pane-right"] [data-cy="note-edit-button"]').click()
-    cy.clock(Date.now(), ['setTimeout', 'clearTimeout'])
     const originalWrite = webOfflineStorageAdapter.upsertQueueItem.bind(webOfflineStorageAdapter)
     let releaseWrite: (() => Promise<unknown>) | undefined
     cy.stub(webOfflineStorageAdapter, 'upsertQueueItem').callsFake(item => {
@@ -1427,7 +1415,6 @@ describe('Desktop split view', { retries: 0 }, () => {
       return holdQueueWrite(item.noteId, () => originalWrite(item), release => { releaseWrite = release })
     })
     cy.get('[data-testid="split-pane-right"] [aria-label="Note title"]').clear().type('Before image')
-    cy.tick(4000)
     cy.wrap(null).should(() => expect(releaseWrite).to.be.a('function'))
     cy.get('[data-testid="split-pane-left"]').click('topLeft')
     let releaseRead: (() => void) | undefined
