@@ -61,7 +61,7 @@ Consumer artifact names stay compatible with PR publication and Sonar.
 second standalone component push trigger is removed. Other branch/manual
 triggers remain, and remaining quality services are unchanged.
 
-All 25 Python helper regressions passed through Allure with matched scope,
+All 26 Python helper regressions passed through Allure with matched scope,
 complete modeling and zero findings. A replay of the existing baseline through
 the assembler retained all 143 specs, 1,146 logical tests and 298 coverage files;
 statement/function/branch counters and maps matched exactly. This replay is
@@ -69,3 +69,35 @@ an artifact integration check, not a fresh product test execution. Actionlint,
 project TypeScript checks and ESLint passed locally. DevKit feature lint uses a
 `feature-*` branch lookup; this repository task follows the required `codex/`
 branch prefix instead, without creating a misleading alias.
+
+Artifact files use atomic exclusive copying. A concurrent writer cannot replace
+evidence between a preliminary existence check and a copy; a regression injects
+that exact interleaving and verifies both failure and preservation of the rival
+file. Identical existing files are accepted, conflicting content fails. Cypress
+is invoked directly with the planned `--spec` selection so the npm script's full
+glob cannot introduce a second competing selection flag.
+
+## First GitHub measurement
+
+Run `41817685674` at `d017e82dda6` completed component planning through aggregation
+in **11m47s** (10:57:48–11:09:35 UTC), versus **29m12s** for the baseline job:
+59.6% less elapsed time. Shard jobs took 8m55s, 7m22s, 9m53s and 10m17s. Total
+component runner time including planning/aggregation was 37m58s, up 30.0% from
+29m12s; parallelism trades concurrent resources for latency. Main additionally
+avoids its formerly duplicated full execution. These are observed samples,
+not a guaranteed fourfold speedup.
+
+Allure inspection found all **1,146 baseline identities**, 143 specs, complete
+modeling, zero retries/flaky/skipped cases and no extra runner failures. The raw
+coverage union retained all 298 source files and identical instrumentation maps:
+13,036 statements, 2,981 functions and 9,151 branch points. Covered counts were
+9,960 → 9,964 statements, 2,321 → 2,321 functions and 6,467 → 6,472 branches.
+Individual runtime counters vary: the early return after cancellation at
+`useRestoredNoteValidation.ts:105` ran eight times in the baseline and zero in
+this sample. Its statement and branch remain instrumented; no assertion or source
+scope was removed. Byte-identical counters are required for artifact replay,
+not claimed across independent browser executions.
+
+This first component benchmark succeeded, while its overall PR had the CodeQL
+copy-race finding addressed above. Acceptance still requires fresh full CI on
+the final SHA. Current gate and rollout evidence is recorded in PR #208.

@@ -129,8 +129,8 @@ jobs:
           fi
           # Keep one fixture per runner and headed Electron inside Xvfb.
           # Mask commands reach GitHub, while raw artifacts receive redacted logs.
-          python3 scripts/run-component-ci-isolated.py -- npm run test:component:ci -- \
-            --headed --spec "$COMPONENT_SPECS" "${coverage_args[@]}" --reporter junit \
+          python3 scripts/run-component-ci-isolated.py -- ./node_modules/.bin/cypress run \
+            --component --browser electron --headed --spec "$COMPONENT_SPECS" "${coverage_args[@]}" --reporter junit \
             --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | awk '
             { print; fflush() }
             index($0, "::add-mask::") != 1 { print >> "cypress/results/component-tests.log"; fflush("cypress/results/component-tests.log") }

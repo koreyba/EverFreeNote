@@ -14,7 +14,7 @@ description: Evidence-driven performance improvements for component CI
 - [x] Add deterministic four-shard planning and fail-closed artifact aggregation.
 - [x] Reuse one component execution on main and preserve consumer contracts.
 - [x] Verify helper error paths, full spec membership, coverage union and Allure.
-- [ ] Review and publish a PR; measure fresh GitHub latency and full test scope.
+- [x] Review and publish PR #208; measure fresh GitHub latency and full test scope.
 - [ ] Resolve any actual CI failures without weakening behavior checks.
 
 Task tracking name: `component-runtime`. Timing and correctness evidence lives

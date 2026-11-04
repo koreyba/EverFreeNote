@@ -114,12 +114,15 @@ function copyTree(source, destination) {
     return;
   }
   fs.mkdirSync(path.dirname(destination), { recursive: true });
-  if (fs.existsSync(destination)) {
+  try {
+    // Exclusive creation prevents another writer's evidence being overwritten
+    // between an existence check and the copy.
+    fs.copyFileSync(source, destination, fs.constants.COPYFILE_EXCL);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
     if (!fs.readFileSync(source).equals(fs.readFileSync(destination))) {
       throw new Error(`Conflicting shard evidence file: ${destination}`);
     }
-  } else {
-    fs.copyFileSync(source, destination);
   }
 }
 

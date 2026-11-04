@@ -165,6 +165,30 @@ class ComponentShardTests(unittest.TestCase):
         meta.write_text(json.dumps(value))
         self.assertIn('sha/version does not match', self.merge(success=False).stderr.lower())
 
+    def test_concurrent_evidence_creation_cannot_be_overwritten(self):
+        self.artifacts()
+        hook = self.project / 'concurrent-copy.cjs'
+        hook.write_text("""
+const fs = require('node:fs');
+const original = fs.copyFileSync;
+let created = false;
+fs.copyFileSync = (source, destination, ...options) => {
+  if (!created && destination.endsWith('/allure-results/component/attachment-shard-1.txt')) {
+    created = true;
+    fs.writeFileSync(destination, 'concurrent evidence', { flag: 'wx' });
+  }
+  return original(source, destination, ...options);
+};
+""")
+        result = subprocess.run(['node', '--require', str(hook), str(SCRIPT), 'merge',
+                                 '--plan', 'plan.json', '--input', 'inputs', '--output', 'out',
+                                 '--sha', SHA, '--coverage', 'true'],
+                                cwd=self.project, capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(result.returncode, 0, 'conflicting concurrent evidence must fail')
+        self.assertIn('conflicting shard evidence', result.stderr.lower())
+        copied = self.project / 'out/allure-results/component/attachment-shard-1.txt'
+        self.assertEqual(copied.read_text(), 'concurrent evidence')
+
     def test_latest_attempt_replaces_only_its_shard_without_erasing_old_evidence(self):
         self.artifacts()
         retry = self.project / 'inputs/retry'

@@ -20,6 +20,7 @@ cases in successful run 41806363718. Runtime improvements require measurements.
 - [x] Planner discovers all current/new specs exactly once and balances measured work.
 - [x] Invalid/stale plans and missing/duplicate/foreign shard evidence fail closed.
 - [x] Aggregation preserves Allure attachments and unions overlapping coverage counters.
+- [x] Concurrent file creation is preserved and rejected as conflicting evidence, without an overwrite race.
 
 ## Integration Tests
 
@@ -27,13 +28,14 @@ cases in successful run 41806363718. Runtime improvements require measurements.
 - [x] Complete 298-file coverage snapshot produced byte-identical final LCOV.
 - [x] Replay existing baseline through four artifacts: 143 specs, 1,146 results, 298 coverage files, exact counters/maps.
 - [x] Validate reusable workflow calls and artifact names with actionlint and contract review.
-- [x] All 25 helper cases pass with matched Allure expectations and complete modeling; project lint/type checks pass.
+- [x] All 26 helper cases pass with matched Allure expectations and complete modeling; project lint/type checks pass.
 - [ ] Confirm matrix failure propagation and helper execution in the real GitHub workflow.
 
 ## End-to-End Tests
 
-- [ ] Fresh GitHub component run contains the same 1,146 logical identities.
-- [ ] Four shards complete; combined Allure and Sonar consume the full union.
+- [x] GitHub sample 41817685674 contains exactly the same 1,146 logical identities, with no retries/flaky/skipped cases.
+- [x] Four shards complete and aggregate all 143 specs / 298 source coverage files.
+- [ ] Confirm combined Allure/Sonar consumers and all gates on the final SHA (PR #208).
 - [ ] Remaining PR checks pass without weakening their configuration.
 
 ## Test Data
@@ -56,6 +58,10 @@ No product UI changes are planned. Preserve the existing preview and worktrees.
 Baseline component job: 29m12s; fixture/test step: 27m33s. Compare real GitHub wall
 time with runner count/setup costs reported separately. The local report-task
 benchmark improved median 381.9ms to 135.1ms; it does not establish CI latency.
+The first real GitHub component path took 11m47s (59.6% less elapsed time), with
+37m58s summed runner time (+30.0%). Instrumented source/statement/function/branch
+scope is identical. Covered totals increased slightly, with the cancellation
+early-return timing difference documented in the implementation notes.
 
 ## Bug Tracking
 
