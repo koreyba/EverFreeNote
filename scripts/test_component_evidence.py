@@ -37,12 +37,13 @@ class ComponentEvidenceTests(unittest.TestCase):
         source.write_text('runner evidence')
         # Simulate permissive source metadata without making the fixture writable.
         mode = stat.S_IFREG | stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO
-        previous = os.umask(0)
-        try:
-            with mock.patch('os.fstat', return_value=SimpleNamespace(st_mode=mode)):
-                copy_path(source, self.output)
-        finally:
-            os.umask(previous)
+        # Inspect requested permissions before the kernel applies umask; never
+        # relax the process-wide mask to exercise this security contract.
+        with mock.patch('os.fstat', return_value=SimpleNamespace(st_mode=mode)), \
+                mock.patch('os.open', wraps=os.open) as opened:
+            copy_path(source, self.output)
+        created_modes = [call.args[2] for call in opened.call_args_list if call.args[1] & os.O_CREAT]
+        self.assertEqual(created_modes, [0o644], 'creation must request safe permissions for any umask')
         self.assertEqual(self.output.read_text(), 'runner evidence')
         self.assertEqual(self.output.stat().st_mode & 0o777, 0o644)
 

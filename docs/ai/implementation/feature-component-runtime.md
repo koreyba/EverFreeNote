@@ -144,3 +144,9 @@ then retains the existing zero-queue, same-ID, cache, deletion and remount check
 All six OfflineNotes cases passed locally, and again with a temporary 100ms
 acknowledgement delay. That stress delay is absent from committed source.
 No retry, timeout or product assertion was removed or weakened.
+
+The permissions regression checks the mode passed to the real `os.open` call,
+before the kernel applies umask, and verifies the copied bytes and resulting
+permissions. It never relaxes the process-wide umask. Reintroducing the former
+0666 creation request makes this replacement regression fail even under the
+normal restrictive mask; the current implementation passes all 36 contracts.
