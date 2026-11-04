@@ -6,6 +6,14 @@ description: Technical implementation notes, patterns, and code guidelines
 
 # Implementation Guide
 
+## Drag-scroll ownership during resize (2026-11-04)
+
+The active-tab reveal effect continues updating overflow controls during a
+resize, but does not call `scrollIntoView` while a native tab drag is active.
+This prevents ResizeObserver from snapping the viewport back to the active
+tab while the drag pointer is driving edge scrolling. Cancelling or finishing
+the drag restores normal active-tab reveal behavior.
+
 ## Development Setup
 
 - Worktree: use the Harness-managed worktree under the Worktree root configured in Harness settings; never create one inside the project checkout.

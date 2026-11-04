@@ -272,7 +272,8 @@ export function NotesTabStrip({
 
     const reveal = () => {
       const button = tabButtonRefs.current.get(activeTabId)
-      if (button) scrollTabIntoView(button)
+      // Resizing the strip must not pull it away from a tab drag's edge scroll.
+      if (button && !dragging.current) scrollTabIntoView(button)
       const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth
       setOverflow({
         left: viewport.scrollLeft > SCROLL_EPSILON_PX,

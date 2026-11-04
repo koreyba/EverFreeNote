@@ -6,6 +6,51 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy
 
+## Linux drag-scroll regression (2026-11-04)
+
+Exact-head `156e1204aea` CI again passed 1,140/1,146 components. The offline
+deletion scenario and Sonar analysis passed; five save-barrier cases remained
+red, alongside the native edge-scroll case. Removing fake clocks did not
+resolve the CI save stalls, so they remain under investigation.
+
+An isolated Linux arm64 Cypress 15.18.1/Node 24.18.0 container reproduced the
+native edge-scroll failure exactly (`scrollLeft=2224`, expected below 2145).
+The five selected save cases passed there, which does not establish their
+correctness under the full amd64 CI run.
+
+A new unit case reproduced a resize observer revealing the active tab during
+dragging. The strip now suppresses that reveal while a tab drag is active,
+still updates overflow affordances, and permits reveal after cancellation.
+The 18-case unit suite and four-case macOS browser suite passed. With only
+the production guard copied into the Linux fixture, the original failing
+native test passed unchanged, without additional browser flags. These final
+runs have matched Allure scope, complete modeling and no findings. Reports
+are retained in `pr-207-ci-156e120` as `resize-drag-green`,
+`resize-drag-browser` and `linux-resize-drag`.
+
+The full Linux context also reproduced the CI timing signature: typing
+`Second changed` took 13,258 ms. That exploratory run was stopped after nine
+completed cases once the scheduling problem was captured; its expected-50
+scope failed, so it is not a passing regression run. Changing only Electron
+launch switches initially reduced the same action to 209 ms. The supported
+`ELECTRON_EXTRA_LAUNCH_ARGS` foreground-scheduling switches tested were:
+`--disable-background-timer-throttling`, `--disable-renderer-backgrounding`
+and `--disable-backgrounding-occluded-windows`. Later cases still showed
+one-second keystroke delays and the slow-save barrier failed again. This
+experiment was stopped after reproducing the failure and is not a passing
+regression. These switches were not retained in CI. Assertions, retries and
+timeouts remain unchanged; background scheduling remains under investigation.
+See the [Cypress launch documentation](https://docs.cypress.io/api/node-events/browser-launch-api#Modify-Electron-app-switches)
+and [Electron background scheduling](https://www.electronjs.org/docs/latest/api/browser-window#page-visibility).
+
+Running the identical complete 50-case scope with `--headed` inside Xvfb,
+without those experimental switches, passed 50/50 with coverage enabled and
+no retries. Allure expectations matched, runtime modeling was complete and
+there were no findings (`linux-headed/awesome/index.html`). Component CI now
+uses that visible virtual-display mode; the fixtures, assertions, coverage,
+retries and timeout budgets are unchanged. This validates the Linux arm64
+reproduction; the new exact-head amd64 CI run remains the merge gate.
+
 ## PR #207 CI save-barrier follow-up (2026-11-03)
 
 Exact-head `69348f18d98` CI recorded 1,140/1,146 passing component tests:
