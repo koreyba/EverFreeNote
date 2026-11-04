@@ -8,7 +8,7 @@ export const webOAuthAdapter: OAuthAdapter = {
     // assign, not replace: this is exactly what supabase-js does when it performs the
     // redirect itself (GoTrueClient calls window.location.assign), so routing through
     // the adapter leaves browser history behaving as it did before.
-    webNavigationAdapter.navigate(authUrl)
+    await webNavigationAdapter.navigate(authUrl)
   },
 }
 

@@ -142,7 +142,7 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
       setSelectAll(false)
       setPage(0)
       setInitialLoading(true)
-      loadPage(0)
+      void loadPage(0)
     }
   }, [open, loadPage])
 
@@ -150,7 +150,7 @@ export function ExportSelectionDialog({ open, onOpenChange, onExport }: ExportSe
     const target = event.currentTarget
     const nearBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 200
     if (nearBottom && hasMore && !loading) {
-      loadPage(page)
+      void loadPage(page)
     }
   }
 

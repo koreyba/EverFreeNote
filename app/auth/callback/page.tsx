@@ -109,7 +109,7 @@ export default function AuthCallback() {
       }
     }
 
-    handleCallback()
+    void handleCallback()
   }, [router])
 
   return (

@@ -67,4 +67,4 @@ async function securityAudit() {
   }
 }
 
-securityAudit()
+void securityAudit()
