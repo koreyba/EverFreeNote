@@ -359,7 +359,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
         if (wasAIEnabled && !aiEnabled) {
             controller.handleSearch(normalizedQuery)
             if (normalizedQuery === searchQuery.trim()) {
-                ftsSearchResult?.refetch()
+                void ftsSearchResult?.refetch()
             }
         }
         prevAiEnabledRef.current = aiEnabled
@@ -378,7 +378,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                 controller.handleSearch(normalizedQuery)
                 // If query is the same, force a fresh FTS fetch
                 if (normalizedQuery === searchQuery.trim()) {
-                    ftsSearchResult?.refetch()
+                    void ftsSearchResult?.refetch()
                 }
             }
         }

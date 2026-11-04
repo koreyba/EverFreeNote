@@ -142,8 +142,8 @@ export function useCreateNote(callbacks: MutationCallbacks = defaultCreateCallba
 
     // Refetch on success
     onSuccess: (_data, params) => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] })
-      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+      void queryClient.invalidateQueries({ queryKey: ['notes'] })
+      void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
       if (!params.silent) callbacks.onSuccess?.()
     },
   })
@@ -204,8 +204,8 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
 
     onSuccess: (_data, params) => {
       if (!params.deferCacheRefresh) {
-        queryClient.invalidateQueries({ queryKey: ['notes'] })
-        queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+        void queryClient.invalidateQueries({ queryKey: ['notes'] })
+        void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
       }
       if (!params.silent) callbacks.onSuccess?.()
     },
@@ -319,8 +319,8 @@ export function useRemoveTag(callbacks: MutationCallbacks = defaultRemoveTagCall
     },
 
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] })
-      queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+      void queryClient.invalidateQueries({ queryKey: ['notes'] })
+      void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
       callbacks.onSuccess?.()
     },
   })
