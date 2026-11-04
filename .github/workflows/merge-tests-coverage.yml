@@ -57,67 +57,16 @@ jobs:
   component-coverage:
     name: Cypress component coverage
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/component-tests.yml
+    with:
+      coverage: true
+      publish_allure: true
     permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          persist-credentials: false
-
-      - name: Verify isolated fixture runner
-        run: python3 -m unittest scripts/test_run_component_ci_isolated.py
-
-      - name: Setup Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Install Cypress binary
-        run: npx --no-install cypress install
-
-      - name: Run Cypress component coverage
-        id: run-cypress-coverage
-        continue-on-error: true
-        run: python3 scripts/run-component-ci-isolated.py -- npm run test:component:coverage
-
-      - name: Render Cypress component report
-        if: always()
-        run: npm run coverage:component
-
-      - name: Verify Cypress LCOV
-        id: verify-cypress-lcov
-        if: always()
-        run: test -s coverage/component/lcov.info
-
-      - name: Upload Cypress component coverage report
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: component-coverage-${{ github.run_id }}
-          path: coverage/component
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Upload Cypress raw coverage data
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: component-coverage-raw-${{ github.run_id }}
-          path: .nyc_output/out.json
-          if-no-files-found: error
-          include-hidden-files: true
-          retention-days: 14
-
-      - name: Fail Cypress coverage job when tests or report failed
-        if: always() && (steps.run-cypress-coverage.outcome != 'success' || steps.verify-cypress-lcov.outcome != 'success')
-        run: exit 1
+      actions: read
+      contents: write
+      checks: write
+      issues: write
+      pull-requests: write
 
   sonarqube-main:
     name: SonarQube main analysis

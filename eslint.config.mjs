@@ -120,9 +120,9 @@ export default defineConfig([
     },
   },
 
-  // Override for Jest config/setup files in CommonJS
+  // Override for CommonJS tool config/setup files
   {
-    files: ['jest.config.cjs', 'tests/jest/**/*.cjs'],
+    files: ['jest.config.cjs', 'nyc.config.cjs', 'tests/jest/**/*.cjs'],
     languageOptions: {
       sourceType: 'commonjs',
       globals: {
