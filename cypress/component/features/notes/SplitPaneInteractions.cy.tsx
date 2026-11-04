@@ -12,6 +12,7 @@ import { NoteSearchItem } from '@ui/web/components/features/search/NoteSearchIte
 import { ChunkSearchItem } from '@ui/web/components/features/search/ChunkSearchItem'
 import { NoteDragProvider } from '@ui/web/providers/NoteDragProvider'
 import type { RagChunk } from '@core/types/ragSearch'
+import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
 
 const user = { id: 'pane-interactions-user', email: 'panes@example.invalid' } as User
 const notes = [
@@ -54,6 +55,26 @@ const dragSearchResult = (source: string, side: 'left' | 'right') => {
   })
 }
 
+const reorderTab = (title: string, target: string, side: 'before' | 'after') => {
+  cy.window().then(win => {
+    const dataTransfer = new win.DataTransfer()
+    cy.contains('[data-cy="workspace-tab"]', title).closest('[data-tab-id]')
+      .should('have.attr', 'draggable', 'true').trigger('dragstart', { dataTransfer })
+    cy.contains('[data-cy="workspace-tab"]', target).closest('[data-tab-id]').then($target => {
+      const bounds = $target[0].getBoundingClientRect()
+      const clientX = side === 'before' ? bounds.left + 8 : bounds.right - 8
+      cy.get('[aria-label="Open notes"]').trigger('dragover', { dataTransfer, clientX })
+        .trigger('drop', { dataTransfer, clientX }).trigger('dragend', { dataTransfer })
+    })
+  })
+}
+
+const expectTabOrder = (titles: string[]) => {
+  cy.get('[data-tab-id] [data-cy="workspace-tab"]').should($tabs => {
+    expect(Array.from($tabs, tab => tab.getAttribute('title'))).to.deep.equal(titles)
+  })
+}
+
 describe('Split pane interactions', { retries: 0 }, () => {
   let expectedWriteErrors: Set<unknown>
   beforeEach(() => {
@@ -86,6 +107,61 @@ describe('Split pane interactions', { retries: 0 }, () => {
       await webOfflineStorageAdapter.clearAll()
       const unexpected = writes.find(result => result.status === 'rejected' && !expectedWriteErrors.has(result.reason))
       if (unexpected?.status === 'rejected') throw unexpected.reason
+    })
+  })
+
+  it('reorders single-view tabs without replacing the active editor and persists their order', () => {
+    cy.contains('[data-testid="note-card"] button', 'Left document').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Left document body')
+    cy.get('[data-cy="add-tab-button"]').click()
+    cy.contains('[data-testid="note-card"] button', 'Right document').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Right document body')
+    cy.get('[data-cy="add-tab-button"]').click()
+    cy.contains('[data-testid="note-card"] button', 'Dropped document').click()
+    cy.get('[data-testid="editor-container"]').should('contain', 'Dropped document body')
+    cy.get('[data-cy="note-edit-button"]').click()
+    cy.get('[aria-label="Note title"]').clear().type('Active draft')
+    let editor: HTMLElement
+    cy.get('[aria-label="Note title"]').then($title => { editor = $title[0] })
+    reorderTab('Active draft', 'Left document', 'before')
+    expectTabOrder(['Active draft', 'Left document', 'Right document'])
+    cy.get('[aria-label="Note title"]').should('have.value', 'Active draft').and($title => { expect($title[0]).to.equal(editor) })
+    cy.get('[data-cy="workspace-tab"][aria-pressed="true"]').should('have.attr', 'title', 'Active draft')
+    let orderedIds: (string | null)[]
+    cy.get('[data-tab-id]').then($tabs => { orderedIds = Array.from($tabs, tab => tab.getAttribute('data-tab-id')) })
+    cy.window().should(win => {
+      const snapshot = JSON.parse(win.sessionStorage.getItem(NOTE_WORKSPACE_STORAGE_KEY) ?? '{}')
+      expect(snapshot.tabs.map((tab: { id: string }) => tab.id)).to.deep.equal(orderedIds)
+    })
+  })
+
+  it('reorders split tabs without moving either note out of its pane', () => {
+    openSplit()
+    cy.get('[data-testid="split-pane-left"] [data-cy="note-edit-button"]').click()
+    cy.get('[data-testid="split-pane-left"] [aria-label="Note title"]').type(' draft')
+    let editor: HTMLElement
+    cy.get('[data-testid="split-pane-left"] [aria-label="Note title"]').then($title => { editor = $title[0] })
+    reorderTab('Right document', 'Left document draft', 'before')
+    expectTabOrder(['Right document', 'Left document draft'])
+    cy.get('[data-testid="split-pane-left"] [aria-label="Note title"]').should('have.value', 'Left document draft').and($title => { expect($title[0]).to.equal(editor) })
+    cy.get('[data-testid="split-pane-right"]').should('contain', 'Right document body')
+    cy.get('[data-testid="split-pane-left"]').should('have.attr', 'data-active-pane', 'true')
+  })
+
+  it('allows ordering with split disabled and reflects the order in the mobile tab menu', () => {
+    openSplit()
+    cy.window().then(win => {
+      win.localStorage.setItem(SPLIT_VIEW_ENABLED_KEY, 'false')
+      win.dispatchEvent(new win.StorageEvent('storage', { key: SPLIT_VIEW_ENABLED_KEY, newValue: 'false', storageArea: win.localStorage }))
+    })
+    cy.get('[data-cy="workspace-split-button"]').should('not.exist')
+    reorderTab('Right document', 'Left document', 'before')
+    expectTabOrder(['Right document', 'Left document'])
+    cy.get('[data-testid="note-card"]').first().should('have.attr', 'draggable', 'false')
+    cy.viewport(390, 844)
+    cy.get('[data-cy="mobile-tabs-toggle"]').click()
+    cy.get('[data-cy="mobile-workspace-tab"]').should($tabs => {
+      expect(Array.from($tabs, tab => tab.getAttribute('title'))).to.deep.equal(['Right document', 'Left document'])
     })
   })
 

@@ -1,8 +1,9 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { getTabCapacity, MIN_TAB_WIDTH_PX, NotesTabStrip } from '@/components/features/notes/NotesTabStrip'
 import { MobileNotesTabMenu } from '@/components/features/notes/MobileNotesTabMenu'
 import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
+import { NoteDragProvider } from '@ui/web/providers/NoteDragProvider'
 
 const makeTab = (id: string, title: string, overrides: Partial<NoteWorkspaceTab> = {}): NoteWorkspaceTab => ({
   id,
@@ -55,6 +56,42 @@ describe('Notes workspace tab controls', () => {
   afterEach(() => {
     restoreDefaultClientWidth?.()
     restoreDefaultClientWidth = null
+  })
+
+  it('does not let resize reveal the active tab during a drag and resumes after cancellation', () => {
+    const originalObserver = globalThis.ResizeObserver
+    const originalScroll = HTMLElement.prototype.scrollIntoView
+    const scrollIntoView = jest.fn()
+    let resize: () => void = () => undefined
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      constructor(callback: ResizeObserverCallback) { resize = () => callback([], this) }
+      observe() { return undefined }
+      unobserve() { return undefined }
+      disconnect() { return undefined }
+    }
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+    jest.useFakeTimers()
+    try {
+      const { container } = render(<NoteDragProvider ownerId="user-1" enabled tabsEnabled>
+        <NotesTabStrip tabs={tabs} activeTabId="tab-2" onAddTab={jest.fn()} onActivateTab={jest.fn()} onCloseTab={jest.fn()} />
+      </NoteDragProvider>)
+      expect(scrollIntoView).toHaveBeenCalledTimes(1)
+      const tab = container.querySelector('[data-tab-id="tab-2"]')
+      if (!tab) throw new Error('Missing active tab')
+      fireEvent.dragStart(tab, { dataTransfer: { setData: jest.fn() } })
+      scrollIntoView.mockClear()
+      act(() => resize())
+      expect(scrollIntoView).not.toHaveBeenCalled()
+
+      fireEvent.dragEnd(window)
+      act(() => jest.runOnlyPendingTimers())
+      act(() => resize())
+      expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    } finally {
+      jest.useRealTimers()
+      globalThis.ResizeObserver = originalObserver
+      HTMLElement.prototype.scrollIntoView = originalScroll
+    }
   })
 
   it('changes the split toggle icon and action when returning between single and split view', () => {

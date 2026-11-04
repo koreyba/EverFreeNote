@@ -78,7 +78,8 @@ jobs:
             coverage_args+=(--env codeCoverage=true)
           fi
           # Mask commands must reach the GitHub runner but not the uploaded raw log.
-          python3 scripts/run-component-ci-isolated.py -- npm run test:component:ci -- "${coverage_args[@]}" --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | awk '
+          # Render Electron inside Xvfb instead of leaving its Linux window hidden.
+          python3 scripts/run-component-ci-isolated.py -- npm run test:component:ci -- --headed "${coverage_args[@]}" --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | awk '
             { print; fflush() }
             index($0, "::add-mask::") != 1 { print >> "cypress/results/component-tests.log"; fflush("cypress/results/component-tests.log") }
           '

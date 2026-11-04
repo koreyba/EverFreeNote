@@ -293,8 +293,11 @@ def run():
             })
             print(f'Running component tests against isolated localhost:{port}.', flush=True)
             with current_lock:
+                # Terminal output is diagnostic text, not a machine-readable payload.
+                # A malformed byte must not replace the test process's exit status.
                 current = subprocess.Popen(command_args, cwd=ROOT, env=child_env, stdout=subprocess.PIPE,
-                                           stderr=subprocess.STDOUT, text=True, start_new_session=True)
+                                           stderr=subprocess.STDOUT, text=True, encoding='utf-8',
+                                           errors='replace', start_new_session=True)
             for line in current.stdout:
                 print(redact(line, fixture_keys), end='', flush=True)
             code = current.wait()

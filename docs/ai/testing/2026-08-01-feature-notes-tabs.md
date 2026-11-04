@@ -6,6 +6,81 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy
 
+## Linux drag-scroll regression (2026-11-04)
+
+Exact-head `156e1204aea` CI again passed 1,140/1,146 components. The offline
+deletion scenario and Sonar analysis passed; five save-barrier cases remained
+red, alongside the native edge-scroll case. Removing fake clocks did not
+resolve the CI save stalls, so they remain under investigation.
+
+An isolated Linux arm64 Cypress 15.18.1/Node 24.18.0 container reproduced the
+native edge-scroll failure exactly (`scrollLeft=2224`, expected below 2145).
+The five selected save cases passed there, which does not establish their
+correctness under the full amd64 CI run.
+
+A new unit case reproduced a resize observer revealing the active tab during
+dragging. The strip now suppresses that reveal while a tab drag is active,
+still updates overflow affordances, and permits reveal after cancellation.
+The 18-case unit suite and four-case macOS browser suite passed. With only
+the production guard copied into the Linux fixture, the original failing
+native test passed unchanged, without additional browser flags. These final
+runs have matched Allure scope, complete modeling and no findings. Reports
+are retained in `pr-207-ci-156e120` as `resize-drag-green`,
+`resize-drag-browser` and `linux-resize-drag`.
+
+The full Linux context also reproduced the CI timing signature: typing
+`Second changed` took 13,258 ms. That exploratory run was stopped after nine
+completed cases once the scheduling problem was captured; its expected-50
+scope failed, so it is not a passing regression run. Changing only Electron
+launch switches initially reduced the same action to 209 ms. The supported
+`ELECTRON_EXTRA_LAUNCH_ARGS` foreground-scheduling switches tested were:
+`--disable-background-timer-throttling`, `--disable-renderer-backgrounding`
+and `--disable-backgrounding-occluded-windows`. Later cases still showed
+one-second keystroke delays and the slow-save barrier failed again. This
+experiment was stopped after reproducing the failure and is not a passing
+regression. These switches were not retained in CI. Assertions, retries and
+timeouts remain unchanged; background scheduling remains under investigation.
+See the [Cypress launch documentation](https://docs.cypress.io/api/node-events/browser-launch-api#Modify-Electron-app-switches)
+and [Electron background scheduling](https://www.electronjs.org/docs/latest/api/browser-window#page-visibility).
+
+Running the identical complete 50-case scope with `--headed` inside Xvfb,
+without those experimental switches, passed 50/50 with coverage enabled and
+no retries. Allure expectations matched, runtime modeling was complete and
+there were no findings (`linux-headed/awesome/index.html`). Component CI now
+uses that visible virtual-display mode; the fixtures, assertions, coverage,
+retries and timeout budgets are unchanged. This validates the Linux arm64
+reproduction; the new exact-head amd64 CI run remains the merge gate.
+
+## PR #207 CI save-barrier follow-up (2026-11-03)
+
+Exact-head `69348f18d98` CI recorded 1,140/1,146 passing component tests:
+five Split View cases timed out before reaching their controlled queue-write
+barrier, and the offline reconnect/delete case read a retained tombstone.
+All six passed locally with coverage enabled. Four storage cases also passed
+at 6x CPU throttling; the separately instrumented slow-save case passed at
+20x throttling. Those experiments do not establish the Linux timeout cause.
+
+The seven storage-concurrency scenarios affected across the two CI runs now
+leave timers running and wait for their existing held queue writes. Exact
+write counts, newest-draft/tag/image persistence, active-pane retention and
+failure/retry assertions are unchanged. Debounce-specific tests retain their
+fake clocks. This fixture adjustment requires a new exact-head CI result;
+a local pass alone does not prove the previous CI timeouts are resolved.
+
+After the fixture changes and three Sonar fixes, the exact three-spec Cypress
+scope passed 67/67 with coverage enabled and no retries. The first invocation
+misspelled the Sidebar path and ran 52/52; Allure rejected its expected count,
+so the corrected full scope was run before acceptance. Controller, Sidebar and
+NotesShell unit tests passed 126/126. Both final reports have matched scope,
+complete runtime modeling and no findings. Production type-check, full ESLint
+and whitespace checks passed. Reports are retained as `final-component-green`
+and `final-unit-green` in the chat's `pr-207-ci-69348f` evidence directory.
+
+Sonar's direct callback warning is addressed by explicitly forwarding only the
+note ID, and the status-color priority uses flat conditions. Qodana did not
+analyze this CI head: its Cloud server rejected the configured license token.
+That external failure and Codacy's complexity budget remain independent gates.
+
 ## Test Coverage Goals
 
 - 100% branch coverage for new pure workspace transitions and hydration guards.
@@ -419,3 +494,21 @@ Scope limits: network responses and notes are synthetic. Cypress drag/drop tests
 - After the final toggle regression was added and fixed, the complete web suite passed 148 suites and 1,291 tests with matched Allure expectations, complete modeling and no findings.
 - The final combined Electron run passed 178/178 cases across NoteView, NoteTagLayout, SplitPaneInteractions, DesktopSplitView, MobileLayout, SplitLayoutPersistence, SplitViewPreference and WorkspaceAuthHydration. Allure expectations matched with complete modeling and no findings. The report is retained as `split-view-pr-report.html` in the local evidence directory.
 - Final production type-check, full ESLint and staged whitespace checks passed. The local `/split-preview/` demo is excluded from the feature commit. CI status is separate from these local results.
+
+### Tab reordering and compact date/tag gap (2026-11-03)
+
+- `noteWorkspaceTabReordering.test.ts` covers before/after moves, no-op/stale targets, unchanged tab/session objects, active/split identity, and a serialized round trip containing an unsaved draft. The new cases failed without the transition; the transition and existing split-layout cases then passed 12/12 through Allure.
+- Three real-controller ordering cases first failed with non-draggable single-view tabs or unchanged order. After implementation, `SplitPaneInteractions.cy.tsx` passed 24/24. New assertions cover persisted ordering, active editor DOM/draft retention, unchanged left/right assignments, ordering with Split View disabled, and the shared mobile menu order. Existing pane-drop cases remain in this scope.
+- `NotesTabReordering.cy.tsx` first passed three payload/insertion cases and failed the missing edge-scroll behavior. After implementation all four passed: overflow scrolling and cancellation, insertion after the final tab, foreign-owner rejection and ignoring note-list drags. The cancellation case verifies scrolling stops and original order remains.
+- Manual loopback preview confirms a 4px metadata bottom margin with tags and the original 24px without tags. At both 320 and 390px the date button is 44px high, one note is visible and page width matches viewport width. Desktop and 320px screenshots are retained in this chat's local evidence directory.
+- Final Allure regression passed 185/185 Electron cases across the nine ordering, split, mobile, date/tag, restoration, preference and hydration specs. Complete web unit coverage plus the three core workspace files passed 151 suites and 1,321 tests (1,291 web and 30 core). Both reports have matched expectations, complete modeling and no findings; evidence is retained as `tab-order-component-evidence` and `tab-order-unit-evidence` in the local evidence directory. Production type-check, full ESLint and whitespace checks also passed.
+- Automated drags use native `DataTransfer` and the production handlers; physical pointer dragging and physical mobile devices are not independently verified. The backend and notes are synthetic. No line-coverage increase, deployment or remote CI result is claimed by these local runs.
+- Pre-merge quality follow-up removes non-null assertions from DOM tab IDs and uses explicit undefined-returning fixture handlers. The ordering and real-controller split interaction specs pass 28/28 through Allure with matched expectations, complete modeling and no findings; production type-check and full ESLint also pass. Evidence is retained in `tab-order-quality-evidence` in the local evidence directory. Codacy continued to flag an unused parameter in the callback's type-only method signature, so the prop now derives its existing contract from the workspace hook rather than redeclaring parameter names. Remote Codacy analysis is checked separately.
+
+### CI follow-up for PR #207 (2026-11-03)
+
+- Exact-head CI at `b1feaa7b72c` passed 1,138/1,146 component cases and failed eight. Allure inspection modeled the entire result set: two Sidebar cases expected the superseded gray palette/generic tooltip, two OfflineNotes cases never checked server availability of a saved hidden editor, and four controlled split-save cases timed out waiting for their queue barrier.
+- A coverage-enabled rerun selected those same eight cases: four split-save cases passed without changes, while the four Sidebar/OfflineNotes failures reproduced. Their original CI failures remain recorded; no timing fix for the four split-save cases is claimed.
+- Sidebar browser expectations now follow the requested green/amber palette. Refresh distinguishes a retained clean hidden editor from a visible editor or unconfirmed input. Existing controller tests now assert actual existence-check requests, including a retained hidden editor ref, while retaining dirty/saving/error draft assertions.
+- Final controller/refresh unit regression passes 107/107. The complete OfflineNotes spec with coverage passes 6/6, including both online/offline-created saved-note cases. Allure expectations match with complete modeling and no findings. Production type-check and full ESLint pass. Raw CI artifacts and local reproduction/fix evidence are retained under `pr-207-ci-b1feaa7` in this chat's local evidence directory; a new CI run is required after pushing the fix.
+- The final combined Sidebar, DesktopSplitView and OfflineNotes run with coverage passes 67/67 without retries, complete modeling and no findings. Its report is retained under `pr-207-ci-b1feaa7/final-three-spec-green`. This local pass does not relabel the original CI run or establish a cause for the four save-barrier timeouts seen only in CI.

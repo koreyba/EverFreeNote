@@ -138,3 +138,11 @@ These are engineering estimates only; autosave/editor lifecycle and native navig
 - [x] Implement the selected compact edit date and exact-date disclosure within each reading document; remove the footer.
 - [x] Verify relative-time refresh, malformed imports, local-time formatting, and existing web unit coverage.
 - [x] Finish browser checks for per-pane dates, narrow mobile touch targets, dismissal/focus, and scrolling; refresh local preview evidence.
+
+### Tab ordering and spacing follow-up (2026-11-03)
+
+- [x] Compact the edit-date/tag gap without shrinking touch targets.
+- [x] Add pure before/after ordering that preserves sessions and persisted order.
+- [x] Enable desktop tab dragging independently of Split View and add insertion feedback.
+- [x] Scroll overflowing tabs during a drag and clean up on cancellation.
+- [x] Verify single/split views, mobile menu order, existing pane drops and local layout; prepare the separate PR.

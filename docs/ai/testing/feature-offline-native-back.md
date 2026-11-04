@@ -6,6 +6,21 @@ description: Define testing approach, test cases, and quality assurance
 
 # Offline saves and native Back validation
 
+## PR #207 queued-deletion synchronization (2026-11-03)
+
+The exact-head `69348f18d98` component failure was reproduced by seeding a
+same-owner pending update before confirming deletion. The card disappeared
+after durable local deletion while IndexedDB correctly retained a pending
+tombstone. Waiting only for HTTP 204 and an empty queue was still insufficient:
+the acknowledged tombstone remained until asynchronous cache cleanup finished.
+
+The existing create/reconnect/delete/remount scenario now forces this queued
+branch, waits for the DELETE response and completed adapter cleanup, and keeps
+the exact zero-queue, zero-cache and no-resurrection assertions. The deterministic
+reproduction failed before synchronization and passed afterwards with coverage
+enabled, without retries or Allure findings. No production deletion behavior
+or assertion was relaxed.
+
 ## Test Coverage Goals
 Cover local durability, restart/reconnect identity, overlapping writes, native Back priority and failure-safe navigation. Keep browser storage/transport simulation distinct from an installed Android run. Coverage percentages will come from the final instrumented Jest run; do not infer 100% coverage from green tests.
 
@@ -100,3 +115,11 @@ The full 285fc90 CI run passed 693/694 component cases; all MobileLayout and bot
 Regression coverage exercises a server-committed create whose response is lost, deletion queued while offline or while the browser reports online, retry of a failed DELETE, equal mutation timestamps, an in-flight create alongside an unrelated successful mutation, and account-switch ownership. An isolated local Supabase/PostgREST test uses real rows and a simulated dropped response; it checks the DELETE and that the row is absent afterwards. The account-switch test verifies that another account cannot send the queued DELETE and that it succeeds after the original account returns. IndexedDB component coverage verifies bulk enqueue retains pending and failed items during concurrent writes and rolls back the whole batch on write failure; localStorage fallback coverage checks a failed write retains the prior queue.
 
 A single manager's sequencing does not establish correctness for independent browser windows or devices, or for a create that the server completes after a client timeout and subsequent DELETE. Legacy ownerless queued deletes also remain an account-switch limitation.
+
+## Device status colors (2026-11-03)
+
+- History: commit `99b8540c41e` replaced the green clear state with gray during the truthful-status change merged in PR #204 on October 29. Waiting was gray; offline was amber and failures red.
+- Updated existing Sidebar expectations reproduce missing green/clear text and amber waiting feedback before the fix. Readiness transitions also fail before the change; the existing error-priority assertions pass. After the fix, Sidebar and NotesShell pass 44/44 tests through Allure, including gray checking and red errors while offline/checking/waiting.
+- Existing Electron suites pass 5/5 sidebar viewport cases and 3/3 device-status cases: short/narrow/dark layouts, offline writing, visible queue/failure feedback, retry clearing the warning, and stable offline-create IDs. Both reports have matched expectations, complete modeling and no findings. Queue requests are intercepted synthetic responses; this is not a live backend or physical-device check.
+- Manual loopback review renders all 13 individual status signals, the clear case and a mixed error/offline/checking/waiting case with the real components. Actual computed colors match the design; representative clear/waiting/checking/error colors are also checked in dark theme and the mobile layout. Evidence is retained in `sync-color-preview-checks.json` and `sync-status-green-header.png` in this chat's local evidence directory.
+- Production type-check and full ESLint pass. Reports are retained in `sync-color-unit-evidence`, `sync-color-layout-evidence` and `sync-color-queue-evidence`; remote CI is separate. The local review route remains untracked and outside the PR.

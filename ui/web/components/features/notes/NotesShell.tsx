@@ -518,7 +518,7 @@ export function NotesShell({ controller }: NotesShellProps) {
   const paneIds = mountedSplit ? [mountedSplit.leftTabId, mountedSplit.rightTabId] : [activeTabId]
 
   return (
-    <NoteDragProvider ownerId={user?.id ?? null} enabled={showBothPanes}>
+    <NoteDragProvider ownerId={user?.id ?? null} enabled={showBothPanes} tabsEnabled={!isMobile}>
     <MobileWorkspace
       viewKey={`${activeMainView}:${activeTabId}:${selectedNote?.id ?? "list"}:${isEditing}:${isSearchPanelOpen}`}
       className="flex h-[100dvh] max-h-[100dvh] min-h-[100svh] bg-muted/20 overflow-hidden relative"
@@ -634,6 +634,7 @@ export function NotesShell({ controller }: NotesShellProps) {
                 maximumTabCount={MAX_NOTE_WORKSPACE_TABS}
                 onAddTab={() => void addTab?.()}
                 onActivateTab={(tabId) => void activateTab?.(tabId)}
+                onReorderTab={controller.reorderTab}
                 onCloseTab={(tabId) => void closeTab?.(tabId)}
                 onToggleSplit={splitEnabled ? () => void handleToggleSplit() : undefined}
                 splitView={Boolean(splitEnabled && split)}

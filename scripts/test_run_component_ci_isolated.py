@@ -1,6 +1,6 @@
 """Safety checks for the disposable component-test fixture runner."""
 
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import ExitStack, redirect_stderr, redirect_stdout
 import importlib.util
 import io
 import json
@@ -23,7 +23,7 @@ class FixtureRunnerTests(unittest.TestCase):
                     binding='127.0.0.1', network_option='127.0.0.1', extra_network=False,
                     missing_db_port=False, no_containers=False, network_remove_code=0,
                     host_listener='loopback', probe_extra_network=False, actual_binding=None,
-                    actual_host_listener=None):
+                    actual_host_listener=None, child_output=None, expected_log=None):
         started = []
         stopped = []
         removed_networks = []
@@ -33,6 +33,7 @@ class FixtureRunnerTests(unittest.TestCase):
         local_anon = 'synthetic-anon-fixture-key'
         local_service = 'synthetic-service-fixture-key'
         captured = io.StringIO()
+        real_popen = subprocess.Popen
 
         class FakeProcess:
             def __init__(self, command, **kwargs):
@@ -51,6 +52,19 @@ class FixtureRunnerTests(unittest.TestCase):
 
             def wait(self, timeout=None):
                 return self.returncode
+
+        def start_process(command, **kwargs):
+            if child_output is None or command[0] != 'component-test':
+                return FakeProcess(command, **kwargs)
+            process = child_processes.enter_context(real_popen([
+                sys.executable, '-c',
+                'import os, sys; os.write(1, bytes.fromhex(sys.argv[1])); sys.exit(int(sys.argv[2]))',
+                child_output.hex(), str(child_code),
+            ], **kwargs))
+            process.command = command
+            process.env = dict(kwargs['env'])
+            started.append(process)
+            return process
 
         def fake_run(command, **kwargs):
             if command[0] == 'docker':
@@ -129,8 +143,9 @@ class FixtureRunnerTests(unittest.TestCase):
             'NEXT_PUBLIC_SUPABASE_ANON_KEY': 'old-key',
             'CYPRESS_AUDIT_SERVICE_KEY': 'old-service',
         }
-        with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['runner', '--', 'component-test']), \
-             patch.object(fixture.subprocess, 'Popen', FakeProcess), patch.object(fixture.subprocess, 'run', fake_run), \
+        with ExitStack() as child_processes, \
+             patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['runner', '--', 'component-test']), \
+             patch.object(fixture.subprocess, 'Popen', start_process), patch.object(fixture.subprocess, 'run', fake_run), \
              redirect_stdout(captured), redirect_stderr(captured):
             try:
                 result = fixture.run()
@@ -156,6 +171,8 @@ class FixtureRunnerTests(unittest.TestCase):
             self.assertEqual(started[1].env['CYPRESS_AUDIT_SERVICE_KEY'], local_service)
             self.assertNotIn(local_anon, captured.getvalue())
             self.assertNotIn(local_service, captured.getvalue())
+            if expected_log is not None:
+                self.assertIn(expected_log, captured.getvalue())
         else:
             self.assertNotEqual((binding, network_option, extra_network, missing_db_port, no_containers,
                                  host_listener, probe_extra_network, actual_binding, actual_host_listener, endpoint),
@@ -170,6 +187,18 @@ class FixtureRunnerTests(unittest.TestCase):
         self.assertEqual(self.run_fixture(child_code=1), 1)
         self.assertEqual(self.run_fixture(stop_code=1), 1)
         self.assertEqual(self.run_fixture(network_remove_code=1), 1)
+
+    def test_malformed_test_output_preserves_summary_redaction_and_success(self):
+        output = b'check: \xe2\x9c\x93 invalid: \xff synthetic-anon-fixture-key\nsummary complete\n'
+        self.assertEqual(self.run_fixture(
+            child_output=output, expected_log='check: \u2713 invalid: \ufffd [redacted]\nsummary complete\n',
+        ), 0)
+
+    def test_malformed_test_output_preserves_failed_child_exit_code(self):
+        self.assertEqual(self.run_fixture(
+            child_code=17, child_output=b'invalid: \xff\nsummary complete\n',
+            expected_log='invalid: \ufffd\nsummary complete\n',
+        ), 17)
 
     def test_unexpected_endpoint_fails_closed_and_cleans_up(self):
         self.assertEqual(self.run_fixture(endpoint='https://stage.invalid'), 'invalid endpoint')

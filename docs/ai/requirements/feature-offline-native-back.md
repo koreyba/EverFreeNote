@@ -30,3 +30,7 @@ A successful list refresh must remove cached notes confirmed deleted by the serv
 
 ## Saved editor tabs and remote deletions
 A saved, synchronized note must disappear after a confirmed remote deletion even if Back left its hidden workspace tab in editing mode. Cover both actual online creation and offline creation followed by synchronization. A tab being open is not evidence of unsaved changes.
+
+## Device status colors (2026-11-03)
+
+Restore the sidebar's green healthy indicator and distinguish four visual states: checked empty local queue (green), waiting/offline/data verification needed (yellow), known local/queue errors (red), and ongoing checks (gray). Known errors take priority over warnings and checks. The tooltip describes the current account on this device; green does not claim server reachability or complete remote synchronization. Desktop and mobile use the same classification.

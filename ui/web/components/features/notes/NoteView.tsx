@@ -237,7 +237,7 @@ export const NoteView = React.memo(function NoteView({
             <h1 ref={titleRef} className="note-document-title mb-1">
               {note.title}
             </h1>
-            <NoteMetadata key={note.id} createdAt={note.created_at} updatedAt={note.updated_at} />
+            <NoteMetadata key={note.id} createdAt={note.created_at} updatedAt={note.updated_at} className={note.tags?.length ? "mb-1" : undefined} />
 
             {note.tags && note.tags.length > 0 && (
               <div className="mb-8">

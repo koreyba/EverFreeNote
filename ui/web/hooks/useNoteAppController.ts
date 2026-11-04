@@ -138,6 +138,7 @@ export function useNoteAppController() {
     openNote,
     openNoteInPane,
     placeTabInPane,
+    reorderTab,
     updateTab,
     updateTabForNote,
     updateSavedTags,
@@ -454,9 +455,11 @@ export function useNoteAppController() {
     offlineCache,
     onCachedNotesUnavailable: missing => markLocalUnavailable(missing.map(note => note.id)),
     onCachedNotesAvailable: clearAvailableOnRefresh,
+    // Mobile Back keeps the clean editor mounted; editing mode alone is not pending work.
     hasPendingChanges: id => hasPendingLocalWrites(id) || tabs.some(tab => (
       tab.noteId === id && (tab.saveState !== 'saved' ||
-        tab.mode === 'editing')
+        mountedEditors().some(editor => editor.tabId === tab.id &&
+          (notePaneVisible || editor.handle.hasUnconfirmedChanges?.())))
     )),
     onNoteRefreshed: (note) => {
       clearLocalUnavailable(note.id)
@@ -770,7 +773,7 @@ export function useNoteAppController() {
   const handleNotesDeleted = useCallback((noteIds: string[]) => {
     if (!workspaceUserId || !isCurrentSession(sessionSnapshot)) return
     if (noteIds.length) advanceNoteListRevision(queryClient, workspaceUserId)
-    noteIds.forEach(clearLocalUnavailable)
+    noteIds.forEach(noteId => clearLocalUnavailable(noteId))
     resetTabsForNotes(noteIds)
   }, [clearLocalUnavailable, isCurrentSession, queryClient, resetTabsForNotes, sessionSnapshot, workspaceUserId])
 
@@ -1811,6 +1814,7 @@ export function useNoteAppController() {
     handleSearchResultClick: wrappedHandleSearchResultClick,
     addTab: handleAddTab,
     activateTab: handleActivateTab,
+    reorderTab,
     closeTab: handleCloseTab,
     tabPendingClose,
     hasPendingWorkspaceWrites,

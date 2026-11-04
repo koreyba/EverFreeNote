@@ -165,3 +165,10 @@ cannot be saved locally, Settings must explain that the choice may reset.
 - Show one quiet relative edit date between the title and tags; remove the Created/Updated footer. The metadata scrolls with its note.
 - Clicking or tapping reveals both exact dates in the user's local time, without seconds. Support keyboard dismissal, a phone-sized touch target, and viewport-safe positioning.
 - Refresh the relative time while a note stays open. Scrolling dismisses the details without jumping back to the title. Invalid imported dates must not prevent reading.
+
+### Tab ordering and header spacing (2026-11-03)
+
+- Reduce the space between the edit date and tags while retaining the mobile date touch target and the body spacing of untagged notes.
+- Desktop tabs can be dragged before or after other tabs in single view, Split View, and with Split View disabled. Show the insertion position and scroll overflowing tabs near the strip edges.
+- Reordering changes only tab order. Keep the active note, draft, editor instance, selection, save status and split-pane assignments. Preserve the order in the existing owner-scoped workspace snapshot; the mobile menu displays that order.
+- Reject stale or foreign-owner tab drops. Dragging a tab into a split pane remains a separate placement action. Cancelling a drag leaves order unchanged and clears its indicator/autoscroll.

@@ -21,10 +21,12 @@ flowchart LR
 ```
 
 For pull requests, a single orchestrating workflow calls the existing Unit and
-Component workflows with coverage enabled. SonarQube and Qodana depend on
-those two reusable workflow calls with `always()`, so a failed test job does
-not suppress analysis. The main-branch workflow keeps its existing producer
-and scanner jobs unchanged.
+Component workflows with coverage enabled. SonarQube depends on those two
+reusable workflow calls with `always()`, so a failed test job does not suppress
+analysis. The main-branch workflow keeps its
+existing coverage producers and Sonar scanner. Qodana and Codacy integrations
+were removed at the maintainer's request on 2026-11-04; coverage generation and
+publication remain enabled.
 
 Root Jest is authoritative for core and web unit/integration behavior. Cypress
 is authoritative for browser-rendered component and interaction behavior.

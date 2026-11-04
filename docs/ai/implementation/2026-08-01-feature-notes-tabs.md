@@ -6,6 +6,14 @@ description: Technical implementation notes, patterns, and code guidelines
 
 # Implementation Guide
 
+## Drag-scroll ownership during resize (2026-11-04)
+
+The active-tab reveal effect continues updating overflow controls during a
+resize, but does not call `scrollIntoView` while a native tab drag is active.
+This prevents ResizeObserver from snapping the viewport back to the active
+tab while the drag pointer is driving edge scrolling. Cancelling or finishing
+the drag restores normal active-tab reveal behavior.
+
 ## Development Setup
 
 - Worktree: use the Harness-managed worktree under the Worktree root configured in Harness settings; never create one inside the project checkout.
@@ -188,3 +196,11 @@ After a successful local write the controller returns the saved note ID. The edi
 ### Under-title note dates (2026-11-03)
 
 `NoteMetadata` replaces the reading footer with a clock, a relative edit date, and an information icon below the title. Its native button opens the existing Radix popover with Created and Last edited values (`time` elements), formatted in local time without seconds. The mobile target is at least 44px tall; collision padding and a viewport-bound width keep the popover usable on a 320px phone. Every reading pane uses the same component. A minute timer refreshes the label and is cleared on unmount. Scroll dismissal prevents autofocus to the off-screen trigger; normal dismissal keeps Radix focus restoration.
+
+### Tab ordering and compact metadata (2026-11-03)
+
+`reorderWorkspaceTab` moves an existing tab before or after another tab while retaining the tab objects, active ID and split pairing. The owner/epoch-guarded workspace hook exposes it directly to the strip; ordinary workspace persistence saves the resulting array order. No editor flush or activation is needed for this presentation change.
+
+`NoteDragProvider.tabsEnabled` now permits desktop tab dragging in single view and with Split View disabled. Note-list/search dragging remains enabled only when both panes are shown. Tab sources keep the pane-compatible note payload and add `NOTE_TAB_DRAG_TYPE`; the strip validates the owner and existing tab at drop time. Row midpoints choose before/after insertion, shown by a narrow marker. A cancellable animation-frame loop scrolls near either edge, with scroll snapping temporarily disabled. Leaving the strip, dropping, ending a drag or unmounting cancels scrolling. Native post-drag clicks do not activate another tab. Mobile retains its shared ordered menu without drag controls.
+
+When tags follow the date, `NoteView` requests a 4px metadata bottom margin instead of 24px. Notes without tags keep their body spacing, and the date disclosure retains its 44px mobile touch target.
