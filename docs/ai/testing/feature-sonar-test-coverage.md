@@ -23,6 +23,24 @@ test, coverage, Sonar and Allure jobs and event conditions are identical.
 No Qodana/Codacy references remain in active workflows. A fresh PR run must
 confirm the remaining checks and the absence of new retired-service checks.
 
+## Component runner output regression — 2026-11-04
+
+Run `41801069718` on `1ddc081b581` produced 1,146 passed cases and one synthetic
+broken runner result, with zero retries/flaky/skipped cases. Allure inspection
+confirmed complete modeling; the extra runner result correctly failed the
+1,146-result expectation. The raw log ends during the final Cypress summary
+with `UnicodeDecodeError`; this run is not a successful component CI result.
+
+Two new regressions use a real subprocess emitting an invalid UTF-8 byte. Both
+failed before the runner fix. They require continued log reading, valid Unicode
+preservation, credential redaction, cleanup, and unchanged child exit codes
+(`0` and `17`). The complete fixture-runner unittest suite passes 10/10 after
+the fix, including the existing test/cleanup failure and network-isolation
+checks. An additional local pytest/Allure run of the same unittest cases
+reported 10/10 passed, matched scope, complete modeling and zero findings;
+its temporary adapter environment lives outside the repository. Fresh
+exact-head GitHub CI remains required.
+
 ## Test Coverage Goals
 
 This is CI infrastructure. Validation targets report correctness, event routing,

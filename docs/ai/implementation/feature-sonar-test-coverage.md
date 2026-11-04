@@ -108,6 +108,12 @@ results are retained; no successful analysis is claimed for the retired checks.
 
 ## Error Handling
 
+- The isolated component runner decodes terminal output as UTF-8 with invalid
+  bytes replaced, then applies credential redaction. Log decoding must not
+  override the child exit code or interrupt fixture cleanup. Structured fixture
+  responses remain strict. CI run `41801069718` passed all 1,146 component tests
+  but failed with `UnicodeDecodeError` during the final console table; the
+  reconciliation step correctly preserved that runner failure in Allure.
 - Coverage test jobs still report test failures. PR analyzer jobs use
   `always()` and fall back to analysis without coverage when no report artifact
   is available.
