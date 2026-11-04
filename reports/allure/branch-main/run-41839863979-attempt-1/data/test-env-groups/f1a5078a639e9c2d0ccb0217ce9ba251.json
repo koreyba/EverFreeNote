@@ -1,0 +1,1 @@
+{"id":"f1a5078a639e9c2d0ccb0217ce9ba251","fullName":"everfreenote:ui/shell/tests/unit/supabaseEnv.test.ts#resolveSupabaseEnv refuses to build prod from inherited credentials","name":"refuses to build prod from inherited credentials","status":"passed","testResultsByEnv":{"default":"a96447d7ec9734b32578d5f33910c539"}}

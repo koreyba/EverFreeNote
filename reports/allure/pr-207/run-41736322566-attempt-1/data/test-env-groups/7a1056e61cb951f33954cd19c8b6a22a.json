@@ -1,1 +1,0 @@
-{"id":"7a1056e61cb951f33954cd19c8b6a22a","fullName":"everfreenote:ui/web/tests/unit/components/features/settings/DeleteAccountPanel.test.tsx#DeleteAccountPanel blocks a second sign out while the first is still running","name":"blocks a second sign out while the first is still running","status":"passed","testResultsByEnv":{"default":"94191e2b5e1a6bca1f646868a939de6e"}}
