@@ -1,1 +1,0 @@
-{"id":"73a94f94a963a2370ac1241c495bfecb","fullName":"everfreenote:ui/web/tests/unit/hooks/useAnimatedTabList.test.tsx#useAnimatedTabList finishes an exit even when another tab changes during the animation","name":"finishes an exit even when another tab changes during the animation","status":"passed","testResultsByEnv":{"default":"ff52a4693a2464a9d9977916c89c43a0"}}

@@ -1,1 +1,0 @@
-{"id":"8a242c603e9dae1c50c49561ca6bbde5","fullName":"everfreenote:cypress/component/editor/EditorColorPicker.cy.tsx#Editor color picker keeps the chosen HEX color when focus leaves the picker for another control","name":"keeps the chosen HEX color when focus leaves the picker for another control","status":"passed","testResultsByEnv":{"default":"0ccc72bcb2e5af434ad7fd2744195e61"}}
