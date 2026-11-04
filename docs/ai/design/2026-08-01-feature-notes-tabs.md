@@ -513,6 +513,12 @@ Tab reordering is a pure workspace transition: move an existing tab relative to 
 
 Desktop tab dragging is enabled independently of note-to-pane dragging. Tab drags retain the existing owner-stamped note payload for pane placement and add a tab-specific MIME marker for strip insertion feedback. The strip reads and validates owner/tab identity at drop time; hover relies on the marker because browsers protect drag data until drop. Placement in a split pane and ordering in the tab strip remain distinct actions. A clipped strip scrolls at its edges while dragging and stops on drop, leave or cancellation.
 
+Edge scrolling continues while scrollable distance remains in the pointer's
+direction. A single unchanged `scrollLeft` write can be a native snap before
+React commits the drag style, so it must not permanently stop the animation.
+The physical boundary still stops scheduling frames; cancellation and unmount
+cancel any pending frame.
+
 ```mermaid
 flowchart LR
   tab[Desktop tab drag] --> marker[Owner-stamped payload and tab marker]

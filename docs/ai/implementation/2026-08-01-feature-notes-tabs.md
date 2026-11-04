@@ -14,6 +14,14 @@ This prevents ResizeObserver from snapping the viewport back to the active
 tab while the drag pointer is driving edge scrolling. Cancelling or finishing
 the drag restores normal active-tab reveal behavior.
 
+The drag animation must also tolerate a frame held by native scroll snapping.
+On a busy renderer, the first animation frame can precede React's commit of
+`scroll-snap-type: none`. In that frame, writing a smaller `scrollLeft` can
+leave the position unchanged. An unchanged write is not proof that the edge
+has been reached: continuation must depend on remaining scrollable distance.
+Drop, leave, cancellation and unmount still stop the frame loop, and reaching
+the physical edge must not keep scheduling frames.
+
 ## Development Setup
 
 - Worktree: use the Harness-managed worktree under the Worktree root configured in Harness settings; never create one inside the project checkout.

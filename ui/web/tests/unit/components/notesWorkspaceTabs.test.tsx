@@ -4,6 +4,7 @@ import { getTabCapacity, MIN_TAB_WIDTH_PX, NotesTabStrip } from '@/components/fe
 import { MobileNotesTabMenu } from '@/components/features/notes/MobileNotesTabMenu'
 import type { NoteWorkspaceTab } from '@core/services/noteWorkspaceTabs'
 import { NoteDragProvider } from '@ui/web/providers/NoteDragProvider'
+import { NOTE_TAB_DRAG_TYPE } from '@ui/web/lib/noteDrag'
 
 const makeTab = (id: string, title: string, overrides: Partial<NoteWorkspaceTab> = {}): NoteWorkspaceTab => ({
   id,
@@ -46,6 +47,25 @@ function mockClientWidth(width: number) {
   }
 }
 
+function controlAnimationFrames() {
+  const pending = new Map<number, FrameRequestCallback>()
+  let id = 0
+  const request = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+    pending.set(++id, callback)
+    return id
+  })
+  const cancel = jest.spyOn(window, 'cancelAnimationFrame').mockImplementation(frame => { pending.delete(frame) })
+  return {
+    pending,
+    advance() {
+      const callbacks = [...pending.values()]
+      pending.clear()
+      act(() => callbacks.forEach(callback => callback(0)))
+    },
+    restore() { request.mockRestore(); cancel.mockRestore() },
+  }
+}
+
 describe('Notes workspace tab controls', () => {
   let restoreDefaultClientWidth: (() => void) | null = null
 
@@ -56,6 +76,65 @@ describe('Notes workspace tab controls', () => {
   afterEach(() => {
     restoreDefaultClientWidth?.()
     restoreDefaultClientWidth = null
+  })
+
+  it.each([-1, 1])('continues drag scrolling toward edge %i after a frame held by native snapping, then cancels', direction => {
+    const frames = controlAnimationFrames()
+    try {
+      render(<NoteDragProvider ownerId="user-1" enabled tabsEnabled>
+        <NotesTabStrip tabs={tabs} activeTabId="tab-2" onAddTab={jest.fn()} onActivateTab={jest.fn()} onCloseTab={jest.fn()} onReorderTab={jest.fn()} />
+      </NoteDragProvider>)
+      const viewport = screen.getByLabelText('Open notes')
+      Object.defineProperty(viewport, 'scrollWidth', { value: 2000 })
+      jest.spyOn(viewport, 'getBoundingClientRect').mockReturnValue({ left: 0, right: 800 } as DOMRect)
+      let position = 600
+      let snapPending = true
+      Object.defineProperty(viewport, 'scrollLeft', {
+        get: () => position,
+        set: (value: number) => {
+          // jsdom has no CSS snapping. The real browser can hold the first
+          // write before React commits scroll-snap-type: none.
+          if (!snapPending) position = value
+          snapPending = false
+        },
+      })
+      fireEvent(viewport, Object.assign(new MouseEvent('dragover', { bubbles: true, clientX: direction < 0 ? 2 : 798 }), {
+        dataTransfer: { types: [NOTE_TAB_DRAG_TYPE], dropEffect: 'none' },
+      }))
+      frames.advance()
+      expect(position).toBe(600)
+      frames.advance()
+      expect(Math.sign(position - 600)).toBe(direction)
+
+      const stopped = position
+      fireEvent.dragEnd(window)
+      frames.advance()
+      expect(position).toBe(stopped)
+      expect(frames.pending.size).toBe(0)
+    } finally { frames.restore() }
+  })
+
+  it.each([-1, 1])('stops scheduling drag scroll frames once edge %i is reached', direction => {
+    const frames = controlAnimationFrames()
+    try {
+      render(<NoteDragProvider ownerId="user-1" enabled tabsEnabled>
+        <NotesTabStrip tabs={tabs} activeTabId="tab-2" onAddTab={jest.fn()} onActivateTab={jest.fn()} onCloseTab={jest.fn()} onReorderTab={jest.fn()} />
+      </NoteDragProvider>)
+      const viewport = screen.getByLabelText('Open notes')
+      Object.defineProperty(viewport, 'scrollWidth', { value: 2000 })
+      jest.spyOn(viewport, 'getBoundingClientRect').mockReturnValue({ left: 0, right: 800 } as DOMRect)
+      let position = direction < 0 ? 1 : 1199
+      Object.defineProperty(viewport, 'scrollLeft', {
+        get: () => position,
+        set: (value: number) => { position = Math.max(0, Math.min(1200, value)) },
+      })
+      fireEvent(viewport, Object.assign(new MouseEvent('dragover', { bubbles: true, clientX: direction < 0 ? 2 : 798 }), {
+        dataTransfer: { types: [NOTE_TAB_DRAG_TYPE], dropEffect: 'none' },
+      }))
+      frames.advance()
+      expect(position).toBe(direction < 0 ? 0 : 1200)
+      expect(frames.pending.size).toBe(0)
+    } finally { frames.restore() }
   })
 
   it('does not let resize reveal the active tab during a drag and resumes after cancellation', () => {
