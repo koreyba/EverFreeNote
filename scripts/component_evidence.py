@@ -17,7 +17,7 @@ class EvidenceCopyError(Exception):
     pass
 
 
-def open_no_follow(name, flags, *, parent=None, mode=0o666):
+def open_no_follow(name, flags, *, parent=None, mode=0o600):
     try:
         return os.open(name, flags | os.O_NOFOLLOW | os.O_NONBLOCK, mode, dir_fd=parent)
     except OSError as error:
@@ -54,7 +54,7 @@ def parent_handle(path, *, create=False):
 def copy_regular(source, destination, name, parent, source_mode):
     try:
         target = open_no_follow(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-                                parent=parent, mode=source_mode & 0o666)
+                                parent=parent, mode=source_mode & 0o644)
     except FileExistsError:
         target = open_no_follow(name, os.O_RDONLY, parent=parent)
         try:

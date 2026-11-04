@@ -65,7 +65,7 @@ Consumer artifact names stay compatible with PR publication and Sonar.
 second standalone component push trigger is removed. Other branch/manual
 triggers remain, and remaining quality services are unchanged.
 
-All 35 Python helper regressions passed through Allure with matched scope,
+All 36 Python helper regressions passed through Allure with matched scope,
 complete modeling and zero findings. A replay of the existing baseline through
 the assembler retained all 143 specs, 1,146 logical tests and 298 coverage files;
 statement/function/branch counters and maps matched exactly. This replay is
@@ -82,8 +82,9 @@ The existing Python 3 POSIX runtime supplies these operations on Linux and macOS
 no package dependency is added. Node sends one batch per shard, rather than
 spawning per attachment. Scope validation reads the copied result snapshot. The interpreter is pinned
 to `/usr/bin/python3` on the supported Linux/macOS runners rather than searched
-through PATH. Copies retain source read/write permissions without adding execute
-bits. A shadow-interpreter regression failed before pinning and passes afterward;
+through PATH. Copies retain restrictive source permissions and cap file access at 0644,
+even when source metadata or the process umask is permissive. They add no execute
+or group/world write bits. A shadow-interpreter regression failed before pinning and passes afterward;
 a restrictive-permissions regression likewise failed before the mode correction.
 
 Regressions inject source file/directory replacement after inspection, a rival

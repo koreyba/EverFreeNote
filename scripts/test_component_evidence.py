@@ -2,7 +2,9 @@
 
 import os
 from pathlib import Path
+import stat
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -29,6 +31,20 @@ class ComponentEvidenceTests(unittest.TestCase):
         self.assertEqual((self.output / 'nested/attachment.bin').read_bytes(), content)
         self.assertEqual((self.output / 'nested/attachment.bin').stat().st_mode & 0o777, 0o600,
                          'copying diagnostic data must not broaden access or add executable bits')
+
+    def test_world_writable_source_does_not_make_writable_artifacts(self):
+        source = self.source / 'attachment.txt'
+        source.write_text('runner evidence')
+        # Simulate permissive source metadata without making the fixture writable.
+        mode = stat.S_IFREG | stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO
+        previous = os.umask(0)
+        try:
+            with mock.patch('os.fstat', return_value=SimpleNamespace(st_mode=mode)):
+                copy_path(source, self.output)
+        finally:
+            os.umask(previous)
+        self.assertEqual(self.output.read_text(), 'runner evidence')
+        self.assertEqual(self.output.stat().st_mode & 0o777, 0o644)
 
     def test_conflicting_existing_file_is_preserved(self):
         source = self.source / 'attachment.txt'

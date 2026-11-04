@@ -29,7 +29,7 @@ cases in successful run 41806363718. Runtime improvements require measurements.
 - [x] Complete 298-file coverage snapshot produced byte-identical final LCOV.
 - [x] Replay existing baseline through four artifacts: 143 specs, 1,146 results, 298 coverage files, exact counters/maps.
 - [x] Validate reusable workflow calls and artifact names with actionlint and contract review.
-- [x] All 35 helper cases pass with matched Allure expectations and complete modeling; project lint/type checks pass.
+- [x] All 36 helper cases pass with matched Allure expectations and complete modeling; project lint/type checks pass.
 - [x] Confirm matrix failure propagation and helper execution in the real GitHub workflow.
 - [x] Reject a shadow Python interpreter on PATH and preserve restrictive source file permissions.
 - [x] All six OfflineNotes cases pass normally and with a temporary 100ms acknowledgement delay; the committed test has no stress delay.
