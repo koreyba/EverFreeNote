@@ -1,1 +1,0 @@
-{"id":"f181dae9b82d81e443961426512aa623","fullName":"everfreenote:ui/web/tests/unit/components/executeEditorCommand.test.ts#executeEditorCommand setLinkUrl command ignores command when non-string argument is provided","name":"ignores command when non-string argument is provided","status":"passed","testResultsByEnv":{"default":"22b0be1f1bed0e773c3066c7d9551d17"}}
