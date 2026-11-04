@@ -1,0 +1,1 @@
+{"id":"cd262da827d1e49d0bda63e5e538cebe","fullName":"everfreenote:core/tests/unit/core-mcp-oauthResource.test.ts#core/mcp/oauthResource resolvePublicOrigin uses forwarded headers, defaulting the protocol to https","name":"uses forwarded headers, defaulting the protocol to https","status":"passed","testResultsByEnv":{"default":"3a4b8f55b100de0e8f8b5043846cc485"}}
