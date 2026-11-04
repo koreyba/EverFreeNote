@@ -6,6 +6,36 @@ description: Define testing approach, test cases, and quality assurance
 
 # Testing Strategy
 
+## Native snap held the first drag frame (2026-11-04)
+
+Main `fee631bbfa7`, run `41847442290`, passed Jest coverage and 1,145/1,146
+components. The one failure was native tab edge scrolling: `scrollLeft`
+remained 2,224 instead of moving below 2,145. This is a new failure with the
+existing ResizeObserver guard still present, not a reclassification of old CI.
+
+In headed Linux arm64 Electron, 6x CPU throttling reproduced it in nine of
+ten independent repetitions of the four original ordering cases (31 passed,
+nine failed). Trace attachments show the first animation frame still under
+`scroll-snap-type: x mandatory`: a write from 2,224 to 2,212 was held at 2,224.
+The old loop then stopped before React committed the `none` style. No reveal
+call during dragging caused this failure. The initial live report also saw
+22 concurrently produced Jest results; the preserved component-only snapshot
+was separately inspected with an exact 40-case expectation.
+
+The production loop now checks remaining scrollable distance rather than
+treating one unchanged write as the physical edge. Two new unit regressions
+failed before the fix in opposite directions; all 22 unit cases passed after
+it, including two additional boundary cases and cancellation checks. The
+identical 40-case Linux stress scope then passed without retries, with matched
+expectations, complete modeling and no findings. Green traces contain a held
+first write followed by real scrolling after the style commit.
+
+Temporary tracing and CPU throttling are retained only in external evidence,
+not the repository. Original browser assertions, retries, timeouts and coverage
+are unchanged. The four original browser cases also passed on headed Linux
+without instrumentation or throttling. Type-check and targeted ESLint passed.
+Fresh amd64 GitHub CI remains the full-suite merge gate.
+
 ## Linux drag-scroll regression (2026-11-04)
 
 Exact-head `156e1204aea` CI again passed 1,140/1,146 components. The offline

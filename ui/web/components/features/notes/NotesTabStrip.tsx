@@ -197,10 +197,12 @@ export function NotesTabStrip({
       if (pointer < bounds.left + DRAG_SCROLL_EDGE_PX) direction = -1
       else if (pointer > bounds.right - DRAG_SCROLL_EDGE_PX) direction = 1
       if (!direction) return
-      const previous = viewport.scrollLeft
       viewport.scrollLeft += direction * DRAG_SCROLL_STEP_PX
       updateDropTarget(viewport, pointer)
-      if (Math.abs(viewport.scrollLeft - previous) > SCROLL_EPSILON_PX) {
+      // A frame before React disables scroll snapping can hold this write in
+      // place. Keep trying while there is room in the pointer's direction.
+      const remaining = direction < 0 ? viewport.scrollLeft : viewport.scrollWidth - viewport.clientWidth - viewport.scrollLeft
+      if (remaining > SCROLL_EPSILON_PX) {
         dragScrollFrame.current = window.requestAnimationFrame(step)
       }
     }
