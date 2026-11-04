@@ -67,7 +67,7 @@ function createPlan(args) {
   }));
   const ordered = [...specs].sort((a, b) => weight(b) - weight(a) || compareNames(a, b));
   for (const spec of ordered) {
-    const target = shards.reduce((best, shard) => shard.estimatedMs < best.estimatedMs ? shard : best);
+    const target = shards.reduce((best, shard) => shard.estimatedMs < best.estimatedMs ? shard : best, shards[0]);
     target.specs.push(spec);
     target.estimatedMs += weight(spec);
   }
@@ -107,7 +107,7 @@ function selectShard(args) {
 function copyEvidence(operations) {
   // Python's existing POSIX runtime provides directory-relative opens on both
   // Linux and macOS. Batch a shard's files rather than spawning per attachment.
-  const result = spawnSync("python3", [path.join(__dirname, "component_evidence.py")], {
+  const result = spawnSync("/usr/bin/python3", [path.join(__dirname, "component_evidence.py")], {
     input: JSON.stringify(operations), encoding: "utf8", timeout: 60000,
   });
   if (result.status !== 0) {
@@ -214,13 +214,17 @@ function latestArtifacts(input, errors) {
   return [...latest.values()].sort((a, b) => a.metadata.index - b.metadata.index);
 }
 
-function mergeArtifacts(args) {
-  const plan = readPlan(args.plan);
+function validateMergeOutput(args, plan) {
   if (args.sha !== plan.sha) throw new Error("Plan SHA does not match the current run");
   if (![undefined, "true", "false"].includes(args.coverage)) throw new Error("Invalid --coverage value");
   if (fs.existsSync(args.output) && fs.readdirSync(args.output).length) {
     throw new Error("The merge output directory must be empty to prevent stale evidence");
   }
+}
+
+function mergeArtifacts(args) {
+  const plan = readPlan(args.plan);
+  validateMergeOutput(args, plan);
   const { createCoverageMap } = require("istanbul-lib-coverage");
   const coverageMap = createCoverageMap({});
   const observed = new Set();

@@ -8,8 +8,10 @@ description: Implementation decisions and measured results for component CI opti
 
 Active branch: `codex/component-runtime`, based on main `3852946ebbab`.
 Report deferral, four parallel runners and main-run consolidation are implemented.
-No application or existing component test behavior has been changed. Fresh GitHub
-execution and its wall-time comparison remain the rollout gate.
+Production behavior and existing product assertions remain unchanged. The
+OfflineNotes create-sync check now waits for the exact IndexedDB acknowledgement
+transaction before asserting an empty queue. Fresh exact-head CI remains the
+rollout gate.
 
 The baseline fixture starts once per runner and cleans up its own local stack.
 The large DesktopSplitView suite already disables Supabase session persistence,
@@ -46,8 +48,10 @@ all three now pass through Allure with matched scope and zero findings.
 ## Parallel execution and aggregation
 
 The planner discovers current spec files and assigns each exactly once using
-longest-first balancing. The checked-in baseline timings are scheduling hints;
-new files receive a median fallback. Four separate VMs each run the same isolated
+longest-first balancing. The checked-in timings use successful four-shard Cypress spec wall times;
+first-spec cold compilation is replaced with its Allure envelope plus the median
+4,549ms observed per-spec overhead. These remain scheduling hints; new files
+receive a median fallback. Four separate VMs each run the same isolated
 fixture and headed Electron/Xvfb command. A stable aggregate job fails on a failed
 runner, missing/foreign spec evidence, invalid metadata or missing raw coverage.
 
@@ -61,7 +65,7 @@ Consumer artifact names stay compatible with PR publication and Sonar.
 second standalone component push trigger is removed. Other branch/manual
 triggers remain, and remaining quality services are unchanged.
 
-All 34 Python helper regressions passed through Allure with matched scope,
+All 35 Python helper regressions passed through Allure with matched scope,
 complete modeling and zero findings. A replay of the existing baseline through
 the assembler retained all 143 specs, 1,146 logical tests and 298 coverage files;
 statement/function/branch counters and maps matched exactly. This replay is
@@ -76,13 +80,17 @@ descriptor and streams from that same descriptor. Directory-relative opens keep
 recursive traversal attached to the inspected directory even after a rename.
 The existing Python 3 POSIX runtime supplies these operations on Linux and macOS;
 no package dependency is added. Node sends one batch per shard, rather than
-spawning per attachment. Scope validation reads the copied result snapshot.
+spawning per attachment. Scope validation reads the copied result snapshot. The interpreter is pinned
+to `/usr/bin/python3` on the supported Linux/macOS runners rather than searched
+through PATH. Copies retain source read/write permissions without adding execute
+bits. A shadow-interpreter regression failed before pinning and passes afterward;
+a restrictive-permissions regression likewise failed before the mode correction.
 
 Regressions inject source file/directory replacement after inspection, a rival
 destination before exclusive creation, and source/destination/parent symlinks.
 Identical existing files are accepted; conflicting content fails and is retained.
 The earlier pathname-based implementation failed three real substitution cases
-before this fix. The expanded 34-case suite passes with complete Allure modeling.
+before this fix. The expanded helper suite passes with complete Allure modeling.
 Cypress is invoked directly with the planned `--spec` selection so the npm script's full
 glob cannot introduce a second competing selection flag.
 
@@ -117,3 +125,21 @@ not claimed across independent browser executions.
 This first component benchmark succeeded, while its overall PR had the CodeQL
 copy-race finding addressed above. Acceptance still requires fresh full CI on
 the final SHA. Current gate and rollout evidence is recorded in PR #208.
+
+## Scheduling refinement and browser synchronization
+
+The successful first sample's measured spec work was uneven across groups:
+320.1s, 267.3s, 367.9s and 394.8s after removing first-spec cold compilation.
+Rebalancing those measured weights estimates 336.5–338.3s per group, about 57s
+less critical-path spec work. This is an estimate pending the next GitHub run,
+not an additional observed speedup. Discovery still selects all 143 specs once.
+
+Fresh run 41825231088 retained failure propagation: shard 4 and the aggregate
+failed on one OfflineNotes assertion. The intercept had observed the create
+request, but the queue acknowledgement transaction was still pending when the
+test took its one-shot IDB snapshot. The test now captures the persisted create
+queue ID, waits for its acknowledgement call and returned transaction promise,
+then retains the existing zero-queue, same-ID, cache, deletion and remount checks.
+All six OfflineNotes cases passed locally, and again with a temporary 100ms
+acknowledgement delay. That stress delay is absent from committed source.
+No retry, timeout or product assertion was removed or weakened.

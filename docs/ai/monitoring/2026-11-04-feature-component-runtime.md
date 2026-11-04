@@ -11,8 +11,9 @@ the slowest shard and total component path with successful baseline PR run
 41806363718: component job 29m12s, fixture/test step 27m33s. Runner time/cost and
 elapsed latency are separate measurements; parallel runners do not remove work.
 
-The committed timing map is a balancing hint from baseline Allure envelopes,
-including a documented fixed per-spec overhead estimate. Discovery remains
+The committed timing map uses successful four-shard Cypress spec wall times
+from run 41817685674. First-spec cold compilation is replaced with its Allure
+envelope plus the 4,549ms median observed spec overhead. These are balancing hints. Discovery remains
 authoritative: new specs receive a median fallback weight, deleted files are
 not scheduled, and every current spec must appear once in the plan.
 

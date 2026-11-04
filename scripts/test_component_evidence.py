@@ -23,9 +23,12 @@ class ComponentEvidenceTests(unittest.TestCase):
         nested.mkdir()
         content = bytes(range(256)) * 8193
         (nested / 'attachment.bin').write_bytes(content)
+        (nested / 'attachment.bin').chmod(0o600)
         copy_path(self.source, self.output)
         copy_path(self.source, self.output)
         self.assertEqual((self.output / 'nested/attachment.bin').read_bytes(), content)
+        self.assertEqual((self.output / 'nested/attachment.bin').stat().st_mode & 0o777, 0o600,
+                         'copying diagnostic data must not broaden access or add executable bits')
 
     def test_conflicting_existing_file_is_preserved(self):
         source = self.source / 'attachment.txt'
@@ -114,9 +117,9 @@ class ComponentEvidenceTests(unittest.TestCase):
                 self.output.write_text('concurrent evidence')
             return original(file, flags, *args, **kwargs)
 
-        with mock.patch('os.open', side_effect=interleave):
-            with self.assertRaisesRegex(EvidenceCopyError, 'Conflicting'):
-                copy_path(source, self.output)
+        with mock.patch('os.open', side_effect=interleave), \
+                self.assertRaisesRegex(EvidenceCopyError, 'Conflicting'):
+            copy_path(source, self.output)
         self.assertTrue(created, 'create the competing file just before exclusive open')
         self.assertEqual(self.output.read_text(), 'concurrent evidence')
 

@@ -17,9 +17,9 @@ class EvidenceCopyError(Exception):
     pass
 
 
-def open_no_follow(name, flags, *, parent=None):
+def open_no_follow(name, flags, *, parent=None, mode=0o666):
     try:
-        return os.open(name, flags | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+        return os.open(name, flags | os.O_NOFOLLOW | os.O_NONBLOCK, mode, dir_fd=parent)
     except OSError as error:
         if error.errno in (errno.ELOOP, errno.ENOTDIR):
             raise EvidenceCopyError(f'Symlink or non-directory in evidence path: {name}') from error
@@ -51,9 +51,10 @@ def parent_handle(path, *, create=False):
         os.close(descriptor)
 
 
-def copy_regular(source, destination, name, parent):
+def copy_regular(source, destination, name, parent, source_mode):
     try:
-        target = open_no_follow(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, parent=parent)
+        target = open_no_follow(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                                parent=parent, mode=source_mode & 0o666)
     except FileExistsError:
         target = open_no_follow(name, os.O_RDONLY, parent=parent)
         try:
@@ -81,7 +82,7 @@ def copy_entry(source_name, destination_name, source_parent, destination_parent,
     try:
         mode = os.fstat(source).st_mode
         if stat.S_ISREG(mode):
-            copy_regular(source, destination, destination_name, destination_parent)
+            copy_regular(source, destination, destination_name, destination_parent, mode)
         elif stat.S_ISDIR(mode):
             try:
                 os.mkdir(destination_name, dir_fd=destination_parent)
@@ -104,9 +105,9 @@ def copy_entry(source_name, destination_name, source_parent, destination_parent,
 def copy_path(source, destination):
     if os.name != 'posix' or not hasattr(os, 'O_NOFOLLOW'):
         raise EvidenceCopyError('Secure evidence copying requires POSIX descriptor APIs')
-    with parent_handle(source) as (source_parent, source_name):
-        with parent_handle(destination, create=True) as (destination_parent, destination_name):
-            copy_entry(source_name, destination_name, source_parent, destination_parent, str(destination))
+    with parent_handle(source) as (source_parent, source_name), \
+            parent_handle(destination, create=True) as (destination_parent, destination_name):
+        copy_entry(source_name, destination_name, source_parent, destination_parent, str(destination))
 
 
 def main():

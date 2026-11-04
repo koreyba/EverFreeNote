@@ -18,7 +18,7 @@ generates NYC output repeatedly. Measure this separately before changing it.
 the component suite twice. The coverage producer should call the same reusable
 component workflow once, retaining Allure and Sonar consumers.
 
-## Proposed pipeline
+## Implemented pipeline
 
 ```mermaid
 flowchart TD

@@ -49,6 +49,8 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
     let online = false
     const remoteNotes = new Map<string, Record<string, unknown>>()
     let localId: string
+    let createQueueId: string
+    const acknowledge = cy.spy(webOfflineStorageAdapter, 'removeQueueItems')
     const client = createClient('https://offline-test.invalid', 'test-public-key', {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     })
@@ -94,6 +96,11 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
     mountApp()
     cy.contains('Saved without internet').should('be.visible').click()
     cy.contains('My offline text').should('be.visible')
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+      expect(queue, JSON.stringify(queue)).to.have.length(1)
+      expect(queue[0].noteId).to.equal(localId)
+      createQueueId = queue[0].id
+    })
     cy.then(() => {
       online = true
       window.dispatchEvent(new Event('online'))
@@ -104,8 +111,14 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
       expect(notes.get(localId)?.title).to.equal('Saved without internet')
       expect(notes.get(localId)?.description).to.contain('My offline text')
     })
+    // The intercept sees the request before the sync manager commits its queue
+    // acknowledgement. Wait for that exact IDB transaction, not an initial UI zero.
+    cy.wrap(acknowledge).should(spy => expect(spy).to.have.been.calledWith([createQueueId]))
+    cy.then(() => Promise.all(acknowledge.getCalls()
+      .filter(call => call.args[0].includes(createQueueId))
+      .map(call => call.returnValue)))
     cy.get('[data-cy="queue-state"]').should('have.text', '0')
-    cy.then(() => webOfflineStorageAdapter.getQueue()).should('have.length', 0)
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => expect(queue, JSON.stringify(queue)).to.have.length(0))
     cy.get('[data-sonner-toast][data-type="error"]').should('not.exist')
     cy.get('[data-cy="note-read-button"]').click()
     cy.get('[data-cy="queue-state"]').should('have.text', '0')

@@ -1,11 +1,13 @@
 """Behavioral CLI contracts for complete component spec sharding."""
 
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -125,6 +127,17 @@ class ComponentShardTests(unittest.TestCase):
         self.assertEqual(summary['expectedSpecs'], summary['observedSpecs'])
         self.assertEqual(summary['observedSpecs'], 8)
 
+    def test_evidence_copy_ignores_a_shadow_python_on_path(self):
+        self.artifacts()
+        commands = self.project / 'commands'
+        commands.mkdir()
+        shadow = commands / 'python3'
+        shadow.write_text('#!/bin/sh\necho shadow-interpreter >&2\nexit 17\n')
+        shadow.chmod(0o755)
+        with mock.patch.dict(os.environ, {'PATH': str(commands) + os.pathsep + os.environ['PATH']}):
+            self.merge()
+        self.assertEqual(len(list((self.project / 'out/allure-results/component').glob('*-result.json'))), 8)
+
     def test_missing_shard_fails_but_retains_available_evidence(self):
         self.artifacts()
         shutil.rmtree(self.project / 'inputs/shard-2')
@@ -139,10 +152,11 @@ class ComponentShardTests(unittest.TestCase):
 
     def test_foreign_observed_spec_is_rejected(self):
         self.artifacts()
-        result_file = next((self.project / 'inputs/shard-1/allure-results/component').glob('*-result.json'))
-        result = json.loads(result_file.read_text())
-        result['fullName'] = 'everfreenote:cypress/component/foreign.cy.tsx#case'
-        result_file.write_text(json.dumps(result))
+        result_file = self.project / 'inputs/shard-1/allure-results/component/1-0-result.json'
+        result_file.write_text(json.dumps({
+            'uuid': '1-0', 'name': 'case', 'status': 'passed',
+            'fullName': 'everfreenote:cypress/component/foreign.cy.tsx#case',
+        }))
         self.assertIn('unexpected observed spec', self.merge(success=False).stderr.lower())
 
     def test_planned_spec_with_no_observed_tests_is_rejected(self):
