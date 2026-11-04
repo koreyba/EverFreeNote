@@ -2,6 +2,8 @@
 
 import { ImageDownloader } from '../../enex/image-downloader'
 import { ImageProcessor } from '../../enex/image-processor'
+import { execFileSync } from 'node:child_process'
+import { resolve } from 'node:path'
 
 describe('ENEX image services', () => {
   afterEach(() => {
@@ -21,9 +23,15 @@ describe('ENEX image services', () => {
   it('accepts safe base64 image data and rejects unsupported or malformed data URLs', () => {
     const downloader = new ImageDownloader()
     const html = '<img src="data:image/png;base64,AQ=="><img src="data:image/webp;base64,Ag==">' +
+      '<img src="data:image/png;base64,AAA="><img src="data:image/png;base64,AAAA">' +
       '<img src="data:text/html;base64,PGgxPg=="><img src="data:image/svg+xml;base64,PHN2Zz4=">' +
+      '<img src="data:image/png;base64,A==="><img src="data:image/png;base64,AA=A">' +
+      '<img src="data:image/png;base64,===="><img src="data:image/png;base64,AAA\n">' +
       '<img src="data:image/png;base64,!!!"><img src="https://cdn.test/a.png">'
-    expect(downloader.extractImageUrls(html)).toEqual(['data:image/png;base64,AQ==', 'data:image/webp;base64,Ag==', 'https://cdn.test/a.png'])
+    expect(downloader.extractImageUrls(html)).toEqual([
+      'data:image/png;base64,AQ==', 'data:image/webp;base64,Ag==',
+      'data:image/png;base64,AAA=', 'data:image/png;base64,AAAA', 'https://cdn.test/a.png',
+    ])
   })
 
   it('downloads data images locally and never sends their bytes to the optional proxy', async () => {
@@ -49,6 +57,27 @@ describe('ENEX image services', () => {
     const result = await new ImageDownloader().downloadImage(url)
     expect(result?.fileName).toBe('image.png')
   }, 15_000)
+
+  it('handles a large inline image when V8 regexp optimization is disabled', () => {
+    const output = execFileSync(process.execPath, ['--no-regexp-optimization', '-e', `
+      const { ImageDownloader } = require(process.argv[1]);
+      console.debug = () => {};
+      let calls = 0;
+      globalThis.fetch = async () => {
+        calls += 1;
+        return { ok: true, headers: new Headers({ 'content-type': 'image/png' }),
+          arrayBuffer: async () => new Uint8Array([1]).buffer };
+      };
+      const url = 'data:image/png;base64,' + 'A'.repeat(14_000_000);
+      new ImageDownloader().downloadImage(url).then(resource => {
+        console.log(JSON.stringify({ resource, calls }));
+      });
+    `, resolve(__dirname, '../../enex/image-downloader.ts')], { encoding: 'utf8', timeout: 5000 })
+    expect(JSON.parse(output)).toMatchObject({
+      resource: { fileName: 'image.png', mime: 'image/png', data: 'AQ==' },
+      calls: 1,
+    })
+  })
 
   it('downloads an image, computes md5, mime, filename and dimensions', async () => {
     const downloader = new ImageDownloader()

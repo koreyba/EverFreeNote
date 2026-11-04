@@ -367,3 +367,19 @@ async getNotesByIds(noteIds: string[], userId: string): Promise<Note[]> {
 - Secrets management
   - Использование существующего Supabase Client (секреты уже настроены)
   - Не хранить чувствительные данные в экспортируемом файле
+
+## Large inline image validation (2026-11-04)
+
+A valid 14 MB base64 image can overflow the quantified whole-payload regexp
+when V8 regexp optimization is disabled, causing downloadImage to return null.
+The public API failure and RangeError in the original pattern are reproduced
+without changing input size. Validation now removes at most two trailing padding
+characters, then searches for one invalid alphabet character. This uses constant
+regexp stack space and retains the MIME whitelist and multiple-of-four check.
+
+The existing error redaction prevented observing the precise V8 tier state in
+the failed main job; the optimization-dependent failure class is independently
+confirmed. A new subprocess regression exercises the real downloader under that
+engine mode with synthetic fetch data. Existing export, padding and proxy/privacy
+checks remain. See [validation](../testing/feature-inline-image-validation.md) for the
+full-context validation and its pre-existing Allure reporting boundary.
