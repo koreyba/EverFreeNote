@@ -1,0 +1,1 @@
+{"id":"ed82049d4ec49aac7cb3e26e15c1aea0","fullName":"everfreenote:ui/web/tests/unit/components/shareNoteDialog.test.tsx#ShareNoteDialog uses the deployed origin, not the WebView origin, inside the Android shell","name":"uses the deployed origin, not the WebView origin, inside the Android shell","status":"passed","testResultsByEnv":{"default":"76485a3d78e10d6cda02c55de6ae0df3"}}
