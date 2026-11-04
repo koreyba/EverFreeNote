@@ -1,0 +1,1 @@
+{"id":"f655e0b087821649d72d9ea4316d285d","fullName":"everfreenote:ui/web/tests/unit/components/AuthForm.test.tsx#AuthForm resets loading state when authentication action fails or throws error","name":"resets loading state when authentication action fails or throws error","status":"passed","testResultsByEnv":{"default":"61d5482a5840751657a2a8b9cb1f6ed3"}}
