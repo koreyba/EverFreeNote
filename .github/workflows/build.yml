@@ -47,6 +47,13 @@ jobs:
       - name: Test CI support scripts
         run: node --test scripts/*.test.js
 
+      - name: Test component CI orchestration
+        run: >-
+          python3 -m unittest
+          scripts/test_run_component_ci_isolated.py
+          scripts/test_component_coverage_reporting.py
+          scripts/test_component_shards.py
+
       - name: Install shell dependencies
         run: npm --prefix ui/shell ci --ignore-scripts
 

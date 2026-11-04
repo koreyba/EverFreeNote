@@ -2,7 +2,7 @@ name: Component Tests
 
 on:
   push:
-    branches: [main, develop, github-actions-setup]
+    branches: [develop, github-actions-setup]
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -38,25 +38,74 @@ permissions:
   contents: read
 
 jobs:
-  component-tests:
+  prepare-component-shards:
     runs-on: ubuntu-latest
     outputs:
-      has_allure_results: ${{ steps.component-allure-check.outputs.has_allure_results }}
-
+      matrix: ${{ steps.plan.outputs.matrix }}
+      plan_artifact: ${{ steps.plan.outputs.plan_artifact }}
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
 
-      - name: Verify isolated fixture runner
-        run: python3 -m unittest scripts/test_run_component_ci_isolated.py
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+
+      - name: Plan every component spec
+        id: plan
+        env:
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node scripts/component-shards.js plan --shards 4 --sha "$COMMIT_SHA" \
+            --output component-shard-plan.json > "$RUNNER_TEMP/component-shard-plan.log"
+          node -e 'const fs = require("node:fs"); const plan = require("./component-shard-plan.json"); fs.appendFileSync(process.env.GITHUB_OUTPUT, "matrix=" + JSON.stringify(plan.matrix) + "\n")'
+          echo "plan_artifact=component-shard-plan-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload exact component plan
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ${{ steps.plan.outputs.plan_artifact }}
+          path: component-shard-plan.json
+          if-no-files-found: error
+          retention-days: 30
+
+  component-shards:
+    name: Component shard ${{ matrix.shard }}
+    needs: prepare-component-shards
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.prepare-component-shards.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
-          cache: 'npm'
+          cache: npm
+
+      - name: Download exact component plan
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: ${{ needs.prepare-component-shards.outputs.plan_artifact }}
+          path: .component-plan
+
+      - name: Select this shard
+        env:
+          SHARD_INDEX: ${{ matrix.shard }}
+        run: |
+          specs="$(node scripts/component-shards.js select \
+            --plan .component-plan/component-shard-plan.json --shard "$SHARD_INDEX" \
+            --attempt "$GITHUB_RUN_ATTEMPT" --output component-shard.json)"
+          echo "COMPONENT_SPECS=$specs" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
@@ -69,7 +118,8 @@ jobs:
         continue-on-error: true
         env:
           NODE_OPTIONS: --max-old-space-size=6144
-          COVERAGE_ENABLED: ${{ inputs.coverage }}
+          COVERAGE_ENABLED: ${{ inputs.coverage == true }}
+          COMPONENT_COVERAGE_DEFER_REPORT: ${{ inputs.coverage == true }}
         run: |
           mkdir -p cypress/results
           set -o pipefail
@@ -77,18 +127,15 @@ jobs:
           if [ "${COVERAGE_ENABLED}" = "true" ]; then
             coverage_args+=(--env codeCoverage=true)
           fi
-          # Mask commands must reach the GitHub runner but not the uploaded raw log.
-          # Render Electron inside Xvfb instead of leaving its Linux window hidden.
-          python3 scripts/run-component-ci-isolated.py -- npm run test:component:ci -- --headed "${coverage_args[@]}" --reporter junit --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | awk '
+          # Keep one fixture per runner and headed Electron inside Xvfb.
+          # Mask commands reach GitHub, while raw artifacts receive redacted logs.
+          python3 scripts/run-component-ci-isolated.py -- npm run test:component:ci -- \
+            --headed --spec "$COMPONENT_SPECS" "${coverage_args[@]}" --reporter junit \
+            --reporter-options "mochaFile=cypress/results/component-tests-[hash].xml,toConsole=false" 2>&1 | awk '
             { print; fflush() }
             index($0, "::add-mask::") != 1 { print >> "cypress/results/component-tests.log"; fflush("cypress/results/component-tests.log") }
           '
           exit "${PIPESTATUS[0]}"
-
-      - name: Render Cypress coverage report
-        if: always() && inputs.coverage == true
-        continue-on-error: true
-        run: npm run coverage:component
 
       - name: Reconcile Cypress, JUnit, and Allure results
         if: always()
@@ -103,39 +150,109 @@ jobs:
             --summary-file "${GITHUB_STEP_SUMMARY}" \
             --screenshots-dir cypress/screenshots
 
-      - name: Upload test results
+      - name: Upload immutable shard evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: component-test-results-${{ github.run_id }}
+          name: component-shard-${{ github.run_id }}-${{ matrix.shard }}-${{ github.run_attempt }}
           path: |
+            component-shard.json
+            allure-results/component
             cypress/results
             cypress/screenshots
             cypress/videos
-          if-no-files-found: ignore
+            .nyc_output/out.json
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 30
 
-      - name: Generate component Allure report
+      - name: Mark shard as failed when component tests failed
+        if: always() && steps.run-component-tests.outcome != 'success'
+        run: exit 1
+
+  component-tests:
+    needs: [prepare-component-shards, component-shards]
+    if: always()
+    runs-on: ubuntu-latest
+    outputs:
+      has_allure_results: ${{ steps.component-allure-check.outputs.has_allure_results }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Download exact component plan
+        if: always() && needs.prepare-component-shards.result == 'success'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: ${{ needs.prepare-component-shards.outputs.plan_artifact }}
+          path: .component-plan
+
+      - name: Download all shard attempts
         if: always()
-        continue-on-error: true
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: component-shard-${{ github.run_id }}-*
+          path: .component-shards
+
+      - name: Validate completeness and merge component evidence
+        id: merge-component-results
+        if: always()
+        env:
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          COVERAGE_ENABLED: ${{ inputs.coverage == true }}
         run: |
-          if [ -d allure-results/component ] && [ "$(find allure-results/component -type f | wc -l)" -gt 0 ]; then
-            npm run allure:generate:component
-          else
-            echo "No component Allure results found; skipping report generation."
+          outcome=0
+          node scripts/component-shards.js merge \
+            --plan .component-plan/component-shard-plan.json \
+            --input .component-shards --output .component-merged \
+            --sha "$COMMIT_SHA" --coverage "$COVERAGE_ENABLED" || outcome=$?
+          if [ -f .component-merged/summary.json ]; then
+            cat .component-merged/summary.json >> "$GITHUB_STEP_SUMMARY"
           fi
+          exit "$outcome"
+
+      - name: Render complete Cypress coverage report once
+        id: render-component-coverage
+        if: always() && inputs.coverage == true
+        run: |
+          node node_modules/nyc/bin/nyc.js report \
+            --temp-dir=.component-merged/.nyc_output \
+            --reporter=html --reporter=text --reporter=lcov \
+            --report-dir=.component-merged/coverage/component
+          test -s .component-merged/coverage/component/lcov.info
+          test -s .component-merged/coverage/component/index.html
 
       - name: Check component Allure artifacts
         id: component-allure-check
         if: always()
         run: |
-          set -euo pipefail
-
-          if [ -d allure-results/component ] && [ "$(find allure-results/component -type f | wc -l)" -gt 0 ]; then
+          if [ -d .component-merged/allure-results/component ] && \
+             [ "$(find .component-merged/allure-results/component -name '*-result.json' -type f | wc -l)" -gt 0 ]; then
             echo "has_allure_results=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_allure_results=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: component-test-results-${{ github.run_id }}
+          path: .component-merged/cypress
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
 
       - name: Upload component Allure artifacts
         if: always()
@@ -143,32 +260,40 @@ jobs:
         with:
           name: component-test-allure-${{ github.run_id }}
           path: |
-            allure-results/component
-            allure-report/component
-          if-no-files-found: ignore
+            .component-merged/allure-results/component
+            .component-merged/summary.json
+          if-no-files-found: error
+          overwrite: true
           retention-days: 30
 
       - name: Upload Cypress coverage report
         if: always() && inputs.coverage == true
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: pr-coverage-component-${{ github.run_id }}
-          path: coverage/component
-          if-no-files-found: ignore
+          name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'component-coverage' || 'pr-coverage-component' }}-${{ github.run_id }}
+          path: .component-merged/coverage/component
+          if-no-files-found: error
+          overwrite: true
           retention-days: 14
 
       - name: Upload Cypress raw coverage
         if: always() && inputs.coverage == true
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: pr-coverage-component-raw-${{ github.run_id }}
-          path: .nyc_output/out.json
-          if-no-files-found: ignore
+          name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'component-coverage-raw' || 'pr-coverage-component-raw' }}-${{ github.run_id }}
+          path: .component-merged/.nyc_output/out.json
           include-hidden-files: true
+          if-no-files-found: error
+          overwrite: true
           retention-days: 14
 
-      - name: Mark job as failed when component tests failed
-        if: steps.run-component-tests.outcome != 'success'
+      - name: Fail component family when any shard, merge, or coverage report failed
+        if: >-
+          always() &&
+          (needs.prepare-component-shards.result != 'success' ||
+           needs.component-shards.result != 'success' ||
+           steps.merge-component-results.outcome != 'success' ||
+           (inputs.coverage == true && steps.render-component-coverage.outcome != 'success'))
         run: exit 1
 
   publish-component-report:
