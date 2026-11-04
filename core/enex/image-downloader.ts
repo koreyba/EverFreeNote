@@ -5,7 +5,13 @@ function imageDataUrlType(url: string): string | null {
   const prefix = /^data:image\/(png|jpeg|gif|webp);base64,/i.exec(url)
   if (!prefix) return null
   const payload = url.slice(prefix[0].length)
-  if (!payload || payload.length % 4 !== 0 || !/^[a-z0-9+/]+={0,2}$/i.test(payload)) return null
+  if (!payload || payload.length % 4 !== 0) return null
+  let body = payload
+  if (payload.endsWith('==')) body = payload.slice(0, -2)
+  else if (payload.endsWith('=')) body = payload.slice(0, -1)
+  // A single-character search keeps stack use constant even without V8's
+  // regexp optimizations; a quantified whole-payload match can overflow.
+  if (/[^a-z0-9+/]/i.test(body)) return null
   return prefix[1].toLowerCase()
 }
 
