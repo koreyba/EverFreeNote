@@ -61,7 +61,7 @@ Consumer artifact names stay compatible with PR publication and Sonar.
 second standalone component push trigger is removed. Other branch/manual
 triggers remain, and remaining quality services are unchanged.
 
-All 26 Python helper regressions passed through Allure with matched scope,
+All 34 Python helper regressions passed through Allure with matched scope,
 complete modeling and zero findings. A replay of the existing baseline through
 the assembler retained all 143 specs, 1,146 logical tests and 298 coverage files;
 statement/function/branch counters and maps matched exactly. This replay is
@@ -70,12 +70,28 @@ project TypeScript checks and ESLint passed locally. DevKit feature lint uses a
 `feature-*` branch lookup; this repository task follows the required `codex/`
 branch prefix instead, without creating a misleading alias.
 
-Artifact files use atomic exclusive copying. A concurrent writer cannot replace
-evidence between a preliminary existence check and a copy; a regression injects
-that exact interleaving and verifies both failure and preservation of the rival
-file. Identical existing files are accepted, conflicting content fails. Cypress
-is invoked directly with the planned `--spec` selection so the npm script's full
+Artifact files use descriptor-based copying with exclusive destination creation.
+The copier opens source entries without following symlinks, inspects the opened
+descriptor and streams from that same descriptor. Directory-relative opens keep
+recursive traversal attached to the inspected directory even after a rename.
+The existing Python 3 POSIX runtime supplies these operations on Linux and macOS;
+no package dependency is added. Node sends one batch per shard, rather than
+spawning per attachment. Scope validation reads the copied result snapshot.
+
+Regressions inject source file/directory replacement after inspection, a rival
+destination before exclusive creation, and source/destination/parent symlinks.
+Identical existing files are accepted; conflicting content fails and is retained.
+The earlier pathname-based implementation failed three real substitution cases
+before this fix. The expanded 34-case suite passes with complete Allure modeling.
+Cypress is invoked directly with the planned `--spec` selection so the npm script's full
 glob cannot introduce a second competing selection flag.
+
+The descriptor implementation was also replayed against the complete baseline:
+all 6,035 raw Allure files/attachments are byte-identical, with the same 1,146
+identities and exact raw coverage for 298 files. One local full-assembly sample
+took 10.68s versus 9.25s for pathname copying; this includes JSON coverage merging
+and does not establish final GitHub wall time. Both JavaScript and Python remain
+included in the existing CodeQL analysis.
 
 ## First GitHub measurement
 

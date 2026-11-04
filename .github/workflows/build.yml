@@ -53,6 +53,7 @@ jobs:
           scripts/test_run_component_ci_isolated.py
           scripts/test_component_coverage_reporting.py
           scripts/test_component_shards.py
+          scripts/test_component_evidence.py
 
       - name: Install shell dependencies
         run: npm --prefix ui/shell ci --ignore-scripts

@@ -21,6 +21,7 @@ cases in successful run 41806363718. Runtime improvements require measurements.
 - [x] Invalid/stale plans and missing/duplicate/foreign shard evidence fail closed.
 - [x] Aggregation preserves Allure attachments and unions overlapping coverage counters.
 - [x] Concurrent file creation is preserved and rejected as conflicting evidence, without an overwrite race.
+- [x] Descriptor-based copies retain the inspected source file/tree during substitution and reject symlinks in sources, destinations and parent paths.
 
 ## Integration Tests
 
@@ -28,7 +29,7 @@ cases in successful run 41806363718. Runtime improvements require measurements.
 - [x] Complete 298-file coverage snapshot produced byte-identical final LCOV.
 - [x] Replay existing baseline through four artifacts: 143 specs, 1,146 results, 298 coverage files, exact counters/maps.
 - [x] Validate reusable workflow calls and artifact names with actionlint and contract review.
-- [x] All 26 helper cases pass with matched Allure expectations and complete modeling; project lint/type checks pass.
+- [x] All 34 helper cases pass with matched Allure expectations and complete modeling; project lint/type checks pass.
 - [ ] Confirm matrix failure propagation and helper execution in the real GitHub workflow.
 
 ## End-to-End Tests

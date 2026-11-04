@@ -2,6 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 const { parseArgs } = require("./allure-pages-utils");
 
 const SPEC_PATTERN = /^cypress\/component\/.+\.cy\.(?:js|jsx|ts|tsx)$/;
@@ -103,26 +104,14 @@ function selectShard(args) {
   return selected.specs.join(",");
 }
 
-function copyTree(source, destination) {
-  const stat = fs.lstatSync(source);
-  if (stat.isSymbolicLink()) throw new Error(`Symlink in shard evidence: ${source}`);
-  if (stat.isDirectory()) {
-    fs.mkdirSync(destination, { recursive: true });
-    for (const name of fs.readdirSync(source).sort(compareNames)) {
-      copyTree(path.join(source, name), path.join(destination, name));
-    }
-    return;
-  }
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  try {
-    // Exclusive creation prevents another writer's evidence being overwritten
-    // between an existence check and the copy.
-    fs.copyFileSync(source, destination, fs.constants.COPYFILE_EXCL);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-    if (!fs.readFileSync(source).equals(fs.readFileSync(destination))) {
-      throw new Error(`Conflicting shard evidence file: ${destination}`);
-    }
+function copyEvidence(operations) {
+  // Python's existing POSIX runtime provides directory-relative opens on both
+  // Linux and macOS. Batch a shard's files rather than spawning per attachment.
+  const result = spawnSync("python3", [path.join(__dirname, "component_evidence.py")], {
+    input: JSON.stringify(operations), encoding: "utf8", timeout: 60000,
+  });
+  if (result.status !== 0) {
+    throw new Error(result.error?.message || result.stderr.trim() || "Evidence copy failed");
   }
 }
 
@@ -130,25 +119,29 @@ function copyShardEvidence(folder, output, index) {
   const source = path.join(folder, "allure-results/component");
   const destination = path.join(output, "allure-results/component");
   const diagnostics = path.join(output, "cypress/results", `shard-${index}`);
-  for (const name of fs.readdirSync(source).sort(compareNames)) {
+  const files = fs.readdirSync(source).sort(compareNames);
+  const operations = [];
+  for (const name of files) {
     if (["environment.properties", "executor.json"].includes(name)) {
       // Runner kernel/executor details may differ. Retain each original and use
       // the first global metadata file for the combined Allure environment.
-      copyTree(path.join(source, name), path.join(diagnostics, "allure-metadata", name));
+      operations.push({ source: path.join(source, name), destination: path.join(diagnostics, "allure-metadata", name) });
       if (fs.existsSync(path.join(destination, name))) continue;
     }
-    copyTree(path.join(source, name), path.join(destination, name));
+    operations.push({ source: path.join(source, name), destination: path.join(destination, name) });
   }
   for (const kind of ["results", "screenshots", "videos"]) {
     const input = path.join(folder, "cypress", kind);
-    if (fs.existsSync(input)) copyTree(input, path.join(output, "cypress", kind, `shard-${index}`));
+    if (fs.existsSync(input)) operations.push({ source: input, destination: path.join(output, "cypress", kind, `shard-${index}`) });
   }
-  return source;
+  copyEvidence(operations);
+  return { directory: destination, files };
 }
 
-function observedSpecs(directory) {
+function observedSpecs({ directory, files }) {
   const observed = new Set();
-  for (const file of fs.readdirSync(directory)) {
+  // Read this shard's copied snapshot, not paths that can change in its input.
+  for (const file of files) {
     if (!file.endsWith("-result.json")) continue;
     const result = readJson(path.join(directory, file));
     if (typeof result.fullName !== "string") throw new Error(`Missing Allure fullName: ${file}`);
