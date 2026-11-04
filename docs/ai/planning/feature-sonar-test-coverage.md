@@ -6,6 +6,15 @@ description: Delivery plan for deterministic main coverage in SonarQube Cloud
 
 # Sonar Test Coverage Plan
 
+## Integration removal — 2026-11-04
+
+The maintainer requested complete removal of Qodana and Codacy from this
+repository. Their PR/main jobs, dedicated workflow, project configuration,
+baseline and automatic AI instructions are removed. Tests, coverage artifacts,
+Allure, SonarQube Cloud, CodeQL and Semgrep remain enabled. References to the
+two discontinued services below describe the earlier implementation and are
+no longer rollout requirements.
+
 ## Milestones
 
 - [x] Milestone 1: Coverage producers emit independent deterministic LCOV files.

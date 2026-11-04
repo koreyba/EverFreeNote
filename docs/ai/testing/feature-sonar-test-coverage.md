@@ -6,6 +6,23 @@ description: Validation strategy for deterministic coverage production and impor
 
 # Sonar and Qodana Analysis and Coverage Testing Strategy
 
+## Integration removal — 2026-11-04
+
+The maintainer requested complete removal of Qodana and Codacy from this
+repository. Their PR/main jobs, dedicated workflow, project configuration,
+baseline and automatic AI instructions are removed. Tests, coverage artifacts,
+Allure, SonarQube Cloud, CodeQL and Semgrep remain enabled. References to the
+two discontinued services below describe the earlier implementation and are
+no longer rollout requirements.
+
+Removal validation: `actionlint` passes for both changed workflows. All 13
+remaining workflow YAML documents parse, local reusable workflows resolve, and
+job dependencies reference existing jobs. Structural comparison with the prior
+revision confirms that only the four Qodana/Codacy jobs changed; all retained
+test, coverage, Sonar and Allure jobs and event conditions are identical.
+No Qodana/Codacy references remain in active workflows. A fresh PR run must
+confirm the remaining checks and the absence of new retired-service checks.
+
 ## Test Coverage Goals
 
 This is CI infrastructure. Validation targets report correctness, event routing,

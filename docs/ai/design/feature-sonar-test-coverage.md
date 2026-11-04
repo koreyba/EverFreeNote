@@ -1,10 +1,10 @@
 ---
 phase: design
-title: Sonar and Qodana Analysis and Coverage Design
+title: Sonar Analysis and Coverage Design
 description: CI architecture for fast PR analysis and deterministic main coverage
 ---
 
-# Sonar and Qodana Analysis and Coverage Design
+# Sonar Analysis and Coverage Design
 
 ## Architecture Overview
 
@@ -24,10 +24,7 @@ flowchart TD
   PRStatus --> PRComment["One updated PR comment"]
   UnitPR --> PRScan["SonarQube PR scanner"]
   ComponentPR --> PRScan
-  UnitPR --> QodanaPR["Qodana PR scanner"]
-  ComponentPR --> QodanaPR
   PRScan --> PRCloud["SonarQube Cloud PR / new-code result"]
-  QodanaPR --> QodanaPRCloud["Qodana Cloud PR result"]
 
   Main["Commit merged to main"] --> Unit["Jest unit coverage"]
   Main --> Component["Cypress component coverage"]
@@ -43,18 +40,6 @@ flowchart TD
   MobileLCOV --> MainScan
   MainScan --> MainCloud["SonarQube Cloud main baseline"]
 
-  Unit --> QodanaMerge["Istanbul JSON merge"]
-  Component --> QodanaMerge
-  Mobile --> QodanaMerge
-  QodanaMerge --> QodanaLCOV[".qodana/code-coverage/lcov.info"]
-  QodanaLCOV --> QodanaScan["Qodana main scanner"]
-  QodanaScan --> QodanaCloud["Qodana Cloud main report"]
-
-  PRTests --> CodacyPR["Codacy PR coverage job"]
-  CodacyPR --> CodacyPRCloud["Codacy PR coverage"]
-  Main --> CodacyMain["Codacy main coverage job"]
-  CodacyMain --> CodacyCloud["Codacy commit coverage"]
-
   Semgrep["Semgrep static security scan"] --> SemgrepCloud["Semgrep findings"]
 ```
 
@@ -63,11 +48,11 @@ orchestrated by `pr-coverage-analysis.yml`: Unit and Component are reusable
 coverage producers, `allure-pr-publish.yml` is the sole PR Allure publisher,
 and `pr-status-comment.yml` is the sole serialized writer for the shared PR
 comment. Publishers return trusted report URLs to that writer instead of
-patching the comment directly. SonarQube/Qodana consume the producer artifacts
-after the test jobs. The existing `sonar-pr.yml` and `qodana-pr.yml` remain
-scanner consumers. On
-`main`, `merge-tests-coverage.yml` owns the coverage producers, Codacy upload,
-and analysis jobs.
+patching the comment directly. `sonar-pr.yml` consumes the producer artifacts
+after the test jobs. On `main`, `merge-tests-coverage.yml` owns the coverage
+producers and Sonar analysis. Qodana and Codacy were removed at the
+maintainer's request on 2026-11-04. Test coverage and Allure publication remain
+independent of those discontinued integrations.
 
 ## Data Models
 
@@ -80,10 +65,6 @@ and analysis jobs.
 - `SONAR_TOKEN`: GitHub secret used only by scanner jobs.
 - Sonar analysis parameters: cloud host, organization, cloud project key, and
   optional LCOV paths for the main analysis.
-- `QODANA_TOKEN`: GitHub secret used by the PR and post-merge Qodana jobs.
-- `.qodana/code-coverage/lcov.info`: one normalized LCOV union consumed by
-  Qodana for JS.
-- `CODACY_API_TOKEN`: GitHub secret used only by Codacy coverage upload jobs.
 
 ## API Design
 
@@ -99,8 +80,6 @@ of a main-revision analysis, preventing duplicate or partial uploads.
 - `sonar-project.properties` owns cloud identity and stable source/test scope.
 - `.github/workflows/sonar-pr.yml` owns Sonar PR analysis and consumes the PR
   coverage artifacts when available.
-- `.github/workflows/qodana-pr.yml` owns Qodana PR static analysis and consumes
-  the PR coverage artifacts when available.
 - `.github/workflows/pr-coverage-analysis.yml` owns PR ordering and passes
   `publish_allure: false` to the reusable test producers. It also starts the
   progressive unit/component status-comment updates.
@@ -108,13 +87,8 @@ of a main-revision analysis, preventing duplicate or partial uploads.
   single PR status comment after each coverage producer finishes.
 - `.github/workflows/allure-pr-publish.yml` owns the single combined PR Allure
   publication and consumes artifacts from the current orchestrator run.
-- `.github/workflows/merge-tests-coverage.yml` owns the one-time main coverage
-  producers, artifact upload, Codacy main upload, Sonar main analysis, and
-  Qodana main analysis.
-- `.github/workflows/pr-coverage-analysis.yml` owns the PR coverage producers,
-  Codacy PR upload, Sonar PR analysis, and Qodana PR analysis. Codacy is kept as
-  a separate job in the same orchestrator, so it does not rerun tests or depend
-  on Sonar/Qodana success.
+- `.github/workflows/merge-tests-coverage.yml` owns main coverage producers,
+  artifact upload, and Sonar main analysis.
 - Jest owns instrumentation for unit coverage and writes `coverage/jest`.
 - Babel Istanbul plus `@cypress/code-coverage` own browser instrumentation;
   NYC renders the final independent component report.
@@ -122,19 +96,14 @@ of a main-revision analysis, preventing duplicate or partial uploads.
   `ui/mobile/coverage`.
 - Semgrep remains a separate SAST workflow. Its platform does not import LCOV
   or represent runtime test coverage.
-- `scripts/merge-coverage.cjs` owns the Qodana input conversion: it merges the
-  three Istanbul JSON maps, normalizes Windows paths, deduplicates overlapping
-  files, and keeps the same product coverage scope as Sonar.
-- `qodana.yaml` selects `qodana-js` and the recommended profile. The separate
-  Qodana PR workflow runs for every supported PR update without coverage, while
-  the Qodana main job runs after the coverage producers with the same generated
-  artifacts.
+- `scripts/merge-coverage.cjs` combines the core and web Jest Istanbul maps
+  for the retained unit coverage workflow.
 
 ## Design Decisions
 
 ### PR coverage is ordered and report publication is single-owner
 
-Sonar and Qodana PR scans run on `opened`, `synchronize`, and `reopened`,
+Sonar PR scans run on `opened`, `synchronize`, and `reopened`,
 after the Unit and Component coverage producers. Producer workflows upload
 their own test and coverage artifacts but do not publish Allure when called by
 the PR orchestrator. A serialized status updater updates the existing PR
@@ -153,17 +122,16 @@ a newer status for the same workflow row.
 
 ### PR analysis remains resilient
 
-Sonar and Qodana use `always()` after the coverage jobs, so a test failure does
+Sonar uses `always()` after the coverage jobs, so a test failure does
 not suppress static analysis. Allure publication also runs after both producer
 jobs when the PR is trusted and publishes whatever valid result artifacts are
 available.
 
 ### Main coverage is deterministic
 
-The scanners never rely on implicit discovery of `coverage/lcov.info`.
+The scanner never relies on implicit discovery of `coverage/lcov.info`.
 Producer jobs create and upload named coverage artifacts; Sonar consumes the
-three LCOV reports and Qodana consumes the raw reports in separate jobs within
-the same workflow run. The Qodana consumer fails if any raw input is absent.
+three LCOV reports from the same workflow run.
 
 ### Reports remain independent
 
@@ -197,26 +165,6 @@ spec-level broken result only when JUnit or the failed Cypress process has no
 corresponding failed/broken Allure result. The console summary is not a
 canonical result source because terminal-width wrapping can split long spec
 paths; it is retained only for diagnostic text and compatibility fallback.
-
-### Qodana receives the Sonar-equivalent union
-
-Qodana for JS accepts one LCOV report per analysis, while Sonar accepts the
-three producer reports directly. The Qodana job therefore merges the raw
-Istanbul JSON maps before generating LCOV. The merge is a union of execution
-counts for the same normalized project-relative file, not an average of the
-three producer percentages. The Qodana quality gate does not set an arbitrary
-percentage threshold, matching Sonar's current measurement-only behavior.
-
-### Codacy consumes independent LCOV reports
-
-Codacy receives the producer LCOV files directly, one report per test layer,
-from jobs in the same main and PR orchestrator workflows as Sonar and Qodana.
-The Coverage Reporter associates every upload with the checked-out commit SHA.
-The main consumer uploads root Jest, Cypress, and mobile Jest reports. The PR
-consumer uploads the core Jest, web Jest, mobile Jest, and Cypress reports from
-the current PR run. Codacy deduplicates overlapping covered lines and uses the
-head commit plus the common ancestor to calculate pull-request coverage
-variation.
 
 ### Cloud identity is the repository default
 

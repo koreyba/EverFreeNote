@@ -6,6 +6,20 @@ description: Implementation notes for SonarQube Cloud coverage reporting
 
 # Sonar Test Coverage Implementation
 
+## Integration removal — 2026-11-04
+
+The maintainer requested complete removal of Qodana and Codacy from this
+repository. Their PR/main jobs, dedicated workflow, project configuration,
+baseline and automatic AI instructions are removed. Tests, coverage artifacts,
+Allure, SonarQube Cloud, CodeQL and Semgrep remain enabled. References to the
+two discontinued services below describe the earlier implementation and are
+no longer rollout requirements.
+
+The repository's Codacy webhook is inactive, and repository secrets
+`CODACY_API_TOKEN` and `QODANA_TOKEN_1215262580` have been removed. GitLab
+mirror webhooks remain active. The cloud projects and their historical analysis
+results are retained; no successful analysis is claimed for the retired checks.
+
 ## Development Setup
 
 - Node.js 24 and `npm ci` match the existing GitHub Actions workflows.
