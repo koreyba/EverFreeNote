@@ -1,0 +1,1 @@
+{"id":"9626bc9bf4d279928798438718a66c33","fullName":"everfreenote:core/tests/unit/enex-converter-export.test.ts#ExportService removes invalid dimensions from an unsupported image in the exported copy only","name":"removes invalid dimensions from an unsupported image in the exported copy only","status":"passed","testResultsByEnv":{"default":"f4ec5d26a07d2a38c19a52257b042fb9"}}

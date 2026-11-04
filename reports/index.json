@@ -5,6 +5,38 @@
     "suites": [
       "core-unit",
       "core-integration",
+      "web-unit"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit"
+    ],
+    "path": "reports/allure/branch-main/run-41854125280-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-41854125280-attempt-1/",
+    "runId": "41854125280",
+    "runAttempt": "1",
+    "prNumber": null,
+    "ref": "main",
+    "sha": "4c734702412c5b948fc268b37a93043d84a61378",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "Unit Tests",
+    "scopeType": "branch",
+    "scopeLabel": "main",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-11-04T15:09:07.239Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
+      "core-unit",
+      "core-integration",
       "web-unit",
       "component",
       "e2e"
@@ -601,40 +633,6 @@
     "scopeLabel": "PR #208",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-11-04T11:04:52.419Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "component"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Web Component"
-    ],
-    "path": "reports/allure/branch-main/run-41812067281-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/branch-main/run-41812067281-attempt-1/",
-    "runId": "41812067281",
-    "runAttempt": "1",
-    "prNumber": null,
-    "ref": "main",
-    "sha": "3852946ebbab15fd0201dbdc7c7d9ea8ceea2768",
-    "outcome": "failure",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "Component Tests",
-    "scopeType": "branch",
-    "scopeLabel": "main",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-11-04T10:31:30.231Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
