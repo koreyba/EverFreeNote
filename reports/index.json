@@ -3,6 +3,34 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-208/run-41825231060-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-208/run-41825231060-attempt-1/",
+    "runId": "41825231060",
+    "runAttempt": "1",
+    "prNumber": "208",
+    "ref": "codex/component-runtime",
+    "sha": "77dad95ec860543cbf0dedda0bff0629c78c48eb",
+    "outcome": "success",
+    "previewUrl": "https://bd028e7c.everfreenote.pages.dev",
+    "e2eRef": "master",
+    "workflow": "E2E Tests (PR Preview)",
+    "scopeType": "pr",
+    "scopeLabel": "PR #208",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-11-04T12:06:30.307Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "core-unit",
       "core-integration",
       "web-unit",
@@ -605,34 +633,6 @@
     "scopeLabel": "main",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-11-03T20:40:01.678Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-207/run-41712417821-attempt-1",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-207/run-41712417821-attempt-1/",
-    "runId": "41712417821",
-    "runAttempt": "1",
-    "prNumber": "207",
-    "ref": "codex/tab-order-and-note-spacing",
-    "sha": "6efd36e430aa4d33cbe6f58e0e330228dc60b5a0",
-    "outcome": "success",
-    "previewUrl": "https://1452824c.everfreenote.pages.dev",
-    "e2eRef": "master",
-    "workflow": "E2E Tests (PR Preview)",
-    "scopeType": "pr",
-    "scopeLabel": "PR #207",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-11-03T20:34:36.926Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"
