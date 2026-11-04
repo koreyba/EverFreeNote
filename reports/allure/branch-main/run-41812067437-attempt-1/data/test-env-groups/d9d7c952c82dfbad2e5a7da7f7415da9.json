@@ -1,1 +1,0 @@
-{"id":"d9d7c952c82dfbad2e5a7da7f7415da9","fullName":"everfreenote:core/tests/unit/noteWorkspaceSplitLayout.test.ts#persisted note workspace split layout deduplicates a dropped note by moving its existing editing session","name":"deduplicates a dropped note by moving its existing editing session","status":"passed","testResultsByEnv":{"default":"c726d1421ec3e959d2dfa398dd271140"}}
