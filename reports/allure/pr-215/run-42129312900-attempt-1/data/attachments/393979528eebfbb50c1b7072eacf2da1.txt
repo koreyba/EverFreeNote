@@ -1,0 +1,46 @@
+-- Preserve clean chunk body text and overlap separately from the embedding payload.
+-- This lets search snippets and context navigation use the real body text while
+-- retrieval can continue to embed overlap + metadata enriched content.
+
+SET search_path TO public, extensions;
+
+ALTER TABLE public.note_embeddings
+  ADD COLUMN IF NOT EXISTS body_content text,
+  ADD COLUMN IF NOT EXISTS overlap_prefix text;
+
+DROP FUNCTION IF EXISTS public.match_notes(vector, int, text);
+DROP FUNCTION IF EXISTS public.match_notes(vector, int);
+DROP FUNCTION IF EXISTS public.match_notes(vector, uuid, int);
+
+CREATE OR REPLACE FUNCTION public.match_notes(
+  query_embedding vector(1536),
+  match_count     int  DEFAULT 5,
+  filter_tag      text DEFAULT NULL
+)
+RETURNS TABLE (
+  note_id         uuid,
+  chunk_index     int,
+  char_offset     int,
+  content         text,
+  body_content    text,
+  overlap_prefix  text,
+  similarity      float
+)
+LANGUAGE sql STABLE
+SET search_path = public, extensions
+AS $$
+  SELECT
+    ne.note_id,
+    ne.chunk_index,
+    ne.char_offset,
+    ne.content,
+    ne.body_content,
+    ne.overlap_prefix,
+    1 - (ne.embedding <=> query_embedding) AS similarity
+  FROM public.note_embeddings ne
+  JOIN public.notes n ON ne.note_id = n.id
+  WHERE ne.user_id = auth.uid()
+    AND (filter_tag IS NULL OR filter_tag = ANY(n.tags))
+  ORDER BY ne.embedding <=> query_embedding
+  LIMIT GREATEST(1, LEAST(COALESCE(match_count, 5), 100));
+$$;

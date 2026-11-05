@@ -1,0 +1,1 @@
+SELECT count(*) FROM note_trash_private.unverified_note_images
