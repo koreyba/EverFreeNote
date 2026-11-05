@@ -1,0 +1,1 @@
+{"id":"3aba00009f99de1e796adc6278949a68","fullName":"everfreenote:core/tests/unit/core-utils-compareNoteVersions.test.ts#compareNoteVersions treats empty legacy fields and empty editor fields as the same content","name":"treats empty legacy fields and empty editor fields as the same content","status":"passed","testResultsByEnv":{"default":"6e73cfb66665b35df75a993c05a0a034"}}

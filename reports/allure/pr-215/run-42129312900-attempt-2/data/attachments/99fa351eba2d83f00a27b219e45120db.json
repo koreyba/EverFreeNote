@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://project.invalid/functions/v1/rag-search",
+    "body": {
+      "notebookSearch": {
+        "query": "hiring",
+        "mode": "text"
+      }
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "error": "Invalid semantic/hybrid notebook search request"
+    }
+  }
+}

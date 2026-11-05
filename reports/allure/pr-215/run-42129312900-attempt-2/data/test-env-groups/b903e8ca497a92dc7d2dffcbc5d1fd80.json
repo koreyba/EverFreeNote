@@ -1,0 +1,1 @@
+{"id":"b903e8ca497a92dc7d2dffcbc5d1fd80","fullName":"everfreenote:core/tests/integration/note-trash-postgres.test.ts#Trash lifecycle in PostgreSQL exposes a bounded card excerpt and tags to the owner only","name":"exposes a bounded card excerpt and tags to the owner only","status":"passed","testResultsByEnv":{"default":"ef5a0d8f63f3b0e913d5106c0b91e4ed"}}
