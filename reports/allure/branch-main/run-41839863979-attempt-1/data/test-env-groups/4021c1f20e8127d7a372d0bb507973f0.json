@@ -1,1 +1,0 @@
-{"id":"4021c1f20e8127d7a372d0bb507973f0","fullName":"everfreenote:ui/web/tests/unit/components/aiIndexTab.test.tsx#AIIndexTab restores saved AI Index state on mount and clears the active note return path","name":"restores saved AI Index state on mount and clears the active note return path","status":"passed","testResultsByEnv":{"default":"e5a871949f6fabdf008c6d93dc4ac9dc"}}
