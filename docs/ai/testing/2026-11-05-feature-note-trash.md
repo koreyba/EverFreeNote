@@ -99,3 +99,10 @@ Remaining release checks: actual Cron/extensions/Vault, Storage API partial/fail
 - Final static production build: exit 0 using synthetic build configuration. `deno check` for the new worker: exit 0. `git diff --check`: exit 0.
 - Self-review fixed replay, incomplete snapshots, mixed image references, Storage failure fencing, stale/expired previews, legacy owner boundaries and hidden failed Empty Trash selections. No independent hosted review was performed.
 - Cloud deployment, CI, actual Cron/Storage execution and Android runtime remain outside this local checkpoint.
+
+### PR #214 Stage checkpoint
+
+- Rebased local core/web Allure run: 2,222 passed, 20 opt-in MCP cases skipped; exit 0, no findings. Type-check, ESLint and worker Deno check passed.
+- Stage preview, both migrations and worker are live. Real Stage SQL smoke checks passed for move/restore/owner isolation/permanent delete/expiry with all synthetic data rolled back. Both hourly jobs are active; manual Vault → pg_net → Edge dispatch returned HTTP 200. This verifies dispatch and the worker response, not removal of an actual uploaded file or a naturally elapsed hourly trigger.
+- After aligning six component fixtures with the Trash RPC and confirmation copy, the focused Electron regression run passed all 73 tests (Allure: `allure-agent-8OBSen`).
+- Stage browser acceptance and production deployment remain pending.

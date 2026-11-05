@@ -58,7 +58,15 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
     cy.stub(client.auth, 'onAuthStateChange').returns({ data: { subscription: { unsubscribe: cy.stub() } } })
     cy.intercept('https://offline-test.invalid/**', (req) => {
       if (!online) { req.destroy(); return }
-      if (req.url.includes('/rest/v1/notes')) {
+      const path = new URL(req.url).pathname
+      if (req.method === 'POST' && path.endsWith('/rpc/trash_notes')) {
+        req.alias = 'trashSavedNote'
+        const notes = req.body.p_notes as Array<{ id: string }>
+        for (const { id } of notes) remoteNotes.delete(id)
+        req.reply({ statusCode: 200, body: notes.map(({ id }) => ({ id, status: 'trashed' })), delay: 500 })
+      } else if (req.method === 'POST' && path.endsWith('/rpc/cleanup_my_trash')) {
+        req.reply({ body: 0 })
+      } else if (req.url.includes('/rest/v1/notes')) {
         if (req.method === 'POST') {
           const row = req.body[0]
           remoteNotes.set(row.id, { ...row, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -67,11 +75,6 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
           const id = new URL(req.url).searchParams.get('id')?.replace('eq.', '') ?? ''
           remoteNotes.set(id, { ...remoteNotes.get(id), ...req.body, id })
           req.reply({ body: remoteNotes.get(id) })
-        } else if (req.method === 'DELETE') {
-          req.alias = 'deleteSavedNote'
-          const id = new URL(req.url).searchParams.get('id')?.replace('eq.', '') ?? ''
-          remoteNotes.delete(id)
-          req.reply({ statusCode: 204, body: '', delay: 500 })
         } else req.reply({ body: [...remoteNotes.values()], headers: { 'content-range': `0-0/${remoteNotes.size}` } })
       } else req.reply({ body: [] })
     })
@@ -136,7 +139,15 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
     cy.contains('No Note Selected').should('be.visible')
     cy.get('[data-testid="note-card"]').should('not.exist')
     // A queued deletion hides the card before its tombstone is acknowledged.
-    cy.wait('@deleteSavedNote').its('response.statusCode').should('equal', 204)
+    cy.wait('@trashSavedNote').then(({ request, response }) => {
+      expect(response?.statusCode).to.equal(200)
+      expect(request.body.p_notes).to.have.length(1)
+      const [archived] = request.body.p_notes
+      expect(archived.id).to.equal(localId)
+      expect(archived.operation_id).to.be.a('string').and.not.be.empty
+      expect(archived.snapshot.title).to.equal('Saved without internet')
+      expect(archived.snapshot.description).to.contain('My offline text')
+    })
     cy.get('[data-cy="queue-state"]').should('have.text', '0')
     cy.then(() => webOfflineStorageAdapter.getQueue()).should('have.length', 0)
     // Queue acknowledgement precedes the asynchronous tombstone cleanup.

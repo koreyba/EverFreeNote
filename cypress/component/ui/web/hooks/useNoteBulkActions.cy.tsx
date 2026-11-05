@@ -12,7 +12,7 @@ type SinonStub = any
  * Tests for useNoteBulkActions behaviors via useNoteAppController.
  * Covers:
  * - selectAllVisible picks FTS results when showFTSResults=true
- * - deleteSelectedNotes calls delete for each selected note
+ * - deleteSelectedNotes moves the selected notes in one Trash request
  * - bulk delete clears selection after completion
  */
 
@@ -48,6 +48,7 @@ const TestComponent = () => {
 
 describe('useNoteBulkActions', () => {
   let mockSupabase: SupabaseClient
+  let archiveRpc: SinonStub
   let mockQueryBuilder: Record<string, SinonStub> & {
     then: (resolve: (res: { data: unknown[]; error: null; count: number }) => void) => void
   }
@@ -68,6 +69,10 @@ describe('useNoteBulkActions', () => {
         resolve({ data: [], error: null, count: 0 }),
     }
 
+    const rpc = cy.stub().resolves({ data: [], error: null })
+    archiveRpc = rpc.withArgs('trash_notes').callsFake(async (_name: string, { p_notes }: { p_notes: Array<{ id: string }> }) => ({
+      data: p_notes.map(({ id }) => ({ id, status: 'trashed' })), error: null,
+    }))
     mockSupabase = {
       auth: {
         getSession: cy.stub().resolves({ data: { session: { user: { id: 'test-user' } } }, error: null }),
@@ -77,7 +82,7 @@ describe('useNoteBulkActions', () => {
         signInWithOAuth: cy.stub().resolves({ error: null }),
       },
       from: cy.stub().returns(mockQueryBuilder),
-      rpc: cy.stub().resolves({ data: [], error: null }),
+      rpc,
     } as unknown as SupabaseClient
   })
 
@@ -112,9 +117,10 @@ describe('useNoteBulkActions', () => {
 
     cy.get('[data-cy="delete-selected-btn"]').click()
     cy.wrap(mockQueryBuilder.delete).should('not.have.been.called')
+    cy.wrap(archiveRpc).should('not.have.been.called')
   })
 
-  it('deleteSelectedNotes calls delete for each selected note (online)', () => {
+  it('deleteSelectedNotes moves the selected notes in one Trash request (online)', () => {
     cy.mount(
       <SupabaseTestProvider supabase={mockSupabase} user={{ id: 'test-user' } as User}>
         <QueryProvider>
@@ -131,7 +137,8 @@ describe('useNoteBulkActions', () => {
 
     cy.get('[data-cy="delete-selected-btn"]').click()
 
-    cy.wrap(mockQueryBuilder.delete).should('have.been.called')
+    cy.wrap(archiveRpc).should('have.been.calledOnceWithExactly', 'trash_notes', { p_notes: [{ id: 'note-1' }, { id: 'note-2' }] })
+    cy.wrap(mockQueryBuilder.delete).should('not.have.been.called')
   })
 
   it('deleteSelectedNotes exits selection mode after completion', () => {

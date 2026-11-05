@@ -19,7 +19,11 @@ describe('Unavailable local-note warning', { retries: 0 }, () => {
     cy.viewport(390, 844)
     const client = createClient(url, 'test-public-key', { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
     cy.intercept(`${url}/**`, req => {
+      const path = new URL(req.url).pathname
       if (req.method === 'DELETE') req.reply({ statusCode: 204, body: '' })
+      else if (req.method === 'POST' && path.endsWith('/rpc/trash_notes')) {
+        req.reply({ body: (req.body.p_notes as Array<{ id: string }>).map(({ id }) => ({ id, status: 'missing' })) })
+      } else if (req.method === 'POST' && path.endsWith('/rpc/cleanup_my_trash')) req.reply({ body: 0 })
       else req.reply({ body: [], headers: { 'content-range': '0-0/0', 'access-control-expose-headers': 'content-range' } })
     })
     cy.clearLocalStorage()
@@ -139,8 +143,22 @@ describe('Unavailable local-note warning with multiple notes and sessions', { re
     cy.window().then(win => { win.sessionStorage.clear(); win.history.replaceState({}, '', '/?view=notes') })
     cy.then(() => webOfflineStorageAdapter.clearAll())
     cy.intercept(`${url}/**`, req => {
-      const id = new URL(req.url).searchParams.get('id')?.replace(/^eq\./, '')
-      if (req.method === 'DELETE' && id) {
+      const request = new URL(req.url)
+      const id = request.searchParams.get('id')?.replace(/^eq\./, '')
+      if (req.method === 'POST' && request.pathname.endsWith('/rpc/trash_notes')) {
+        const notes = req.body.p_notes as Array<{ id: string; snapshot?: unknown }>
+        sentDeletes.push(...notes.map(note => note.id))
+        const response = { statusCode: 200, body: notes.map(note => ({
+          id: note.id,
+          status: failedDeletes.has(note.id) ? 'conflict' : note.snapshot ? 'trashed' : 'missing',
+        })) }
+        if (holdFirstDelete && notes.some(note => note.id === firstId)) {
+          return new Cypress.Promise<void>(resolve => { heldDelete = () => { req.reply(response); resolve() } })
+        }
+        req.reply(response)
+      } else if (req.method === 'POST' && request.pathname.endsWith('/rpc/cleanup_my_trash')) {
+        req.reply({ body: 0 })
+      } else if (req.method === 'DELETE' && id) {
         sentDeletes.push(id)
         if (holdFirstDelete && id === firstId) {
           return new Cypress.Promise<void>(resolve => { heldDelete = () => { req.reply({ statusCode: 204, body: '' }); resolve() } })

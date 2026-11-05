@@ -6,7 +6,7 @@ description: Database-first compatibility and scheduled cleanup activation
 
 # Trash — rollout
 
-No deployment performed. Actual project extensions, quotas, Vault entries, scheduled jobs and Storage runtime have not been inspected or changed.
+Stage is prepared for [PR #214](https://github.com/koreyba/EverFreeNote/pull/214). Production has not been changed.
 
 ## Infrastructure
 
@@ -44,3 +44,10 @@ Vault contains the dedicated endpoint/maintenance secret; the function gets its 
 ## Rollback Plan
 
 Disable both jobs with privileged `cron.unschedule('purge-note-trash')` and `cron.unschedule('cleanup-note-trash-media')`; disable scheduled worker dispatch if necessary. Retain snapshots, RLS, ID guards and archive trigger. Do not drop Trash or resume irreversible normal deletion when rolling back the UI. Permanent deletion is irreversible; backups and runtime validation follow the existing release process.
+
+## Stage checkpoint — 2026-11-05
+
+- Cloudflare preview deployed and returned HTTP 200; its Supabase target was verified as EverFreeNoteStage.
+- The two Trash migrations were applied to Stage and recorded in migration history after a transactional dry run. PostgREST reloaded the schema.
+- The Stage `trash-cleanup` function and its managed secret/Vault entries are configured. Both hourly jobs are active; a manual call through the scheduled dispatcher returned HTTP 200.
+- Rolled-back synthetic SQL smoke checks passed for archive, restore, owner isolation, permanent deletion and expiry. Browser acceptance is pending.

@@ -188,7 +188,7 @@ describe('SearchResultsPanel', () => {
     cy.contains('button', 'Delete (1)').click({ force: true })
     cy.wrap(controller.deleteNotesByIds).should('not.have.been.called')
 
-    cy.contains('Delete selected notes').should('be.visible')
+    cy.contains('Move selected notes to Trash').should('be.visible')
     cy.get('input[placeholder="1"]').clear().type('1')
     cy.get('[role="alertdialog"]')
       .contains('button', /^Delete$/)

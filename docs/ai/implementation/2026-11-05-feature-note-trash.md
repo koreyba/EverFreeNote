@@ -6,7 +6,7 @@ description: Delivered code, integration contracts and validation
 
 # Trash — implementation
 
-Implemented locally after user approval on 2026-11-05. Cloud deployment, CI and Android/runtime proof remain separate release steps.
+Implemented after user approval on 2026-11-05. Stage is deployed for PR #214; see the rollout and validation records. Production deployment and Android runtime proof remain separate release steps.
 
 ## Development Setup
 

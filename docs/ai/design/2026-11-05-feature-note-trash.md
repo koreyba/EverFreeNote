@@ -6,7 +6,7 @@ description: Atomic recovery, offline preservation and bounded maintenance
 
 # Trash — design
 
-Approved and implemented locally on `codex/feature-note-trash`, based on fetched `origin/main` `bd30c2716af9c2bfd39d27571133770b106e4d47`. No cloud deployment performed.
+Approved and implemented locally on `codex/feature-note-trash`, based on fetched `origin/main` `bd30c2716af9c2bfd39d27571133770b106e4d47`. The Stage preview and backend are deployed for PR #214; production has not been changed.
 
 ## Architecture Overview
 

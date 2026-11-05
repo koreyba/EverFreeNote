@@ -6,14 +6,14 @@ description: Implementation milestones and separate release evidence
 
 # Trash — delivery plan
 
-User approved implementation on 2026-11-05. Local feature work is implemented; deployment gates remain explicit.
+User approved implementation on 2026-11-05. Local feature work is implemented. Stage preview/backend deployment and SQL smoke checks passed; browser acceptance and production release remain separate.
 
 ## Milestones
 
 - [x] M1: lifecycle/ownership on real PostgreSQL; old DELETE callers protected.
 - [x] M2: durable offline snapshots and desktop/mobile-size Trash UI.
 - [x] M3 local: bounded expiry/activity, media worker, workload and regression checks.
-- [ ] M3 release: Stage/cloud schedule/Storage proof, CI and rebuilt Android runtime.
+- [ ] M3 release: Stage browser acceptance, exact-head CI, production release and rebuilt Android runtime.
 
 ## Task Breakdown
 
