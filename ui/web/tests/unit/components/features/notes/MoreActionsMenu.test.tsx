@@ -1,9 +1,12 @@
 import * as React from "react"
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
+import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { step } from "allure-js-commons"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
 import type { ExportableWordPressNote } from "@/components/features/wordpress/ExportToWordPressButton"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
+import { QueryProvider } from "@ui/web/components/providers/QueryProvider"
+import { noteVersionHistoryKey } from "@ui/web/lib/noteVersionHistoryQuery"
 import { SupabaseTestProvider } from "@ui/web/providers/SupabaseProvider"
 import type { Tables } from "@/supabase/types"
 
@@ -197,6 +200,41 @@ describe("MoreActionsMenu", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Version history" })).toBeNull())
     expect(onRestore).toHaveBeenCalledWith(1, 2)
+  })
+
+  it("refreshes cached history when reopening it after a new save", async () => {
+    const versions = [{ version: 1, created_at: "2026-11-05T15:00:00Z" }]
+    const { supabase, loadHistory } = createVersionHistoryClient(versions, {
+      1: { title: "Original note", description: "<p>Original body</p>", tags: [] },
+      2: { title: "Saved note", description: "<p>Newly saved body</p>", tags: [] },
+    })
+
+    render(
+      <SupabaseTestProvider supabase={supabase} user={{ id: "owner-1" } as User}>
+        <QueryProvider>
+          <MoreActionsMenu {...defaultProps} versionHistory={{ onRestore: jest.fn() }} />
+        </QueryProvider>
+      </SupabaseTestProvider>
+    )
+
+    await step("Read version 1 and close history with its cached list", async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Version history" }))
+      const history = within(await screen.findByRole("dialog", { name: "Version history" }))
+      expect(await history.findByText("Original body")).toBeTruthy()
+      fireEvent.click(history.getByRole("button", { name: "Close" }))
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Version history" })).toBeNull())
+    })
+
+    versions.unshift({ version: 2, created_at: "2026-11-05T16:00:00Z" })
+
+    await step("Reopen history in the same app session and read the saved version", async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Version history" }))
+      const history = within(await screen.findByRole("dialog", { name: "Version history" }))
+      expect(await history.findByRole("button", { name: /Version 2 Current/ })).toBeTruthy()
+      expect(await history.findByText("Newly saved body")).toBeTruthy()
+    })
+
+    expect(loadHistory).toHaveBeenCalledTimes(2)
   })
 
   it("returns focus to More actions when Escape closes version history", async () => {
@@ -446,7 +484,7 @@ describe("MoreActionsMenu", () => {
     expect(loadVersion.mock.calls).toEqual([[4], [3], [2], [1]])
   })
 
-  it("preserves the comparison across three history pages and offers the oldest version", async () => {
+  it("preserves loaded history and the comparison when a new version is saved", async () => {
     const versions = Array.from({ length: 64 }, (_, index) => ({
       version: 64 - index,
       created_at: new Date(Date.UTC(2026, 10, 5, 15, 64 - index)).toISOString(),
@@ -457,10 +495,13 @@ describe("MoreActionsMenu", () => {
       5: { title: "Early note", description: "<p>Early body</p>", tags: [] },
       1: { title: "First draft", description: "<p>First body</p>", tags: [] },
     })
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
     render(
       <SupabaseTestProvider supabase={supabase} user={{ id: "owner-1" } as User}>
-        <MoreActionsMenu {...defaultProps} versionHistory={{ onRestore: jest.fn() }} />
+        <QueryClientProvider client={queryClient}>
+          <MoreActionsMenu {...defaultProps} versionHistory={{ onRestore: jest.fn() }} />
+        </QueryClientProvider>
       </SupabaseTestProvider>
     )
 
@@ -512,7 +553,31 @@ describe("MoreActionsMenu", () => {
       expect(history.getByRole("article", { name: "Version 35" }).textContent).toContain("Working body")
     })
 
-    expect(loadHistory.mock.calls).toEqual([[0, 29], [0, 29, 35], [0, 29, 5]])
+    await step("Refresh the current marker while retaining the comparison and loaded versions", async () => {
+      versions.unshift({ version: 65, created_at: "2026-11-05T16:05:00Z" })
+      await act(async () => {
+        await queryClient.refetchQueries({ queryKey: noteVersionHistoryKey("owner-1", "note-1"), exact: true })
+      })
+
+      const updatedFrom = history.getByRole("combobox", { name: "From version" })
+      const updatedTo = history.getByRole("combobox", { name: "To version" })
+      expect(updatedFrom.textContent).toContain("Version 1")
+      expect(updatedTo.textContent).toContain("Version 35")
+      expect(history.getByRole("article", { name: "Version 1" }).textContent).toContain("First body")
+      expect(history.getByRole("article", { name: "Version 35" }).textContent).toContain("Working body")
+
+      const options = await openVersionOptions(updatedFrom)
+      expect(await options.findByRole("option", { name: "Version 65 (current)" })).toBeTruthy()
+      expect(options.getByRole("option", { name: "Version 64" })).toBeTruthy()
+      const previousPageBoundary = options.getByRole("option", { name: "Version 35" })
+      fireMousePointer(previousPageBoundary, "pointerdown")
+      fireMousePointer(previousPageBoundary, "pointerup")
+      await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull())
+      expect(updatedFrom.textContent).toContain("Version 35")
+      expect(updatedTo.textContent).toContain("Version 1")
+    })
+
+    expect(loadHistory.mock.calls).toEqual([[0, 29], [0, 29, 35], [0, 29, 5], [0, 29]])
     expect(loadVersion.mock.calls).toEqual([[64], [35], [5], [1]])
   })
 

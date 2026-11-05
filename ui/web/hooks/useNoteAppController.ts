@@ -38,6 +38,7 @@ import { clearActiveSettingsNoteReturnPath } from '@ui/web/lib/aiIndexNavigation
 import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 import { assertTagLocalState } from '@ui/web/lib/tagLocalPreflight'
 import { advanceNoteListRevision, noteListRevision } from '@ui/web/lib/noteListRevision'
+import { refreshNoteVersionHistory } from '@ui/web/lib/noteVersionHistoryQuery'
 import { snapshotEvidence } from '@ui/web/lib/offlineOwnership'
 import { getPendingOwnerNotes } from '@ui/web/lib/ownerNoteWrites'
 import { canCloseRecoveredTabs, forgetLocalDeletionRecovery } from '@ui/web/lib/localDeletionRecovery'
@@ -337,6 +338,7 @@ export function useNoteAppController() {
     updateNoteMutation,
     deleteNoteMutation,
     verifyLegacyNotes,
+    onVerifiedCreateRetry: (ownerId, noteId) => refreshNoteVersionHistory(queryClient, ownerId, noteId),
     getSessionSnapshot,
   })
   const localDeletion = useLocalDeletionRecovery(workspaceUserId, offlineCache, getSessionSnapshot)
@@ -1696,12 +1698,14 @@ export function useNoteAppController() {
   ), [runTagMutation])
 
   const versionRestoreBlockedReason = useCallback((tabId: string, noteId: string) => {
+    const tab = tabs.find(tab => tab.id === tabId)
+    if (tab?.mode === 'editing') return 'Switch to reading mode to restore a version.'
     if (isOffline) return 'Connect to the internet to restore a version.'
     if (!syncStateReady || storageReadError || hasPendingLocalWrites(noteId) || hasPendingWritesForTab(tabId)) {
       return 'Finish syncing this note before restoring a version.'
     }
     if (tagMutationInProgress) return 'Wait for the tag update to finish.'
-    if (tabs.some(tab => tab.id === tabId && tab.saveState !== 'saved')) {
+    if (tab && tab.saveState !== 'saved') {
       return 'Save your changes before restoring a version.'
     }
     return null

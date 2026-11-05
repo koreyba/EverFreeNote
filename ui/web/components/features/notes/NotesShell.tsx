@@ -843,6 +843,11 @@ function EditorPane({
   const activeTabId = activeTab.id
   const isEditing = controller.isEditing
   const selectedNote = controller.selectedNote
+  const noteVersions = controller.noteVersions
+  const versionHistory = focused && selectedNote && noteVersions ? {
+    restoreBlockedReason: noteVersions.blockedReason(activeTabId, selectedNote.id),
+    onRestore: (version: number, expectedVersion: number) => noteVersions.restore(activeTabId, selectedNote.id, version, expectedVersion),
+  } : undefined
 
   const { user, getSessionSnapshot } = useSupabase()
   const allTagsQuery = useAllTagsQuery({ userId: user?.id, enabled: !!user })
@@ -912,6 +917,7 @@ function EditorPane({
         isAutoSaving={autoSaving}
         lastSavedAt={lastSavedAt}
         wordpressConfigured={wordpressConfigured}
+        versionHistory={versionHistory}
         onDelete={selectedNote ? () => handleDeleteNote(selectedNote) : undefined}
         onBack={onBack}
         pendingChunkFocus={pendingChunkFocus}
@@ -921,7 +927,6 @@ function EditorPane({
   }
 
   if (selectedNote) {
-    const noteVersions = controller.noteVersions
     return (
       <NoteView
         key={`workspace-tab-${activeTabId}-note-${selectedNote.id}`}
@@ -932,10 +937,7 @@ function EditorPane({
         onRemoveTag={(tag) => handleRemoveTagFromNote(selectedNote.id, tag)}
         onBack={onBack}
         wordpressConfigured={wordpressConfigured}
-        versionHistory={focused && noteVersions ? {
-          restoreBlockedReason: noteVersions.blockedReason(activeTabId, selectedNote.id),
-          onRestore: (version, expectedVersion) => noteVersions.restore(activeTabId, selectedNote.id, version, expectedVersion),
-        } : undefined}
+        versionHistory={versionHistory}
         initialScrollTop={activeTab.view.scrollTop}
         onRefresh={focused ? controller.refreshSelectedNote : undefined}
         visible={visible}

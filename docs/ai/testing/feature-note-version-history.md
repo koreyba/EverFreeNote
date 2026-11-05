@@ -15,6 +15,9 @@ description: Evidence for the local version history preview
 ## Web
 
 - [x] The history menu test opens an earlier version, renders its formatted text and tags, and restores it with the latest revision as a precondition.
+- [x] Electron Cypress opens history from a clean editor and with an unsaved draft. The title and body are preserved and restore is unavailable while editing.
+- [x] The same-session tests reopen cached history after a new version, refresh an open list after a server-confirmed save even when its first read is pending, and preserve an open comparison and its earlier pages.
+- [x] The local browser showed Version 2 immediately after saving an edit and reopening history in the same session.
 - [x] Restore tests cover unsynced edits, stale restores, refreshing the latest version, and updating search and the local cache without overwriting a newer draft.
 - [x] Two Cypress checks exercise the actual IndexedDB transaction, including overlapping writes and preserving queued changes.
 - [x] In the local browser, restoring version 1 from version 3 produced version 4. The restored note and all four versions were visible after a reload.

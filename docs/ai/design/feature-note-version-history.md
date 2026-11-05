@@ -28,6 +28,10 @@ The local MVP lists individual server saves. The existing sync queue can combine
 
 The dialog keeps the editor in place and returns focus to the note menu when closed. History loads 30 version summaries at a time and fetches snapshot bodies for the selected preview or comparison. The list, preview, and comparison selectors scroll within the available space. A separate page would be useful if comparisons need their own URL or need to persist across navigation.
 
+History is available in the note menu in both reading and editing modes. The editor keeps the draft while the dialog is open. Restoring a version requires reading mode.
+
+The list checks for recent versions when opened, when the app regains focus, and after the server confirms a note write. Only the affected note's list refreshes. Loaded earlier pages stay in place when their boundary snapshots still match, and snapshot bodies remain cached.
+
 After a restore, the local cache updates a synced copy only if it still matches the pre-restore copy and has no pending sync operation. The note list and search are refreshed from the server.
 
 ## Compare versions

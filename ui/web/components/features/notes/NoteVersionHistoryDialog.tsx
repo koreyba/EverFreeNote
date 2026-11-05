@@ -1,7 +1,7 @@
 "use client"
 
 import { useId, useState } from "react"
-import { queryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { queryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query"
 import { ArrowCounterClockwise, ArrowLeft, GitDiff } from "@phosphor-icons/react"
 import { RenderedNoteContent } from "@/components/RenderedNoteContent"
 import { NoteVersionComparison } from "@/components/features/notes/NoteVersionComparison"
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { NOTE_CONTENT_CLASS } from "@core/constants/typography"
 import { SanitizationService } from "@core/services/sanitizer"
+import { noteVersionHistoryKey } from "@ui/web/lib/noteVersionHistoryQuery"
 import { useSupabase } from "@ui/web/providers/SupabaseProvider"
 import type { Tables } from "@/supabase/types"
 
@@ -25,6 +26,7 @@ const VIEW_BUTTON_CLASS = "text-muted-foreground aria-pressed:bg-background aria
 type VersionRow = Tables<"note_versions">
 type VersionSummary = Pick<VersionRow, "version" | "created_at">
 type VersionContent = Pick<VersionRow, "title" | "description" | "tags">
+type VersionCursor = VersionSummary | null
 type ComparisonView = "inline" | "side-by-side"
 type ComparisonPair = { fromVersion: number; toVersion: number }
 
@@ -46,23 +48,47 @@ export function NoteVersionHistoryDialog({
   const [selectedVersion, setSelectedVersion] = useState<number>()
   const [comparison, setComparison] = useState<ComparisonPair | null>(null)
   const [comparisonView, setComparisonView] = useState<ComparisonView>("inline")
-  const versionsKey = ["note-versions", user?.id, noteId]
+  const versionsKey = noteVersionHistoryKey(user?.id, noteId)
   const history = useInfiniteQuery({
     queryKey: versionsKey,
     enabled: Boolean(user),
-    initialPageParam: null as number | null,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    initialPageParam: null as VersionCursor,
     queryFn: async ({ pageParam, signal }) => {
+      const cached = queryClient.getQueryData<InfiniteData<VersionSummary[], VersionCursor>>(versionsKey)
+      if (pageParam && cached) {
+        // Earlier pages are immutable while their cursor still identifies the same snapshot.
+        const cachedIndex = cached.pageParams.findIndex(cursor =>
+          cursor?.version === pageParam.version && cursor.created_at === pageParam.created_at
+        )
+        if (cachedIndex >= 0) return cached.pages[cachedIndex]
+      }
+
       let query = supabase.from("note_versions")
         .select("version, created_at")
         .eq("note_id", noteId)
         .order("version", { ascending: false })
         .range(0, PAGE_SIZE - 1)
-      if (pageParam !== null) query = query.lt("version", pageParam)
+      if (pageParam) query = query.lt("version", pageParam.version)
       const { data, error } = await query.abortSignal(signal)
       if (error) throw error
-      return (data ?? []) as VersionSummary[]
+
+      const rows = (data ?? []) as VersionSummary[]
+      const cachedFirstPage = pageParam === null ? cached?.pages[0] : undefined
+      if (!cachedFirstPage?.length) return rows
+      const previousLatest = cachedFirstPage[0]
+      if (!rows.some(row => row.version === previousLatest.version && row.created_at === previousLatest.created_at)) {
+        return rows
+      }
+      // Keep the loaded range and any open comparison when new versions are added.
+      return [...rows.filter(row => row.version > previousLatest.version), ...cachedFirstPage]
     },
-    getNextPageParam: (page) => page.length === PAGE_SIZE ? page.at(-1)?.version : undefined,
+    getNextPageParam: page => {
+      const oldest = page.at(-1)
+      return oldest && oldest.version > 1 ? oldest : undefined
+    },
   })
   const versions = history.data?.pages.flat() ?? []
   const latest = versions[0]

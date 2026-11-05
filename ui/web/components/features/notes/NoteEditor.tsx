@@ -10,6 +10,7 @@ import { NoteClipboardService } from "@core/services/noteClipboard"
 import { useCopyNote } from "@ui/web/hooks/useCopyNote"
 import { TagInput } from "@/components/TagInput"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
+import type { NoteVersionHistoryOptions } from "@/components/features/notes/NoteVersionHistoryDialog"
 import { NoteFindBar } from "@/components/features/notes/NoteFindBar"
 import { buildTagString, normalizeTag, normalizeTagList, parseTagString } from "@ui/web/lib/tags"
 import { useTagSuggestions } from "@ui/web/hooks/useTagSuggestions"
@@ -59,6 +60,7 @@ interface NoteEditorProps {
   autosaveDelayMs?: number
   lastSavedAt?: string | null
   wordpressConfigured?: boolean
+  versionHistory?: NoteVersionHistoryOptions
   onDelete?: () => void
   onBack?: () => void
   pendingChunkFocus?: PendingChunkFocus | null
@@ -84,6 +86,7 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
   availableTags = [],
   tagCounts = {},
   wordpressConfigured = false,
+  versionHistory,
   onDelete,
   onBack,
   pendingChunkFocus = null,
@@ -594,13 +597,13 @@ export const NoteEditor = React.memo(React.forwardRef<NoteEditorHandle, NoteEdit
               <SaveIcon className="w-3.5 h-3.5 md:hidden" />
               <span className="hidden md:inline">Save</span>
             </Button>
-            {/* More actions menu -- RAG controls, delete note, WordPress export */}
             {showMoreMenu && (
               <MoreActionsMenu
                 noteId={noteId!}
                 wordpressConfigured={wordpressConfigured}
                 getExportNote={getExportNote}
                 onDelete={onDelete}
+                versionHistory={versionHistory}
               />
             )}
           </div>

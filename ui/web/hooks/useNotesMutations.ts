@@ -4,6 +4,7 @@ import { NoteService } from '@core/services/notes'
 import { toast } from 'sonner'
 import { useMemo } from 'react'
 import { advanceNoteListRevision } from '@ui/web/lib/noteListRevision'
+import { refreshNoteVersionHistory } from '@ui/web/lib/noteVersionHistoryQuery'
 import type { DeleteNoteOptions } from '@core/services/notes'
 
 import type { Tables } from '@/supabase/types'
@@ -142,7 +143,8 @@ export function useCreateNote(callbacks: MutationCallbacks = defaultCreateCallba
     },
 
     // Refetch on success
-    onSuccess: (_data, params) => {
+    onSuccess: (note, params) => {
+      void refreshNoteVersionHistory(queryClient, note.user_id, note.id)
       void queryClient.invalidateQueries({ queryKey: ['notes'] })
       void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
       if (!params.silent) callbacks.onSuccess?.()
@@ -203,7 +205,8 @@ export function useUpdateNote(callbacks: MutationCallbacks = defaultUpdateCallba
       if (!_updatedNote.silent) callbacks.onError?.(err)
     },
 
-    onSuccess: (_data, params) => {
+    onSuccess: (note, params) => {
+      void refreshNoteVersionHistory(queryClient, note.user_id, note.id)
       if (!params.deferCacheRefresh) {
         void queryClient.invalidateQueries({ queryKey: ['notes'] })
         void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
@@ -320,7 +323,8 @@ export function useRemoveTag(callbacks: MutationCallbacks = defaultRemoveTagCall
       callbacks.onError?.(err)
     },
 
-    onSuccess: () => {
+    onSuccess: (note) => {
+      void refreshNoteVersionHistory(queryClient, note.user_id, note.id)
       void queryClient.invalidateQueries({ queryKey: ['notes'] })
       void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
       callbacks.onSuccess?.()

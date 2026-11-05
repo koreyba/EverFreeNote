@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import React from 'react'
 import type { Tables } from '@/supabase/types'
 
@@ -156,6 +156,49 @@ describe('useNotesMutations', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['tags', 'all-with-counts'] })
     await act(async () => { finishBatch(makeNote({ tags: ['new'] })); await batch })
     expect(invalidate).toHaveBeenCalledTimes(2)
+  })
+
+  it('refreshes open history after the server confirms a save that raced its first read', async () => {
+    const historyKey = ['note-versions', 'user-1', 'note-1']
+    const otherNoteKey = ['note-versions', 'user-1', 'note-2']
+    const otherAccountKey = ['note-versions', 'user-2', 'note-1']
+    const snapshotKey = [...historyKey, 1, '2026-01-01T00:00:00Z']
+    const latestHistory = [{ version: 2 }, { version: 1 }]
+    let finishOldRead!: () => void
+    let firstReadSignal!: AbortSignal
+    const readHistory = jest.fn<Promise<{ version: number }[]>, [AbortSignal]>()
+      .mockImplementationOnce(signal => new Promise(resolve => {
+        firstReadSignal = signal
+        finishOldRead = () => resolve([{ version: 1 }])
+      }))
+      .mockResolvedValue(latestHistory)
+    let confirmWrite!: (note: Note) => void
+    mockNoteService.updateNote.mockReturnValue(new Promise<Note>(resolve => { confirmWrite = resolve }))
+    const { result, queryClient } = renderMutation(() => ({
+      update: useUpdateNote(),
+      history: useQuery({ queryKey: historyKey, queryFn: ({ signal }) => readHistory(signal) }),
+    }))
+    queryClient.setQueryData(otherNoteKey, [{ version: 1 }])
+    queryClient.setQueryData(otherAccountKey, [{ version: 1 }])
+    queryClient.setQueryData(snapshotKey, { title: 'Original' })
+
+    await waitFor(() => expect(readHistory).toHaveBeenCalledTimes(1))
+    let save!: Promise<Note>
+    act(() => {
+      save = result.current.update.mutateAsync({ id: 'note-1', title: 'Edited', silent: true, deferCacheRefresh: true })
+    })
+    await waitFor(() => expect(mockNoteService.updateNote).toHaveBeenCalledWith('note-1', { title: 'Edited' }))
+    expect(firstReadSignal.aborted).toBe(false)
+    expect(readHistory).toHaveBeenCalledTimes(1)
+
+    await act(async () => { confirmWrite(makeNote({ title: 'Edited' })); await save })
+    await waitFor(() => expect(result.current.history.data).toEqual(latestHistory))
+    expect(firstReadSignal.aborted).toBe(true)
+    await act(async () => { finishOldRead() })
+    expect(result.current.history.data).toEqual(latestHistory)
+    for (const key of [otherNoteKey, otherAccountKey, snapshotKey]) {
+      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
+    }
   })
 
   it('rolls back a failed update', async () => {

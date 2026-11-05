@@ -23,6 +23,7 @@ interface UseNoteSyncProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     deleteNoteMutation: { mutateAsync: (args: any) => Promise<any> }
     verifyLegacyNotes?: (ids: string[], userId: string) => Promise<Note[]>
+    onVerifiedCreateRetry?: (userId: string, noteId: string) => Promise<void>
     getSessionSnapshot?: () => { userId: string | null; epoch: number }
 }
 
@@ -32,6 +33,7 @@ export function useNoteSync({
     updateNoteMutation,
     deleteNoteMutation,
     verifyLegacyNotes,
+    onVerifiedCreateRetry,
     getSessionSnapshot,
 }: UseNoteSyncProps) {
     const userId = user?.id
@@ -67,6 +69,7 @@ export function useNoteSync({
     const createMutationRef = useRef(createNoteMutation)
     const updateMutationRef = useRef(updateNoteMutation)
     const deleteMutationRef = useRef(deleteNoteMutation)
+    const onVerifiedCreateRetryRef = useRef(onVerifiedCreateRetry)
     const offlineCacheRef = useRef(offlineCache)
     const offlineQueueRef = useRef(offlineQueue)
     const queueStateBarrier = useRef<Promise<void>>(Promise.resolve())
@@ -146,10 +149,11 @@ export function useNoteSync({
         createMutationRef.current = createNoteMutation
         updateMutationRef.current = updateNoteMutation
         deleteMutationRef.current = deleteNoteMutation
+        onVerifiedCreateRetryRef.current = onVerifiedCreateRetry
         offlineCacheRef.current = offlineCache
         offlineQueueRef.current = offlineQueue
         if (verifiedRef.current.userId !== user?.id) verifiedRef.current = { userId: user?.id, evidence: new Map() }
-    }, [user, createNoteMutation, updateNoteMutation, deleteNoteMutation, offlineCache, offlineQueue])
+    }, [user, createNoteMutation, updateNoteMutation, deleteNoteMutation, onVerifiedCreateRetry, offlineCache, offlineQueue])
 
     const syncCallbacksRef = useRef({
         performSync: async (item: MutationQueueItemInput, expectedOwner: string, isActive: () => boolean) => {
@@ -203,6 +207,8 @@ export function useNoteSync({
                         throw new Error('A note with this ID already exists. Your local copy remains until its content can be verified.')
                     }
                     rememberVersion(remote)
+                    // The create is already confirmed even if history refresh fails.
+                    void onVerifiedCreateRetryRef.current?.(remote.user_id, remote.id).catch(() => {})
                 }
             } else if (item.operation === 'update') {
                 const payload = item.payload as Partial<NoteUpdate>
