@@ -44,6 +44,23 @@ const makeParams = (overrides: Partial<BulkActionParams> = {}) => {
 }
 
 describe('useNoteBulkActions', () => {
+  it('uses sequential server batches of at most 100 notes',async()=>{
+    const ids=Array.from({length:101},(_,index)=>`note-${index}`)
+    const batch=jest.fn(async(chunk:string[])=>({ succeeded:chunk,failed:[] }))
+    const {params}=makeParams({ deleteNotesBatch:batch })
+    const {result}=renderHook(()=>useNoteBulkActions(params))
+    await result.current.deleteNotesByIds(ids)
+    expect(batch.mock.calls.map(([chunk])=>chunk.length)).toEqual([100,1])
+    expect(params.deleteNoteMutation.mutateAsync).not.toHaveBeenCalled()
+  })
+  it('durably queues complete content before hiding an offline deletion', async () => {
+    const { params }=makeParams({ isOffline:true })
+    const { result }=renderHook(() => useNoteBulkActions(params))
+    await result.current.deleteNotesByIds(['visible'])
+    expect(params.enqueueBatchAndDrainIfOnline).toHaveBeenCalledWith([
+      expect.objectContaining({ payload:expect.objectContaining({ user_id:'user-1', title:'Note visible', description:'Description', tags:[] }) }),
+    ],expect.any(Function))
+  })
   afterEach(() => {
     jest.clearAllMocks()
   })
@@ -113,7 +130,7 @@ describe('useNoteBulkActions', () => {
       failedIds: ['bad'],
     })
     expect(toast.error).toHaveBeenCalledWith('Failed to delete 1 notes')
-    expect(invalidate).toHaveBeenCalledTimes(2)
+    expect(invalidate).toHaveBeenCalledTimes(4)
     expect(params.onNotesDeleted).toHaveBeenCalledWith(['good'])
     expect(params.offlineCache.deleteNote).toHaveBeenCalledWith('good')
     expect(params.offlineCache.deleteNote).not.toHaveBeenCalledWith('bad')
@@ -149,6 +166,7 @@ describe('useNoteBulkActions', () => {
     const saveNote = jest.fn().mockResolvedValue(undefined)
     const enqueue = jest.fn(async (_items, applyLocal) => { await applyLocal?.() })
     const { params } = makeParams({
+      notes:[note('one'),note('two')],
       isOffline: true,
       enqueueBatchAndDrainIfOnline: enqueue,
       offlineCache: { saveNote, deleteNote: jest.fn().mockResolvedValue(undefined) },
@@ -164,8 +182,8 @@ describe('useNoteBulkActions', () => {
     })
 
     expect(enqueue).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ noteId: 'one', operation: 'delete', payload: { user_id: 'user-1' } }),
-      expect.objectContaining({ noteId: 'two', operation: 'delete', payload: { user_id: 'user-1' } }),
+      expect.objectContaining({ noteId: 'one', operation: 'delete', payload: note('one') }),
+      expect.objectContaining({ noteId: 'two', operation: 'delete', payload: note('two') }),
     ]), expect.any(Function))
     expect(saveNote).toHaveBeenCalledTimes(2)
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'one', deleted: true, status: 'pending' }))

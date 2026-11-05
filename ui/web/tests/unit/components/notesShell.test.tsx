@@ -103,6 +103,7 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('@tanstack/react-query', () => ({
   useQuery: jest.fn(),
+  useQueryClient: () => ({ invalidateQueries: jest.fn().mockResolvedValue(undefined) }),
 }))
 
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({

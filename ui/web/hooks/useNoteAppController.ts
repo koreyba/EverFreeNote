@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { useNotesQuery } from './useNotesQuery'
-import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag } from './useNotesMutations'
+import { useCreateNote, useUpdateNote, useDeleteNote, useRemoveTag,removeConfirmedNoteFromLists } from './useNotesMutations'
 import { useInfiniteScroll } from './useInfiniteScroll'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
 import type { CachedNote } from '@core/types/offline'
@@ -798,6 +798,16 @@ export function useNoteAppController() {
     onQueueStateNeedsRefresh: () => { void retryLocalVerification() },
     isDeleteSessionCurrent,
     retainSelection: ids => setSelectedNoteIds(new Set(ids)),
+    deleteNotesBatch:async ids=>{
+      const started=getSessionSnapshot?.()
+      const result=await noteService.trashNotesBatch(ids)
+      if (workspaceUserId && isCurrentSession(started) && result.succeeded.length) {
+        advanceNoteListRevision(queryClient,workspaceUserId)
+        await queryClient.cancelQueries({ queryKey:['notes',workspaceUserId] })
+        for (const id of result.succeeded) removeConfirmedNoteFromLists(queryClient,workspaceUserId,id)
+      }
+      return result
+    },
   })
 
   const retryLocalDeletion = useCallback(async () => {
@@ -1305,9 +1315,11 @@ export function useNoteAppController() {
   ])
 
   // -- Main Navigation View --
-  const [activeMainView, setActiveMainView] = useState<'notes' | 'tags'>(() => {
+  const loadPendingTrash=useCallback(()=>offlineQueueRef.current.getQueue(),[offlineQueueRef])
+  const [activeMainView, setActiveMainView] = useState<'notes' | 'tags' | 'trash'>(() => {
     if (typeof window === 'undefined') return 'notes'
-    return new URLSearchParams(window.location.search).get('view') === 'tags' ? 'tags' : 'notes'
+    const view=new URLSearchParams(window.location.search).get('view')
+    return view==='tags' || view==='trash' ? view : 'notes'
   })
 
   const syncSearchPanelFromUrl = useCallback(() => {
@@ -1324,7 +1336,8 @@ export function useNoteAppController() {
     }
 
     const params = new URLSearchParams(window.location.search)
-    setActiveMainView(params.get('view') === 'tags' ? 'tags' : 'notes')
+    const view=params.get('view')
+    setActiveMainView(view==='tags' || view==='trash' ? view : 'notes')
     syncSearchPanelFromUrl()
   }, [setActiveMainView, syncSearchPanelFromUrl])
 
@@ -1732,6 +1745,7 @@ export function useNoteAppController() {
     bulkDeleting,
     deleteAccountLoading,
     isOffline,
+    loadPendingTrash,
     activeMainView,
     setActiveMainView,
     handleRenameTag,

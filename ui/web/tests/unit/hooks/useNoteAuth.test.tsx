@@ -251,6 +251,8 @@ describe('useNoteAuth', () => {
   })
 
   it('deletes the account, signs out, and calls the supplied callback', async () => {
+    window.localStorage.setItem('everfreenote:trash:user-1','cached private content')
+    window.localStorage.setItem('everfreenote:trash:user-2','other account')
     const { result, rerender } = renderAuthHook()
     await waitFor(() => expect(result.current.loading).toBe(false))
     jest.mocked(useSupabase).mockReturnValue({ supabase: mockSupabase as never, user, loading: false })
@@ -264,5 +266,7 @@ describe('useNoteAuth', () => {
     expect(mockAuthService.signOut).toHaveBeenCalled()
     expect(callback).toHaveBeenCalled()
     expect(result.current.deleteAccountLoading).toBe(false)
+    expect(window.localStorage.getItem('everfreenote:trash:user-1')).toBeNull()
+    expect(window.localStorage.getItem('everfreenote:trash:user-2')).toBe('other account')
   })
 })

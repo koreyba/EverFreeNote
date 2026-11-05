@@ -1,0 +1,109 @@
+{
+  "kind": "SQL design diagnostic; not production or feature acceptance evidence",
+  "postgres": "18.3",
+  "container_limits": {
+    "cpu": 1,
+    "memory_mib": 512,
+    "shared_buffers_mib": 64,
+    "network": "none",
+    "published_ports": []
+  },
+  "fixture": {
+    "active_notes": 10000,
+    "trash_notes": 1000,
+    "expired_trash_notes": 500,
+    "body_bytes": 2048,
+    "embedding_proxies": 2000,
+    "embedding_bytes": 6144,
+    "share_links": 500,
+    "hnsw": false,
+    "rls": false,
+    "large_trash_notes": 100,
+    "large_body_bytes": 262144
+  },
+  "limitations": [
+    "Local Docker differs from Supabase shared CPU",
+    "No network/auth/RLS costs",
+    "No Storage API or vector HNSW index",
+    "No concurrent workload or autovacuum recovery measurement",
+    "A future production trigger will also enforce ownership, conflicts and account cascades"
+  ],
+  "measured_on": "2026-11-05",
+  "profiles": {
+    "active_list_50": {
+      "execution_ms": [
+        0.202,
+        0.082,
+        0.053,
+        0.091,
+        0.057,
+        0.06,
+        0.081
+      ],
+      "median_ms": 0.081,
+      "min_ms": 0.053,
+      "max_ms": 0.202
+    },
+    "move_100_with_four_embedding_proxies_and_link": {
+      "execution_ms": [
+        37.752,
+        23.51,
+        15.718,
+        17.125,
+        17.964,
+        15.005,
+        18.464
+      ],
+      "median_ms": 17.964,
+      "min_ms": 15.005,
+      "max_ms": 37.752
+    },
+    "purge_100_expired": {
+      "execution_ms": [
+        3.564,
+        1.746,
+        2.021,
+        2.389,
+        1.699,
+        2.963,
+        1.565
+      ],
+      "median_ms": 2.021,
+      "min_ms": 1.565,
+      "max_ms": 3.564
+    },
+    "purge_100_large_bodies": {
+      "execution_ms": [
+        29.895,
+        13.12,
+        15.128,
+        13.289,
+        12.668,
+        15.942,
+        10.649
+      ],
+      "median_ms": 13.289,
+      "min_ms": 10.649,
+      "max_ms": 29.895
+    }
+  },
+  "initial_counts": {
+    "active": 10000,
+    "expired": 600,
+    "recent": 500
+  },
+  "purged_counts": [
+    100,
+    100,
+    100,
+    100,
+    100,
+    100
+  ],
+  "final_counts": {
+    "active": 10000,
+    "expired": 0,
+    "recent": 500
+  },
+  "raw_local_artifacts": "/tmp/everfreenote-trash-design-20261105/"
+}

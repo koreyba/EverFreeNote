@@ -136,13 +136,24 @@ describe('Deletion completes independently from active list refetch', { retries:
       }
       return snapshot
     }
+    const removeFromActive = async (ids: string[]) => {
+      writeStarted = true
+      await deleteGate
+      serverNotes = serverNotes.filter(item => !ids.includes(item.id))
+    }
     const supabase = {
       from: () => ({ delete: () => ({ eq: async (_key: string, id: string) => {
-        writeStarted = true
-        await deleteGate
-        serverNotes = serverNotes.filter(item => item.id !== id)
+        await removeFromActive([id])
         return { error: null }
       } }) }),
+      rpc: async (name: string, { p_notes }: { p_notes: Array<{ id: string; snapshot: unknown; operation_id: string }> }) => {
+        expect(name).to.equal('trash_notes')
+        expect(p_notes).to.have.length(1)
+        expect(p_notes[0].operation_id).to.be.a('string').and.not.be.empty
+        expect(p_notes[0].snapshot).to.include({ title: 'target', description: '' })
+        await removeFromActive(p_notes.map(({ id }) => id))
+        return { data: p_notes.map(({ id }) => ({ id, status: 'trashed' })), error: null }
+      },
     } as unknown as SupabaseClient
     const update = async ({ id }: { id: string }) => {
       if (id === 'other') { writeStarted = true; await deleteGate }

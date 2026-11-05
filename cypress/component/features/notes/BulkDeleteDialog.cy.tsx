@@ -15,7 +15,7 @@ describe('BulkDeleteDialog', () => {
       />
     )
 
-    cy.contains('Delete selected notes').should('be.visible')
+    cy.contains('Move selected notes to Trash').should('be.visible')
     cy.get('[data-testid="bulk-delete-confirm"]').should('be.disabled')
 
     cy.get('[data-testid="bulk-delete-confirm-input"]').type('2')
@@ -49,7 +49,7 @@ describe('BulkDeleteDialog', () => {
 
     cy.get('[data-testid="bulk-delete-confirm-input"]').type('2')
     cy.get('[data-testid="bulk-delete-cancel"]').click()
-    cy.contains('Delete selected notes').should('not.exist')
+    cy.contains('Move selected notes to Trash').should('not.exist')
     cy.contains('Reopen').click()
     cy.get('[data-testid="bulk-delete-confirm-input"]').should('have.value', '')
   })
@@ -79,7 +79,7 @@ describe('BulkDeleteDialog', () => {
 
     cy.get('[data-testid="bulk-delete-confirm-input"]').type('2')
     cy.contains('Close externally').click({ force: true })
-    cy.contains('Delete selected notes').should('not.exist')
+    cy.contains('Move selected notes to Trash').should('not.exist')
     cy.contains('Reopen').click()
     cy.get('[data-testid="bulk-delete-confirm-input"]').should('have.value', '')
   })

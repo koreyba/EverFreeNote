@@ -70,7 +70,7 @@ describe('Mobile notes layout', { retries: 0 }, () => {
     cy.get('@deleteNote.all').should('have.length', 0)
     cy.contains('[data-testid="sidebar-container"] button', 'Select').click()
     cy.contains('[data-testid="note-card"] button', 'Second note').click()
-    cy.get('[data-testid="selection-mode-count"]').should('have.attr', 'aria-label', '1 selected')
+    cy.get('[data-testid="selection-mode-count"]').should('have.text', '1 selected')
     cy.get('[data-testid="selection-mode-cancel"]').click()
     cy.contains('[data-testid="note-card"]', 'First note').should('be.visible')
   })

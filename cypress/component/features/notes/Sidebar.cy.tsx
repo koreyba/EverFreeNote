@@ -161,10 +161,10 @@ describe('Sidebar Component', () => {
     )
 
     cy.contains('button', 'Select all').should('be.visible')
-    cy.contains('button', 'Delete (1)').click({ force: true })
+    cy.get('[data-testid="selection-mode-delete"][aria-label="Move to Trash"]').click()
     cy.get('@onBulkDelete').should('not.have.been.called')
 
-    cy.contains('Delete selected notes').should('be.visible')
+    cy.contains('Move selected notes to Trash').should('be.visible')
     cy.get('input[placeholder="1"]').clear().type('1')
     cy.get('[role="alertdialog"]')
       .contains('button', /^Delete$/)

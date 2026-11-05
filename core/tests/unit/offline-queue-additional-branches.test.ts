@@ -169,7 +169,7 @@ describe('offline queue additional branches', () => {
         id: 'delete-2',
         noteId: 'existing-delete',
         operation: 'delete',
-        payload: { reason: 'removed' },
+        payload: { title: 'before delete', reason: 'removed' },
         status: 'pending',
       }),
     ])

@@ -4,6 +4,7 @@ import { NoteService } from '@core/services/notes'
 import { toast } from 'sonner'
 import { useMemo } from 'react'
 import { advanceNoteListRevision } from '@ui/web/lib/noteListRevision'
+import type { DeleteNoteOptions } from '@core/services/notes'
 
 import type { Tables } from '@/supabase/types'
 
@@ -18,7 +19,7 @@ type Note = Tables<'notes'>
 
 type CreateNoteParams = Pick<Note, 'title' | 'description' | 'tags'> & { userId: string; id?: string; silent?: boolean }
 type UpdateNoteParams = Pick<Note, 'id'> & Partial<Pick<Note, 'title' | 'description' | 'tags'>> & { silent?: boolean; deferCacheRefresh?: boolean }
-type DeleteNoteParams = { id: string; silent?: boolean }
+type DeleteNoteParams = { id: string; silent?: boolean } & DeleteNoteOptions
 
 type NotesPage = {
   notes: Note[]
@@ -33,7 +34,7 @@ type NotesData = {
 }
 
 /** Update only the initiating user's paginated note lists after server confirmation. */
-function removeConfirmedNoteFromLists(queryClient: ReturnType<typeof useQueryClient>, userId: string, id: string) {
+export function removeConfirmedNoteFromLists(queryClient: ReturnType<typeof useQueryClient>, userId: string, id: string) {
   queryClient.setQueriesData<NotesData>({ queryKey: ['notes', userId] }, (data) => {
     if (!data?.pages?.some((page) => page.notes?.some((note) => note.id === id))) return data
     return {
@@ -223,8 +224,8 @@ export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCall
   const noteService = useMemo(() => new NoteService(supabase), [supabase])
 
   return useMutation({
-    mutationFn: async ({ id }: DeleteNoteParams) => {
-      return noteService.deleteNote(id)
+    mutationFn: async ({ id,snapshot,expectedUpdatedAt,operationId }: DeleteNoteParams) => {
+      return snapshot || expectedUpdatedAt || operationId ? noteService.deleteNote(id,{ snapshot,expectedUpdatedAt,operationId }) : noteService.deleteNote(id)
     },
 
     // Optimistic update
@@ -267,6 +268,7 @@ export function useDeleteNote(callbacks: DeleteNoteCallbacks = defaultDeleteCall
       void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] }).catch((error) => {
         console.warn('Failed to refresh tags after deletion:', error)
       })
+      void queryClient.invalidateQueries({ queryKey: ['trash'] }).catch(error => console.warn('Failed to refresh Trash:',error))
       if (!vars?.silent && !callbacks.silent) {
         callbacks.onSuccess?.()
       }

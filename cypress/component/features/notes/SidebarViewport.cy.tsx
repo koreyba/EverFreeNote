@@ -85,6 +85,28 @@ describe('Sidebar viewport layout', { retries: 0 }, () => {
     cy.document().then(doc => doc.documentElement.classList.remove('dark'))
   })
 
+  it('offers desktop selection without shifting the list or losing the toggle', () => {
+    cy.viewport(1280, 800)
+    mountNotes()
+    cy.get('[role="separator"][aria-label="Resize notes sidebar"]').trigger('keydown', { key: 'End' })
+    cy.get('#notes-list-container').then(($list) => {
+      const listTop = $list[0].getBoundingClientRect().top
+      cy.get('#notes-sidebar').contains('button', /^Select$/).should('be.visible').focus().click()
+      cy.focused().should('contain.text', 'Done')
+      cy.get('#notes-list-container').should(($selectedList) => {
+        expect($selectedList[0].getBoundingClientRect().top).to.equal(listTop)
+      })
+    })
+    cy.get('[data-testid="selection-mode-select-all"]').click()
+    cy.get('[data-testid="selection-mode-count"]').should('have.text', '30 selected')
+    cy.get('[data-testid="selection-mode-delete"]').should('have.attr', 'aria-label', 'Move to Trash')
+      .contains('Move to Trash').should('be.visible')
+    cy.screenshot('notes-desktop-selection', { capture: 'viewport' })
+    cy.get('#notes-sidebar').contains('button', /^Done$/).click()
+    cy.get('[aria-label="Note layout"]').should('be.visible')
+    cy.get('[data-testid="selection-mode-actions"]').should('not.exist')
+  })
+
   it('shows a complete note and the profile actions in a very short offline desktop window', () => {
     cy.viewport(1280, 320)
     mountNotes(false)
@@ -135,6 +157,8 @@ describe('Sidebar viewport layout', { retries: 0 }, () => {
     cy.press(Cypress.Keyboard.Keys.TAB)
     cy.focused().should('have.attr', 'aria-label', 'Grid view')
     cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('have.attr', 'aria-label', 'Select')
+    cy.press(Cypress.Keyboard.Keys.TAB)
     cy.focused().should('contain.text', 'Sidebar note 01')
     // Electron component tests do not activate even a plain button on Enter;
     // Tab focus is checked here; native activation requires separate browser QA.
@@ -154,6 +178,8 @@ describe('Sidebar viewport layout', { retries: 0 }, () => {
     cy.focused().should('have.attr', 'aria-label', 'List view')
     cy.press(Cypress.Keyboard.Keys.TAB)
     cy.focused().should('have.attr', 'aria-label', 'Grid view')
+    cy.press(Cypress.Keyboard.Keys.TAB)
+    cy.focused().should('have.attr', 'aria-label', 'Select')
     cy.press(Cypress.Keyboard.Keys.TAB)
     cy.focused().should('contain.text', 'Sidebar note 01').should($button => {
       const rect = $button[0].getBoundingClientRect()

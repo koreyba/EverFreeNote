@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { SignOut as LogOut, Plus, MagnifyingGlass as Search, Gear as Settings, ListBullets, SquaresFour } from "@phosphor-icons/react"
+import { Check, ListChecks, SignOut as LogOut, Plus, MagnifyingGlass as Search, Gear as Settings, ListBullets, SquaresFour } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BrandLogo } from "@/components/BrandLogo"
@@ -14,8 +14,8 @@ import { useBulkDeleteConfirm } from "@ui/web/hooks/useBulkDeleteConfirm"
 import { describeDeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
 import type { NoteListLayout } from "./NoteList"
 
-interface SidebarProps {
-  user: User
+interface NoteListSidebarProps {
+  user?: User | null
   notesDisplayed?: number
   notesTotal?: number
   pendingCount?: number
@@ -29,28 +29,109 @@ interface SidebarProps {
   localCleanupCount?: number
   restoredNoteCheck?: 'idle' | 'checking' | 'offline' | 'error'
   isOffline: boolean
+  onOpenSearch?: () => void
+  onOpenSettings?: () => void
+  onSignOut?: () => void
+  noteListLayout?: NoteListLayout
+  onChangeNoteListLayout?: (layout: NoteListLayout) => void
+  mobileHeading?: string
+  primaryControls: React.ReactNode
+  controlsHint?: React.ReactNode
+  selectionControls?: React.ReactNode
+  onEnterSelectionMode?: () => void
+  onExitSelectionMode?: () => void
+  selectionToggleDisabled?: boolean
+  children: React.ReactNode
+  className?: string
+  "aria-label"?: string
+  "data-testid"?: string
+}
+
+interface SidebarProps extends Omit<NoteListSidebarProps, "mobileHeading" | "primaryControls" | "controlsHint" | "selectionControls" | "selectionToggleDisabled"> {
   selectionMode: boolean
   selectedCount: number
   bulkDeleting: boolean
-  onEnterSelectionMode?: () => void
   onExitSelectionMode: () => void
   onSelectAll: () => void
   onBulkDelete: () => void
   filterByTag: string | null
   onClearTagFilter: () => void
-  onOpenSearch: () => void
-  onOpenSettings: () => void
   onCreateNote: () => void
   createNoteDestination?: "left" | "right"
-  onSignOut: () => void
-  noteListLayout?: NoteListLayout
-  onChangeNoteListLayout?: (layout: NoteListLayout) => void
-  children: React.ReactNode // For the NoteList
-  className?: string
-  "data-testid"?: string
 }
 
 export function Sidebar({
+  selectionMode,
+  selectedCount,
+  bulkDeleting,
+  onEnterSelectionMode,
+  onExitSelectionMode,
+  onSelectAll,
+  onBulkDelete,
+  onCreateNote,
+  createNoteDestination,
+  ...sidebarProps
+}: SidebarProps) {
+  const { notesDisplayed } = sidebarProps
+  const hasVisibleNotes = typeof notesDisplayed === "number" ? notesDisplayed > 0 : true
+  const allVisibleSelected = typeof notesDisplayed === "number" && notesDisplayed > 0 && selectedCount >= notesDisplayed
+  const {
+    isDialogOpen: bulkDialogOpen,
+    setIsDialogOpen: setBulkDialogOpen,
+    requestDelete: requestBulkDelete,
+    confirmDelete: handleBulkConfirm,
+    error: bulkDeleteError,
+    clearError: clearBulkDeleteError,
+  } = useBulkDeleteConfirm(onBulkDelete)
+
+  return (
+    <>
+      <NoteListSidebar
+        {...sidebarProps}
+        mobileHeading="Notes"
+        onEnterSelectionMode={hasVisibleNotes ? onEnterSelectionMode : undefined}
+        onExitSelectionMode={onExitSelectionMode}
+        selectionToggleDisabled={bulkDeleting}
+        primaryControls={
+          <Button
+            onClick={onCreateNote}
+            disabled={selectionMode}
+            className="h-11 rounded-full px-4 shadow-sm hover:shadow transition-all duration-200 active:translate-y-0 md:h-9 md:w-full md:hover:-translate-y-[0.5px]"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Note
+          </Button>
+        }
+        controlsHint={createNoteDestination && (
+          <p className="text-center text-xs text-muted-foreground" aria-live="polite">
+            Opens in {createNoteDestination} pane
+          </p>
+        )}
+        selectionControls={selectionMode && (
+          <SelectionModeActions
+            selectedCount={selectedCount}
+            onSelectAll={onSelectAll}
+            onDelete={requestBulkDelete}
+            selectingAllDisabled={!hasVisibleNotes || allVisibleSelected || bulkDeleting}
+            deletingDisabled={selectedCount === 0 || bulkDeleting}
+            deleting={bulkDeleting}
+          />
+        )}
+      />
+      <BulkDeleteDialog
+        open={bulkDialogOpen}
+        onOpenChange={setBulkDialogOpen}
+        count={selectedCount}
+        onConfirm={() => void handleBulkConfirm()}
+        loading={bulkDeleting}
+        errorMessage={bulkDeleteError?.message ?? null}
+        onClearError={clearBulkDeleteError}
+      />
+    </>
+  )
+}
+
+export function NoteListSidebar({
   user,
   notesDisplayed,
   notesTotal,
@@ -65,31 +146,25 @@ export function Sidebar({
   localCleanupCount = 0,
   restoredNoteCheck = 'idle',
   isOffline,
-  selectionMode,
-  selectedCount,
-  bulkDeleting,
-  onEnterSelectionMode,
-  onExitSelectionMode,
-  onSelectAll,
-  onBulkDelete,
   onOpenSearch,
   onOpenSettings,
-  onCreateNote,
-  createNoteDestination,
   onSignOut,
   noteListLayout = "list",
   onChangeNoteListLayout,
+  mobileHeading,
+  primaryControls,
+  controlsHint,
+  selectionControls,
+  onEnterSelectionMode,
+  onExitSelectionMode,
+  selectionToggleDisabled,
   children,
   className,
+  "aria-label": ariaLabel = "Sidebar",
   "data-testid": dataTestId
-}: SidebarProps) {
+}: NoteListSidebarProps) {
   const sidebarRef = React.useRef<HTMLElement>(null)
   const resizer = useResizableNotesSidebar(sidebarRef)
-  const hasVisibleNotes = typeof notesDisplayed === "number" ? notesDisplayed > 0 : true
-  const allVisibleSelected = typeof notesDisplayed === "number"
-    ? notesDisplayed > 0 && selectedCount >= notesDisplayed
-    : false
-
   const syncStatus = React.useMemo(() => {
     const status = describeDeviceSyncStatus({ isOffline, failedCount, pendingCount, syncStateReady, storageReadError, legacyUnverifiedCount, unqueuedLocalCount, unavailableRemoteEdits, legacyClaimBlocked, localCleanupCount, restoredNoteCheck })
     return {
@@ -102,15 +177,9 @@ export function Sidebar({
     const displayed = typeof notesDisplayed === "number" ? notesDisplayed : "-"
     return typeof notesTotal === "number" ? `${displayed} of ${notesTotal} notes` : `${displayed} notes shown`
   }, [notesDisplayed, notesTotal])
-
-  const {
-    isDialogOpen: bulkDialogOpen,
-    setIsDialogOpen: setBulkDialogOpen,
-    requestDelete: requestBulkDelete,
-    confirmDelete: handleBulkConfirm,
-    error: bulkDeleteError,
-    clearError: clearBulkDeleteError,
-  } = useBulkDeleteConfirm(onBulkDelete)
+  const selecting = Boolean(selectionControls)
+  const toggleSelection = selecting ? onExitSelectionMode : onEnterSelectionMode
+  const selectionLabel = selecting ? "Done" : "Select"
 
   return (
     <aside
@@ -122,7 +191,7 @@ export function Sidebar({
       style={{ "--notes-sidebar-width": `${resizer.width}px` } as React.CSSProperties}
       id="notes-sidebar"
       data-testid={dataTestId}
-      aria-label="Sidebar"
+      aria-label={ariaLabel}
     >
       <div
         role="separator"
@@ -140,7 +209,7 @@ export function Sidebar({
       <div className="notes-sidebar-content flex min-h-0 flex-1 flex-col">
         {/* Header */}
         <div className="notes-sidebar-header hidden p-4 border-b md:block">
-          <div className="notes-sidebar-brand-row flex items-center justify-between mb-4">
+          <div className={cn("notes-sidebar-brand-row flex items-center justify-between", onOpenSearch && "mb-4")}>
             <div className="flex items-center gap-2.5">
               <div className="relative">
                 <BrandLogo className="h-8 w-8 shrink-0 transition-transform hover:scale-105" />
@@ -160,7 +229,7 @@ export function Sidebar({
           </div>
 
           {/* Search */}
-          <button
+          {onOpenSearch && <button
             type="button"
             onClick={onOpenSearch}
             className="notes-sidebar-search relative w-full group"
@@ -171,65 +240,63 @@ export function Sidebar({
             <div className="flex w-full items-center h-10 px-3 pl-9 py-2 rounded-full border border-border/80 bg-background/50 hover:bg-background hover:border-border transition-all duration-200 text-sm text-muted-foreground text-left shadow-sm group-hover:shadow">
               Click to search
             </div>
-          </button>
+          </button>}
         </div>
 
-        {/* New Note Button */}
+        {/* List controls */}
         <div className="notes-sidebar-controls flex flex-col gap-3 p-4 border-b bg-muted/5">
-          <div className="notes-sidebar-create flex items-center gap-2 md:block">
-            <div className="flex min-w-0 flex-1 items-center gap-2 md:hidden">
-              <h1 className="text-xl font-bold tracking-tight">Notes</h1>
-              <span className={cn("h-2.5 w-2.5 rounded-full", syncStatus.className)} title={syncStatus.label} aria-hidden="true" />
-            </div>
-            {!selectionMode && hasVisibleNotes && onEnterSelectionMode && (
-              <Button type="button" variant="ghost" onClick={onEnterSelectionMode} className="h-11 px-3 md:hidden">
-                Select
-              </Button>
-            )}
-            <Button
-              onClick={onCreateNote}
-              className={cn("h-11 rounded-full px-4 shadow-sm hover:shadow transition-all duration-200 active:translate-y-0 md:h-9 md:w-full md:hover:-translate-y-[0.5px]", selectionMode && "hidden md:inline-flex")}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Note
-            </Button>
-          </div>
-          {createNoteDestination && (
-            <p className="text-center text-xs text-muted-foreground" aria-live="polite">
-              Opens in {createNoteDestination} pane
-            </p>
-          )}
-          <div className="notes-sidebar-count flex items-center justify-between gap-3">
-            <p className="min-w-0 text-[11px] text-muted-foreground tracking-wide uppercase font-semibold">
-              {notesCountText}
-            </p>
-            {onChangeNoteListLayout && (
-              <div role="group" aria-label="Note layout" className="flex shrink-0 items-center rounded-full bg-muted/70 p-0.5">
-                <Button type="button" variant="ghost" size="icon" aria-label="List view" aria-pressed={noteListLayout === "list"}
-                  onClick={() => onChangeNoteListLayout("list")}
-                  className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "list" && "bg-background text-foreground shadow-sm")}>
-                  <ListBullets className="h-4 w-4" aria-hidden="true" />
-                </Button>
-                <Button type="button" variant="ghost" size="icon" aria-label="Grid view" aria-pressed={noteListLayout === "grid"}
-                  onClick={() => onChangeNoteListLayout("grid")}
-                  className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "grid" && "bg-background text-foreground shadow-sm")}>
-                  <SquaresFour className="h-4 w-4" aria-hidden="true" />
-                </Button>
+          <div className={cn("flex items-center gap-2 md:block", mobileHeading ? "notes-sidebar-create" : "w-full")}>
+            {mobileHeading && (
+              <div className="flex min-w-0 flex-1 items-center gap-2 md:hidden">
+                <h1 className="text-xl font-bold tracking-tight">{mobileHeading}</h1>
+                <span className={cn("h-2.5 w-2.5 rounded-full", syncStatus.className)} title={syncStatus.label} aria-hidden="true" />
               </div>
             )}
+            {primaryControls}
           </div>
-          {selectionMode && (
-            <SelectionModeActions
-              className="notes-sidebar-selection"
-              selectedCount={selectedCount}
-              onSelectAll={onSelectAll}
-              onDelete={requestBulkDelete}
-              onCancel={onExitSelectionMode}
-              selectingAllDisabled={!hasVisibleNotes || allVisibleSelected || bulkDeleting}
-              deletingDisabled={selectedCount === 0 || bulkDeleting}
-              deleting={bulkDeleting}
-            />
-          )}
+          {controlsHint}
+          <div className={cn("notes-sidebar-count flex min-h-12 min-w-0 items-center gap-1", selecting && "notes-sidebar-selection gap-0.5")}>
+            {selectionControls || (
+              <>
+                <p title={notesCountText} className="line-clamp-2 min-w-0 flex-1 text-[11px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground">
+                  {notesCountText}
+                </p>
+                {onChangeNoteListLayout && (
+                  <div role="group" aria-label="Note layout" className="flex shrink-0 items-center rounded-full bg-muted/70 p-0.5">
+                    <Button type="button" variant="ghost" size="icon" aria-label="List view" aria-pressed={noteListLayout === "list"}
+                      onClick={() => onChangeNoteListLayout("list")}
+                      className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "list" && "bg-background text-foreground shadow-sm")}>
+                      <ListBullets className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" aria-label="Grid view" aria-pressed={noteListLayout === "grid"}
+                      onClick={() => onChangeNoteListLayout("grid")}
+                      className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "grid" && "bg-background text-foreground shadow-sm")}>
+                      <SquaresFour className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+            {toggleSelection && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={selectionLabel}
+                title={selecting ? "Done selecting notes" : "Select notes"}
+                data-testid={selecting ? "selection-mode-cancel" : "selection-mode-enter"}
+                disabled={selectionToggleDisabled}
+                onClick={toggleSelection}
+                className={cn(
+                  "notes-sidebar-selection-toggle h-11 min-w-12 shrink-0 rounded-lg px-2",
+                  selecting && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+                )}
+              >
+                {selecting ? <Check className="hidden" aria-hidden="true" /> : <ListChecks className="hidden" aria-hidden="true" />}
+                <span>{selectionLabel}</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Notes List Container */}
@@ -238,7 +305,7 @@ export function Sidebar({
         </div>
 
         {/* User Profile */}
-        <div className="notes-sidebar-profile hidden p-4 border-t bg-muted/5 md:block">
+        {user && (onOpenSettings || onSignOut) && <div className="notes-sidebar-profile hidden p-4 border-t bg-muted/5 md:block">
           <div className="flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-xs border border-primary/20 shrink-0 shadow-sm">
@@ -247,7 +314,7 @@ export function Sidebar({
               <span className="text-xs font-medium text-foreground/80 truncate">{user.email}</span>
             </div>
             <div className="flex items-center gap-0.5">
-              <Button
+              {onOpenSettings && <Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
@@ -255,8 +322,8 @@ export function Sidebar({
                 aria-label="Open settings page"
               >
                 <Settings className="w-4 h-4" />
-              </Button>
-              <Button
+              </Button>}
+              {onSignOut && <Button
                 onClick={onSignOut}
                 variant="ghost"
                 size="icon"
@@ -265,21 +332,11 @@ export function Sidebar({
                 aria-label="Sign out"
               >
                 <LogOut className="w-4 h-4" />
-              </Button>
+              </Button>}
             </div>
           </div>
-        </div>
+        </div>}
       </div>
-
-      <BulkDeleteDialog
-        open={bulkDialogOpen}
-        onOpenChange={setBulkDialogOpen}
-        count={selectedCount}
-        onConfirm={() => void handleBulkConfirm()}
-        loading={bulkDeleting}
-        errorMessage={bulkDeleteError?.message ?? null}
-        onClearError={clearBulkDeleteError}
-      />
     </aside>
   )
 }

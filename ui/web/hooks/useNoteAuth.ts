@@ -9,6 +9,7 @@ import { webStorageAdapter } from '@ui/web/adapters/storage'
 import { resolveOAuthAdapter, resolveOAuthRedirectUri } from '@ui/web/adapters/oauth'
 import { featureFlags } from '@ui/web/featureFlags'
 import { clearNoteWorkspaceState } from '@ui/web/lib/noteWorkspaceStorage'
+import { clearTrashCache } from '@ui/web/lib/trashCache'
 import { useWorkspaceMemory } from '@ui/web/providers/WorkspaceMemoryProvider'
 
 const testAuthEmail = process.env.NEXT_PUBLIC_TEST_AUTH_EMAIL ?? ''
@@ -177,6 +178,7 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
             // outlives the session. Drop them here so nothing is left behind
             // for the next account signing in on this browser tab.
             clearNoteWorkspaceState()
+            if (user?.id) clearTrashCache(user.id)
             if (user?.id) workspaceMemory.discardOwner(user.id, started?.epoch)
             setUser(null)
             queryClient.removeQueries({ queryKey: ['notes'] })
@@ -192,6 +194,7 @@ export function useNoteAuth(config: NoteAuthConfig = runtimeNoteAuthConfig) {
         setDeleteAccountLoading(true)
         try {
             await authService.deleteAccount()
+            clearTrashCache(user.id)
 
             toast.success("Account deleted")
             await handleSignOut(callback)

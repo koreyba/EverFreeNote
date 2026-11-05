@@ -69,6 +69,7 @@ jobs:
         env:
           COVERAGE_ENABLED: ${{ inputs.coverage }}
           MCP_DATABASE_CONTAINER: ${{ job.services.mcp-database.id }}
+          TRASH_TEST_POSTGRES: "1"
         run: |
           coverage_args=()
           if [ "${COVERAGE_ENABLED}" = "true" ]; then

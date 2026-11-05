@@ -12,6 +12,7 @@ import type { useNoteSelection } from './useNoteSelection'
 import { enqueueOwnerNoteWrite, waitForOwnerNoteWrites } from '@ui/web/lib/ownerNoteWrites'
 import type { useLocalDeletionRecovery } from './useLocalDeletionRecovery'
 import { snapshotEvidence } from '@ui/web/lib/offlineOwnership'
+import { buildTrashPayload } from '@core/utils/compactQueue'
 
 export type UseNoteSaveHandlersParams = {
   user: { id: string } | null
@@ -125,10 +126,12 @@ export function useNoteSaveHandlers({
     const write = async (): Promise<CachedNote> => {
       assertWriteNotAborted(signal)
       let previousTime = latestWriteTimeByNoteRef.current.get(noteId)
+      const currentQueue = await offlineQueueRef.current.getQueue()
+      const baseUpdatedAt = currentQueue.find(item => item.noteId===noteId && item.payload.base_updated_at)?.payload.base_updated_at
+        ?? notesRef.current.find(note => note.id===noteId)?.updated_at
       if (previousTime === undefined) {
         // On a new app session, include pending writes left in durable storage.
-        const queue = await offlineQueueRef.current.getQueue()
-        previousTime = queue.reduce((latest, item) => {
+        previousTime = currentQueue.reduce((latest, item) => {
           const time = Date.parse(item.clientUpdatedAt)
           return item.noteId === noteId && Number.isFinite(time) ? Math.max(latest, time) : latest
         }, 0)
@@ -157,7 +160,9 @@ export function useNoteSaveHandlers({
         }
         return [...prev, cached]
       })
-      await enqueueMutation({ noteId, operation, payload: { ...payload, user_id: user?.id }, clientUpdatedAt: durableUpdatedAt })
+      await enqueueMutation({ noteId, operation, payload: { ...payload, user_id: user?.id,
+        ...(operation==='create' ? { locally_created:true } : baseUpdatedAt ? { base_updated_at:baseUpdatedAt } : {}),
+      }, clientUpdatedAt: durableUpdatedAt })
       setPendingCount((prev) => prev + 1)
       return cached
     }
@@ -180,7 +185,7 @@ export function useNoteSaveHandlers({
       (error: unknown) => { failedWritesRef.current.set(noteId, error) },
     )
     return current
-  }, [offlineCache, offlineQueueRef, setOfflineOverlay, enqueueMutation, setPendingCount, user?.id])
+  }, [offlineCache, offlineQueueRef, setOfflineOverlay, enqueueMutation, setPendingCount, user?.id, notesRef])
 
   // A manual save can be in flight even when the editor has no pending
   // autosave. Deletion must wait for every write affecting its target notes.
@@ -450,7 +455,9 @@ export function useNoteSaveHandlers({
         queuedPath = true
         if (!user?.id) throw new Error('User not authenticated - deletion skipped')
         const deletedAt = nextMutationTimestamp(queue, new Set([noteToDelete.id]))
+        const snapshot = buildTrashPayload(noteToDelete,user.id,queue)
         const cachedDelete: CachedNote = {
+          ...snapshot,
           id: noteToDelete.id,
           user_id: user.id,
           status: 'pending',
@@ -460,7 +467,7 @@ export function useNoteSaveHandlers({
         await enqueueMutation({
           noteId: noteToDelete.id,
           operation: 'delete',
-          payload: { user_id: user.id },
+          payload: snapshot,
           clientUpdatedAt: deletedAt,
         }, async () => {
           await offlineCache.saveNote(cachedDelete)

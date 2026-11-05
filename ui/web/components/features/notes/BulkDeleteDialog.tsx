@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input"
 
 type BulkDeleteDialogProps = {
+  action?: 'trash' | 'purge'
   open: boolean
   onOpenChange: (open: boolean) => void
   count: number
@@ -26,6 +27,7 @@ type BulkDeleteDialogProps = {
 type BulkDeleteDialogBodyProps = Omit<BulkDeleteDialogProps, "open" | "onOpenChange">
 
 function BulkDeleteDialogBody({
+  action = 'trash',
   count,
   loading = false,
   errorMessage = null,
@@ -47,9 +49,12 @@ function BulkDeleteDialogBody({
   return (
     <AlertDialogContent data-testid="bulk-delete-dialog">
       <AlertDialogHeader>
-        <AlertDialogTitle>Delete selected notes</AlertDialogTitle>
+        <AlertDialogTitle>{action === 'purge' ? 'Permanently delete notes' : 'Move selected notes to Trash'}</AlertDialogTitle>
         <AlertDialogDescription>
-          This action will delete {count} notes. Type the number above into the input to confirm you really want to delete them.
+          {action === 'purge'
+            ? `This action will permanently delete ${count} notes. This cannot be undone.`
+            : `This action will move ${count} notes to Trash. You can restore them for 30 days.`}
+          {' '}Type the number above into the input to confirm.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <div className="space-y-2">
@@ -84,7 +89,7 @@ function BulkDeleteDialogBody({
           }}
           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
         >
-          {loading ? "Deleting..." : "Delete"}
+          {loading ? "Deleting..." : action === 'purge' ? "Delete forever" : "Delete"}
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
@@ -92,6 +97,7 @@ function BulkDeleteDialogBody({
 }
 
 export function BulkDeleteDialog({
+  action = 'trash',
   open,
   onOpenChange,
   count,
@@ -110,6 +116,7 @@ export function BulkDeleteDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       {open ? (
         <BulkDeleteDialogBody
+          action={action}
           count={count}
           loading={loading}
           errorMessage={errorMessage}

@@ -228,6 +228,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
 
       return ({
       activeMainView: 'notes',
+      loadPendingTrash: cy.stub().resolves([]),
       createNoteInTab: cy.stub().resolves(),
       openDraggedNoteInPane: cy.stub().resolves(true),
       paneSaveServices: undefined,

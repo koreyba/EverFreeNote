@@ -57,6 +57,13 @@ function setup(overrides: Record<string, unknown> = {}) {
 }
 
 describe('reading an unchanged note', () => {
+  it('preserves the complete single-note offline deletion in the queue', async () => {
+    const { result,params }=setup({ isOffline:true,noteToDelete:makeNote() })
+    await act(async () => { await result.current.confirmDeleteNote() })
+    expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
+      operation:'delete',payload:expect.objectContaining({ title:'Test',description:'Content',tags:['tag1'],user_id:'user-1' }),
+    }),expect.any(Function))
+  })
   it('keeps a newly saved note selected when the reading callback still has the pre-save snapshot', async () => {
     const selectedNoteRef: { current: NoteViewModel | null } = { current: null }
     let selectedNote: NoteViewModel | null = null

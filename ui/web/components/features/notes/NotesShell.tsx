@@ -3,7 +3,7 @@
 import { useAppBackHandler, APP_BACK_PRIORITY } from "@ui/web/lib/appBack"
 import * as React from "react"
 import { CircleNotch as Loader2 } from "@phosphor-icons/react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery,useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import {
   AlertDialog,
@@ -45,6 +45,9 @@ import type { RegisterViewScrollSurface } from "@/components/features/notes/view
 import { useSplitViewPreference } from "@ui/web/providers/SplitViewPreferenceProvider"
 import { DeviceSyncStatus } from "@/components/features/notes/DeviceSyncStatus"
 import { SignOutGuardDialog } from "@/components/features/auth/SignOutGuardDialog"
+import { TrashPage } from "./TrashPage"
+import { useTrashCleanup } from '@ui/web/hooks/useTrashCleanup'
+import { advanceNoteListRevision } from '@ui/web/lib/noteListRevision'
 
 import { MobileWorkspace } from "@/components/features/navigation/MobileWorkspace"
 import { NavRail } from "@/components/features/navigation/NavRail"
@@ -78,6 +81,20 @@ export function NotesShell({ controller }: NotesShellProps) {
   const router = useRouter()
   const isMobile = useIsMobile()
   const { supabase, getSessionSnapshot } = useSupabase()
+  const trashQueryClient=useQueryClient()
+  const [trashRevision,setTrashRevision]=React.useState(0)
+  const refreshAfterTrash=React.useCallback(()=>{
+    if (controller.user?.id) advanceNoteListRevision(trashQueryClient,controller.user.id)
+    void Promise.all(['notes','tags','aiSearch','trash'].map(key=>trashQueryClient.invalidateQueries({ queryKey:[key] })))
+      .catch(error=>console.warn('Could not refresh notes after a Trash action:',error))
+  },[trashQueryClient,controller.user?.id])
+  const refreshExpiredTrash=React.useCallback(()=>{
+    setTrashRevision(value=>value+1)
+    void trashQueryClient.invalidateQueries({ queryKey:['trash'] }).catch(()=>{})
+  },[trashQueryClient])
+  useTrashCleanup({ supabase,userId:controller.user?.id,isOffline:controller.isOffline,
+    ready:controller.syncStateReady,activityKey:controller.activeMainView,
+    onCleaned:refreshExpiredTrash,getSessionSnapshot })
   const [noteListLayout, setNoteListLayout] = React.useState<NoteListLayout>("list")
   const noteEditorRef = React.useRef<NoteEditorHandle | null>(null)
   const preserveWorkspaceRef = React.useRef(controller.preserveWorkspaceForNavigation)
@@ -433,7 +450,7 @@ export function NotesShell({ controller }: NotesShellProps) {
     setIsSearchPanelOpen(true)
   }, [activeMainView, hideNotePane, isMobile, isSearchPanelOpen, setActiveMainView, setIsSearchPanelOpen, showEditor, tagMutationInProgress])
 
-  const handleSelectMainView = React.useCallback(async (view: "notes" | "tags") => {
+  const handleSelectMainView = React.useCallback(async (view: "notes" | "tags" | "trash") => {
     if (tagMutationInProgress) return
     if (view === "tags" && controller.prepareTagManagement && !(await controller.prepareTagManagement())) return
     if (showEditor && (isMobile || view !== activeMainView) && !(await hideNotePane())) return
@@ -539,7 +556,19 @@ export function NotesShell({ controller }: NotesShellProps) {
         onOpenSettings={() => void handleOpenSettings()}
       />
 
-      {activeMainView === "tags" ? (
+      {activeMainView === "trash" ? (
+        <TrashPage
+          key={user?.id}
+          isOffline={isOffline}
+          loadPending={controller.loadPendingTrash}
+          onChanged={refreshAfterTrash}
+          refreshToken={trashRevision}
+          noteListLayout={noteListLayout}
+          onChangeNoteListLayout={handleChangeNoteListLayout}
+          onOpenSettings={() => void handleOpenSettings()}
+          onSignOut={handleSignOut}
+        />
+      ) : activeMainView === "tags" ? (
         <main className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
           <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} localCleanupCount={localCleanupCount} onRetryLocalDeletion={() => void retryLocalDeletion?.()} restoredNoteCheck={restoredNoteCheck} onRetryRestoredNoteCheck={retryRestoredNoteCheck} onRetryLocalVerification={() => void retryLocalVerification?.()} />
           <TagsPage
@@ -987,7 +1016,7 @@ function DeleteNoteDialog({ controller }: { controller: NoteAppController }) {
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Note</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete &quot;{noteToDelete?.title}&quot;? This action cannot be undone.
+            Move &quot;{noteToDelete?.title}&quot; to Trash? You can restore it for 30 days before it is permanently deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
