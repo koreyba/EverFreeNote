@@ -1,0 +1,1 @@
+{"id":"c43b1a245eddca9c467b678de86dfc89","fullName":"everfreenote:ui/web/tests/unit/components/features/notes/Sidebar.test.tsx#Sidebar Sync Status Indicator stays gray until both local data and restored-note checks finish","name":"stays gray until both local data and restored-note checks finish","status":"passed","testResultsByEnv":{"default":"e110b6bd0b9d27ae961ebc82a75f6f46"}}

@@ -1,0 +1,1 @@
+INSERT INTO public.notes(id,user_id,title,description,tags) VALUES ('66666666-6666-4666-8666-666666666666','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',NULL,'<p>Nullable interview</p>',NULL);
