@@ -28,7 +28,7 @@ No live OAuth/Gemini or deployed-client acceptance was performed. Staging rollou
 Only synthetic users, UUIDs, HTML notes and vectors in a labelled disposable container. No production credentials, notes or API keys. RAG HTTP tests use synthetic encrypted keys and mocked external responses.
 
 ## Test Reporting & Coverage
-Local broad run on 2026-11-05: **2173 passed, 6 skipped**, exit 0, across core unit, core integration and web unit projects. New database suite: **14/14**, exit 0, explicit Allure scope/count expectations matched. Final focused MCP coverage: **208/208**, 97.96% lines overall in `core/mcp`, with 100% executable lines in the new editing/search modules and tool server. Existing legacy RAG adapter failure and tag-scan fallback branches account for remaining aggregate gaps; SQL coverage is scenario-based.
+Local broad run on 2026-11-05: **2173 passed, 6 skipped**, exit 0, across core unit, core integration and web unit projects. New database suite: **14/14**, exit 0, explicit Allure scope/count expectations matched. Review hardening passed **223/223** combined MCP and database tests, including the malformed-HTML overlap regression. Focused MCP coverage before review hardening: **208/208**, 97.96% lines overall in `core/mcp`, with 100% executable lines in the new editing/search modules and tool server. Existing legacy RAG adapter failure and tag-scan fallback branches account for remaining aggregate gaps; SQL coverage is scenario-based.
 
 Commands:
 ```sh
@@ -48,4 +48,6 @@ Pending after deployment: client tool discovery, middle-block editing in rendere
 One repository batch select and one embedding per semantic/hybrid request are asserted. No latency/load benchmark was performed. Search computes eligible note vectors/ranks at query time; measure large libraries before promising latency gains.
 
 ## Bug Tracking
-TDD first demonstrated absent behavior. Additional regressions caught microsecond range rounding, malformed date handling, nullable search titles and non-JSON gateway setup errors. No user data was changed.
+TDD first demonstrated absent behavior. Independent Claude review approved the initial HEAD and identified non-blocking HTML-boundary and snippet-work improvements. Both were incorporated; final-HEAD approval remains a merge gate. CodeRabbit reviewed the initial 32-file change and raised 0 issues.
+
+Additional regressions caught microsecond range rounding, malformed date handling, nullable search titles and non-JSON gateway setup errors. No user data was changed.

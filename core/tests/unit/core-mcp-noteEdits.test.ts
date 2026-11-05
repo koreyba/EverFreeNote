@@ -16,6 +16,10 @@ describe('MCP HTML block editing', () => {
     expect(applyContentEdits(body, [{ operation: 'replace', anchor_html: '<h2>Plan</h2><p>First <strong>important</strong> item</p>', content_html: '' }])).toBe('<p>Last</p>')
   })
 
+  it('rejects overlapping parser boundaries in malformed stored HTML', () => {
+    expect(() => applyContentEdits('<p>a<p>b</p>', [{ operation: 'insert_after', anchor_html: '<p>a<p>', content_html: '<p>NEW</p>' }])).toThrow('overlapping')
+  })
+
   it('rejects missing, ambiguous and nested anchors instead of guessing', () => {
     expect(() => applyContentEdits(body, [{ operation: 'insert_before', anchor_html: '<p>Missing</p>', content_html: '<p>New</p>' }])).toThrow('not found')
     expect(() => applyContentEdits('<p>Same</p><p>Same</p>', [{ operation: 'replace', anchor_html: '<p>Same</p>', content_html: '' }])).toThrow('ambiguous')

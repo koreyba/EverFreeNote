@@ -16,6 +16,15 @@ function anchorRange(html: string, anchor: string): [number, number] {
   if (html.indexOf(anchor, start + 1) >= 0) throw new Error('anchor_html is ambiguous. Include more surrounding HTML blocks.')
   const end = start + anchor.length
   const nodes = parseDocument(html, { withStartIndices: true, withEndIndices: true }).children
+  let previousEnd = -1
+  for (const node of nodes) {
+    // Implied end tags can give htmlparser2 overlapping root ranges. Those
+    // ranges cannot prove that an anchor spans complete source blocks.
+    if (node.startIndex === null || node.endIndex === null || node.startIndex <= previousEnd) {
+      throw new Error('Stored HTML has overlapping or incomplete block boundaries. Open and save the note in the editor before anchored edits.')
+    }
+    previousEnd = node.endIndex
+  }
   if (!nodes.some(node => node.startIndex === start) || !nodes.some(node => node.endIndex !== null && node.endIndex + 1 === end)) {
     throw new Error('anchor_html must contain complete top-level HTML blocks, such as an entire paragraph or list.')
   }

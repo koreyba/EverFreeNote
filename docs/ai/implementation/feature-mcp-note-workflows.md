@@ -13,9 +13,9 @@ Worktree: external `mcp-note-workflows/EverFreeNote`, branch `codex/mcp-note-wor
 See the design document for ownership of the edit helper, tool schemas, repository methods, RAG adapter and SQL RPCs.
 
 ## Implementation Notes
-Implemented in server version 1.1.0. `applyContentEdits` uses htmlparser2 source positions to validate complete top-level block anchors without reserializing untouched HTML. Inserted fragments use the existing sanitizer. All edits are computed before one invoker RPC locks/checks/updates the row; no unconditional retry occurs on conflict.
+Implemented in server version 1.1.0. `applyContentEdits` uses htmlparser2 source positions to validate complete top-level block anchors without reserializing untouched HTML. Inserted fragments use the existing sanitizer. Anchored edits reject overlapping/incomplete parser ranges in malformed stored HTML. All edits are computed before one invoker RPC locks/checks/updates the row; no unconditional retry occurs on conflict.
 
-`getNotes` performs one owner-scoped select. The tool maps records back to requested order and applies the shared body budget without partial HTML/text. `search_notebook_notes` filters eligible notes before weighted FTS or best-chunk similarity; hybrid uses reciprocal rank fusion with constant 60. Date validation preserves PostgreSQL microsecond resolution and handles malformed timestamps as validation errors.
+`getNotes` performs one owner-scoped select. The tool maps records back to requested order and applies the shared body budget without partial HTML/text. `search_notebook_notes` filters eligible notes before weighted FTS or best-chunk similarity; hybrid uses reciprocal rank fusion with constant 60. Matched totals are computed once; full-text headlines and semantic excerpts are generated only after the page is materialized. Date validation preserves PostgreSQL microsecond resolution and handles malformed timestamps as validation errors.
 
 `rag-search` accepts an additive `notebookSearch` request, validates it before authentication/billing, reuses key/model checks and one embedding, then calls the new user-scoped RPC. Legacy chunk requests follow their original path. A non-JSON 404 is still classified as a missing RAG deployment by the MCP adapter. Existing literal listing, single reads and unguarded legacy full replacements keep their original contracts.
 

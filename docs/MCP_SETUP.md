@@ -165,7 +165,7 @@ Read the note first and pass its exact `updated_at` as `expected_updated_at` (in
 }
 ```
 
-Anchors must match exactly once and contain complete top-level HTML blocks from the read result: an entire paragraph, heading, list, or several adjacent blocks. Replace the containing paragraph/list to change its text. Missing, ambiguous or nested-only anchors cause an error without a write. A stale version causes a conflict: read again and reconcile the new content. Existing whole-field replacements remain compatible and can opt into the same version check.
+Anchors must match exactly once and contain complete top-level HTML blocks from the read result: an entire paragraph, heading, list, or several adjacent blocks. Replace the containing paragraph/list to change its text. Missing, ambiguous or nested-only anchors cause an error without a write. Anchored edits also reject overlapping block ranges in malformed stored HTML; open and save such a note in the editor first. A stale version causes a conflict: read again and reconcile the new content. Existing whole-field replacements remain compatible and can opt into the same version check.
 
 `get_notes` never silently truncates a body. An over-budget item has `limit_exceeded` and its original `content_length`; use `get_note` separately when needed. Missing and foreign ids both return `not_found`. Metadata is outside the body-character budget; characters are not a token estimate.
 

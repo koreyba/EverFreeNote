@@ -111,7 +111,7 @@ BEGIN
   ), semantic_best AS (
     SELECT DISTINCT ON (ne.note_id) ne.note_id AS id,
       1 - (ne.embedding <=> query_embedding) AS relevance,
-      coalesce(ne.body_content,ne.content,'') AS excerpt
+      ne.id AS chunk_id
     FROM public.note_embeddings ne JOIN eligible n ON n.id = ne.note_id
     WHERE search_mode IN ('semantic','hybrid') AND ne.user_id = auth.uid()
       AND 1 - (ne.embedding <=> query_embedding) >= min_similarity
@@ -122,25 +122,36 @@ BEGIN
     SELECT n.id,coalesce(n.title,'') AS title,coalesce(n.tags,'{}') AS tags,n.created_at,n.updated_at,
       CASE search_mode WHEN 'text' THEN t.relevance WHEN 'semantic' THEN s.relevance
         ELSE coalesce(1.0/(60+t.position),0) + coalesce(1.0/(60+s.position),0) END AS score,
-      CASE WHEN t.id IS NULL THEN replace(replace(replace(left(s.excerpt,1000),'&','&amp;'),'<','&lt;'),'>','&gt;')
-        ELSE ts_headline(config,coalesce(n.description,''),words,'MaxWords=45, MinWords=15, MaxFragments=2') END AS excerpt_html
+      t.id IS NOT NULL AS text_match, s.chunk_id
     FROM eligible n LEFT JOIN text_ranked t ON t.id = n.id LEFT JOIN semantic_ranked s ON s.id = n.id
     WHERE (search_mode = 'text' AND t.id IS NOT NULL)
       OR (search_mode = 'semantic' AND s.id IS NOT NULL)
       OR (search_mode = 'hybrid' AND (t.id IS NOT NULL OR s.id IS NOT NULL))
+  ), totals AS MATERIALIZED (
+    SELECT count(*) AS matches FROM combined
   ), ordered AS (
     SELECT *, row_number() OVER (ORDER BY
       CASE WHEN sort_by = 'relevance' THEN score END DESC NULLS LAST,
       CASE WHEN sort_by = 'updated_at' THEN updated_at END DESC NULLS LAST,
       CASE WHEN sort_by = 'created_at' THEN created_at END DESC NULLS LAST,
       id) AS row_order FROM combined
-  ), page AS (
+  ), page AS MATERIALIZED (
     SELECT * FROM ordered ORDER BY row_order LIMIT result_limit OFFSET result_offset
   )
   SELECT jsonb_build_object(
-    'notes',coalesce((SELECT jsonb_agg(to_jsonb(p)-'row_order' ORDER BY p.row_order) FROM page p),'[]'::jsonb),
-    'total',(SELECT count(*) FROM combined),
-    'has_more',result_offset+(SELECT count(*) FROM page)<(SELECT count(*) FROM combined),
+    -- Generate snippets only for the materialized page, never for every match.
+    'notes',coalesce((
+      SELECT jsonb_agg(
+        (to_jsonb(p)-'row_order'-'text_match'-'chunk_id') || jsonb_build_object('excerpt_html',
+          CASE WHEN p.text_match THEN ts_headline(config,coalesce(n.description,''),words,'MaxWords=45, MinWords=15, MaxFragments=2')
+          ELSE replace(replace(replace(left(coalesce(chunk.body_content,chunk.content,''),1000),'&','&amp;'),'<','&lt;'),'>','&gt;') END
+        ) ORDER BY p.row_order
+      ) FROM page p
+      JOIN public.notes n ON n.id = p.id AND n.user_id = auth.uid()
+      LEFT JOIN public.note_embeddings chunk ON chunk.id = p.chunk_id AND chunk.user_id = auth.uid()
+    ),'[]'::jsonb),
+    'total',(SELECT matches FROM totals),
+    'has_more',result_offset+(SELECT count(*) FROM page)<(SELECT matches FROM totals),
     'mode',search_mode
   ) INTO result;
   RETURN result;
