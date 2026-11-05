@@ -21,11 +21,11 @@ description: Evidence for the local version history preview
 
 ## Version comparison
 
-- [x] Unit tests cover comparison direction, Unicode word boundaries, multiline replacements, tag changes, identical content, and large input limits.
+- [x] Unit tests cover comparison direction, Unicode word boundaries with and without `Intl.Segmenter`, multiline replacements, tag changes, identical content, and large input limits.
 - [x] The dialog tests cover both selectors, reversing a pair, switching views, paging through 64 versions, and keyboard selection and focus return.
 - [x] The local browser showed v1 to v3 and v3 to v1. Switching views preserved both choices. Back to history returned to the original v2 preview.
 - [x] A 64-version demo note was checked in a mobile browser viewport (390 × 844 and 667 × 375). The history and selectors scroll, both comparison views showed v1 to v32, and the landscape preview leaves room for the restore button. Comparison was also checked in light and dark themes.
-- [x] All 2,169 core and web unit tests passed.
+- [x] The full core and web unit suites passed.
 
 ## Coverage boundary
 

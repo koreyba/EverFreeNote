@@ -38,7 +38,8 @@ function tokenizeText(text: string): string[] {
   if (wordSegmenter) {
     return Array.from(wordSegmenter.segment(text), ({ segment }) => segment)
   }
-  return text.match(/[\p{L}\p{M}\p{N}_]+|[^\S\r\n]+|[\s\S]/gu) ?? []
+  // Keep Unicode properties separate for Next.js's bundled Babel transform.
+  return text.match(/(?:\p{L}|\p{M}|\p{N}|_)+|[^\S\r\n]+|[\s\S]/gu) ?? []
 }
 
 function compareText(current: string, selected: string): NoteTextDiff | null {

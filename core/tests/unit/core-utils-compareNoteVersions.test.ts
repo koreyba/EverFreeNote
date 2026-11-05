@@ -81,6 +81,34 @@ describe('compareNoteVersions', () => {
     ])
   })
 
+  it('compares whole Unicode words on browsers without Intl.Segmenter', () => {
+    const originalSegmenter = Object.getOwnPropertyDescriptor(Intl, 'Segmenter')
+    Object.defineProperty(Intl, 'Segmenter', { configurable: true, value: undefined })
+    try {
+      jest.isolateModules(() => {
+        const { compareNoteVersions: compareWithoutSegmenter } =
+          jest.requireActual<typeof import('@core/utils/compareNoteVersions')>('@core/utils/compareNoteVersions')
+        const comparison = compareWithoutSegmenter(
+          { ...emptyNote, title: 'План A\u0301_2: старый.' },
+          { ...emptyNote, title: 'План A\u0301_3: новый.' },
+        )
+
+        expect(comparison.title?.parts).toEqual([
+          { kind: 'unchanged', text: 'План ' },
+          { kind: 'removed', text: 'A\u0301_2' },
+          { kind: 'added', text: 'A\u0301_3' },
+          { kind: 'unchanged', text: ': ' },
+          { kind: 'removed', text: 'старый' },
+          { kind: 'added', text: 'новый' },
+          { kind: 'unchanged', text: '.' },
+        ])
+      })
+    } finally {
+      if (originalSegmenter) Object.defineProperty(Intl, 'Segmenter', originalSegmenter)
+      else Reflect.deleteProperty(Intl, 'Segmenter')
+    }
+  })
+
   it('treats empty legacy fields and empty editor fields as the same content', () => {
     const comparison = compareNoteVersions(emptyNote, { title: '', description: '', tags: [] })
 
