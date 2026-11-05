@@ -44,6 +44,7 @@ export type Database = {
       }
       note_versions: {
         Row: {
+          user_id: string
           note_id: string
           version: number
           title: string | null
@@ -52,6 +53,7 @@ export type Database = {
           created_at: string
         }
         Insert: {
+          user_id: string
           note_id: string
           version: number
           title?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           created_at?: string
         }
         Update: {
+          user_id?: string
           note_id?: string
           version?: number
           title?: string | null
@@ -67,15 +70,7 @@ export type Database = {
           tags?: string[] | null
           created_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: 'note_versions_note_id_fkey'
-            columns: ['note_id']
-            isOneToOne: false
-            referencedRelation: 'notes'
-            referencedColumns: ['id']
-          },
-        ]
+        Relationships: []
       }
       notes: {
         Row: {

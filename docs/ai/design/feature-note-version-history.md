@@ -15,9 +15,14 @@ flowchart LR
     History -->|"Owner reads versions"| Dialog["Version history dialog"]
     Dialog -->|"Restore with expected version"| Restore["restore_note_version"]
     Restore --> Notes
+    Notes -->|"Move to Trash"| Trash[(notes_trash)]
+    Trash -->|"Recover original note and history"| Notes
+    Trash -->|"Permanent purge removes snapshots"| History
 ```
 
-Snapshots start with the current state of existing notes. The PostgreSQL trigger records the new state in the same transaction as each changed server write. The restore RPC locks the note and verifies its latest version before updating it. Row-level security limits history reads to the note owner. Deleting a note deletes its snapshots.
+Snapshots start with the current state of existing active and archived notes. The PostgreSQL trigger records a changed server write in the same transaction. The restore RPC locks the active note and verifies its latest version before updating it. Row-level security limits history reads to the owner of the active note.
+
+Moving a note to Trash preserves its snapshots. Recovering it with the same content leaves the version number unchanged. Permanent purge and account deletion remove snapshots. The existing image inventory retains references from historical bodies until permanent purge, so restoring an older snapshot can still display its images.
 
 The local MVP lists individual server saves. The existing sync queue can combine offline edits before upload, and a later write from another device still follows the existing sync rules. Edit-session grouping and cross-device conflict handling are decisions for the full release.
 

@@ -8,7 +8,8 @@ description: Evidence for the local version history preview
 
 ## Database and API
 
-- [x] pgTAP covers initial snapshots, changed saves, identical saves, owner access, conflicts, missing versions, restores, and deletion. All 12 checks passed on the local preview database.
+- [x] All 21 pgTAP checks passed in disposable PostgreSQL with the Trash and version migrations applied. They cover snapshot creation, access, restore conflicts, Trash recovery without duplicate versions, and permanent purge of history and historical image references.
+- [x] The Trash PostgreSQL integration suite loads the version migration and verifies that recovery preserves versions and that an image referenced by another note's history survives cleanup. The 23 default cases passed.
 - [x] The authenticated REST API returned 200 for a valid restore, 409 for a stale restore, and 404 for a note owned by another account.
 
 ## Web
