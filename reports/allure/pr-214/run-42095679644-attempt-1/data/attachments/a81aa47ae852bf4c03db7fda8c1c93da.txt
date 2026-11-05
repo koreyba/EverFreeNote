@@ -1,0 +1,2 @@
+ERROR:  Invalid notebook search parameters
+CONTEXT:  PL/pgSQL function search_notebook_notes(text,text,vector,text[],text,timestamp with time zone,timestamp with time zone,timestamp with time zone,timestamp with time zone,text,integer,integer,double precision) line 20 at RAISE

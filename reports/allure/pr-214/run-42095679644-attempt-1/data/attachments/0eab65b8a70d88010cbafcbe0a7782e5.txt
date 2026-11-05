@@ -1,0 +1,1 @@
+SELECT count(*) FROM public.claim_trash_media_cleanup();SELECT count(*) FROM public.claim_trash_media_cleanup()
