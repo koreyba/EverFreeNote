@@ -1,0 +1,1 @@
+{"id":"e0cb9f7e315ede0c69d11549ef68154c","fullName":"everfreenote:cypress/component/features/notes/DeletePendingSave.cy.tsx#Deleting while an editor save is pending waits for an active save before queuing a bulk selection","name":"waits for an active save before queuing a bulk selection","status":"passed","testResultsByEnv":{"default":"9d1eb6afd3ebd5b227a1f391d421352b"}}
