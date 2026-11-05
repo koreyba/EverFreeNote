@@ -1,5 +1,6 @@
 import React from 'react'
 import InteractiveTag from '../../../ui/web/components/InteractiveTag'
+import '../../../app/globals.css'
 
 describe('InteractiveTag Component', () => {
   it('renders tag with correct text', () => {
@@ -47,14 +48,14 @@ describe('InteractiveTag Component', () => {
     cy.get('@onRemoveSpy').should('have.been.calledOnceWith', tagText)
   })
 
-  it('has correct styling classes', () => {
-    const tagText = 'style-test'
-    cy.mount(<InteractiveTag tag={tagText} />)
+  it('shows a pointer only when the tag has its own click action', () => {
+    cy.mount(<>
+      <InteractiveTag tag="Read-only tag" />
+      <InteractiveTag tag="Clickable tag" onClick={cy.stub()} />
+    </>)
 
-    // Проверяем что у тега есть правильные CSS классы
-    cy.get('[data-cy="interactive-tag"]').should('have.class', 'cursor-pointer')
-    cy.get('[data-cy="interactive-tag"]').should('have.class', 'transition-all')
-    cy.get('[data-cy="interactive-tag"]').should('have.class', 'hover:bg-accent')
+    cy.contains('[data-cy="interactive-tag"]', 'Read-only tag').should('not.have.css', 'cursor', 'pointer')
+    cy.contains('[data-cy="interactive-tag"]', 'Clickable tag').should('have.css', 'cursor', 'pointer')
   })
 
   it('handles long tag names gracefully', () => {

@@ -19,6 +19,10 @@ function AppUnderTest() {
 }
 
 describe('Durable offline notes in the shared Android UI', { retries: 0 }, () => {
+  afterEach(() => {
+    cy.window().then(win => Reflect.deleteProperty(win.navigator, 'onLine'))
+  })
+
   it('opens a newly saved offline draft in reading mode without losing its selection', () => {
     cy.viewport(390, 844)
     const client = createClient('https://offline-read.invalid', 'test-public-key', {
@@ -126,20 +130,30 @@ describe('Durable offline notes in the shared Android UI', { retries: 0 }, () =>
     cy.get('[data-cy="note-read-button"]').click()
     cy.get('[data-cy="queue-state"]').should('have.text', '0')
     const cleanup = cy.spy(webOfflineStorageAdapter, 'removeSyncedTombstones')
+    cy.window().then(win => {
+      online = false
+      Object.defineProperty(win.navigator, 'onLine', { configurable: true, value: false })
+      win.dispatchEvent(new win.Event('offline'))
+    })
+    cy.get('[data-testid="device-sync-status"]').should('contain.text', 'Offline')
     cy.get('[data-cy="note-delete-button"]').click()
-    // Make the queued-delete branch deterministic instead of racing a Read write.
-    cy.then(() => webOfflineStorageAdapter.upsertQueueItem({
-      id: 'overlapping-read-update', noteId: localId, operation: 'update',
-      payload: { user_id: user.id, title: 'Saved without internet', description: '<p>My offline text</p>', tags: [] },
-      clientUpdatedAt: new Date().toISOString(), status: 'pending',
-    }))
     cy.get('[role="alertdialog"]').contains('button', 'Delete').click()
     cy.get('[role="alertdialog"]').should('not.exist')
     // The dialog closes on click; the reading pane clears only after durable deletion.
     cy.contains('No Note Selected').should('be.visible')
     cy.get('[data-testid="note-card"]').should('not.exist')
+    cy.then(() => webOfflineStorageAdapter.getQueue()).should(queue => {
+      expect(queue).to.have.length(1)
+      expect(queue[0]).to.include({ noteId: localId, operation: 'delete' })
+      expect(queue[0].payload.description).to.contain('My offline text')
+    })
+    cy.window().then(win => {
+      online = true
+      Reflect.deleteProperty(win.navigator, 'onLine')
+      win.dispatchEvent(new win.Event('online'))
+    })
     // A queued deletion hides the card before its tombstone is acknowledged.
-    cy.wait('@trashSavedNote').then(({ request, response }) => {
+    cy.wait('@trashSavedNote', { requestTimeout: 20000 }).then(({ request, response }) => {
       expect(response?.statusCode).to.equal(200)
       expect(request.body.p_notes).to.have.length(1)
       const [archived] = request.body.p_notes
