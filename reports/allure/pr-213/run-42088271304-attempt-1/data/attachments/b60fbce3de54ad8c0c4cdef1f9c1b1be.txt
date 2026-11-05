@@ -1,0 +1,2 @@
+ERROR:  patch must contain only title, description and/or tags
+CONTEXT:  PL/pgSQL function mcp_update_note(uuid,timestamp with time zone,jsonb) line 6 at RAISE
