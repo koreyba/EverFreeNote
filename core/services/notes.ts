@@ -8,7 +8,8 @@ export type TrashEntry = Omit<Note, 'id'> & {
   deleted_at: string
   body_bytes: number
 }
-export type TrashSummary = Omit<TrashEntry, 'description'>
+export type TrashSummary = Omit<TrashEntry, 'description'> & { preview_html: string }
+export const TRASH_CARD_PREVIEW_LENGTH = 2048
 export type TrashActionResult = {
   trash_id: string
   id?: string
@@ -149,9 +150,9 @@ export class NoteService {
 
   async getTrash(userId: string, page = 0) {
     const { data, error, count } = await this.supabase
-      .from('notes_trash')
+      .from('notes_trash_list')
       .select(
-        'trash_id, original_note_id, user_id, title, tags, created_at, updated_at, deleted_at, body_bytes',
+        'trash_id, original_note_id, user_id, title, tags, created_at, updated_at, deleted_at, body_bytes, preview_html',
         { count: 'exact' },
       )
       .eq('user_id', userId)

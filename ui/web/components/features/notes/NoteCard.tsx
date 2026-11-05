@@ -128,7 +128,7 @@ function CompactNoteCard({
                 <InteractiveTag
                   key={tag}
                   tag={tag}
-                  onClick={onTagClick || (() => { })}
+                  onClick={onTagClick}
                   showIcon={false}
                   className={cn("truncate text-[11px] px-2 py-0.5 rounded-full", layout === "grid" ? "min-w-0 max-w-[42%]" : "max-w-full")}
                 />
@@ -234,7 +234,7 @@ function SearchNoteCard({
               <InteractiveTag
                 key={tag}
                 tag={tag}
-                onClick={onTagClick || (() => { })}
+                onClick={onTagClick}
                 showIcon={false}
                 className="text-[11px] px-2 py-0.5 rounded-full"
               />

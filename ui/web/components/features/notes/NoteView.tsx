@@ -31,10 +31,11 @@ type NoteRecord = Note & {
 
 interface NoteViewProps {
   note: NoteRecord
-  onEdit: () => void
-  onDelete: () => void
-  onTagClick: (tag: string) => void
-  onRemoveTag: (tag: string) => void
+  onEdit?: () => void
+  onDelete?: () => void
+  onTagClick?: (tag: string) => void
+  onRemoveTag?: (tag: string) => void
+  actions?: React.ReactNode
   onBack?: () => void
   wordpressConfigured?: boolean
   initialScrollTop?: number
@@ -53,6 +54,7 @@ export const NoteView = React.memo(function NoteView({
   onDelete,
   onTagClick,
   onRemoveTag,
+  actions,
   onBack,
   wordpressConfigured = false,
   initialScrollTop = 0,
@@ -163,7 +165,7 @@ export const NoteView = React.memo(function NoteView({
           </Button>
           {/* Icon-only below md, matching the editing header: the label row
               otherwise overflows the header on a phone. */}
-          <Button
+          {onEdit && <Button
             onClick={onEdit}
             variant="default"
             size="sm"
@@ -173,7 +175,7 @@ export const NoteView = React.memo(function NoteView({
           >
             <Edit2 className="w-3.5 h-3.5 md:mr-1.5" />
             <span className="hidden md:inline">Edit</span>
-          </Button>
+          </Button>}
           <Button
             variant="ghost"
             size="sm"
@@ -190,7 +192,7 @@ export const NoteView = React.memo(function NoteView({
             )}
             <span className="hidden md:inline">{copied ? "Copied" : "Copy"}</span>
           </Button>
-          <Button
+          {onDelete && <Button
             onClick={onDelete}
             variant="ghost"
             size="sm"
@@ -200,13 +202,13 @@ export const NoteView = React.memo(function NoteView({
           >
             <Trash2 className="w-3.5 h-3.5 md:mr-1.5" />
             <span className="hidden md:inline" aria-hidden="true">Delete</span>
-          </Button>
-          {/* More actions menu -- always visible, contains RAG index controls + optional WP export */}
-          <MoreActionsMenu
+          </Button>}
+          {onEdit && <MoreActionsMenu
             noteId={note.id}
             wordpressConfigured={wordpressConfigured}
             getExportNote={getExportNote}
-          />
+          />}
+          {actions}
         </div>
       </div>
 

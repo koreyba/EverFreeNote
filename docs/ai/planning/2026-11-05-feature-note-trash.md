@@ -21,7 +21,7 @@ User approved implementation on 2026-11-05. Local feature work is implemented. S
 - [x] **P2:** immutable cycle IDs, version-checked snapshots, restore/selected purge and content-free replay receipts; old-confirmation and replay-after-restore checks.
 - [x] **P3:** active/Trash image references, bounded legacy backfill, conservative unknown/shared handling, durable leased Storage worker and retry fencing.
 - [x] **P4:** full owner-scoped deletion payloads/compaction, base versions, never-synced content, safe duplicate-create verification; legacy data preserved without invented snapshots.
-- [x] **P5:** navigation, 50-row metadata list, lazy read-only preview, restore, selection, exact-count/Empty Trash confirmations, cache/session/request-order guards.
+- [x] **P5:** navigation, shared Notes sidebar/cards/reader, 50-row pages with bounded excerpts, lazy full body, restore, selection, exact-count/Empty Trash confirmations, cache/session/request-order guards.
 - [x] **P6:** sequential 100-note server batches; separate local-cleanup failures; active readers, public links, tags/AI queries/workspace invalidation audited.
 - [x] **P7 local:** optional hourly Cron/pg_net migration, Vault dispatch contract, startup/reconnect/foreground/Trash/hourly fallback, server gates and bounded work.
 - [x] **P8 local:** final migrations with real pgvector/HNSW, RLS/roles, 10,100 active notes, 600 expired entries, 256 KiB bodies, share/image cascades, concurrent active reads/edits and explicit vacuum.

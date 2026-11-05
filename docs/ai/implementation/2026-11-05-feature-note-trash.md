@@ -19,7 +19,8 @@ Separate worktree outside the main checkout; branch `codex/feature-note-trash`, 
 - `core/services/notes.ts`: validated Trash RPCs, metadata/keyset pagination and bounded batches.
 - `core/services/trashMediaCleanup.ts` and `supabase/functions/trash-cleanup`: verified user/dedicated-cron authentication and bounded Storage removal/acknowledgement.
 - Queue/save/bulk/sync hooks: durable full snapshots, base server versions, stable replay IDs and safe duplicate-create verification.
-- `TrashPage`, navigation/shell/controller/mutation hooks: read-only preview, restore, confirmation, Empty Trash, session/request-order guards and cache reconciliation.
+- `20261105193002_add_trash_card_previews.sql`: RLS-preserving list projection with bounded excerpts and no table rewrite.
+- `TrashPage` adapts the archived snapshot to the shared Notes sidebar, cards and reader. Trash entry IDs identify list selection and confirmed mutations. Navigation/shell/controller/mutation hooks retain restore, confirmation, Empty Trash, session/request-order guards and cache reconciliation.
 - `useTrashCleanup`: readiness/reconnect/foreground/Trash/hourly activity fallback. `trashCache`/auth hook: owner-only disposable cache clearing.
 
 ## Implementation Notes

@@ -52,12 +52,14 @@ interface NoteListProps {
   selectionMode?: boolean
   selectedIds?: Set<string>
   onToggleSelect?: (note: NoteRecord) => void
+  canSelectNote?: (note: NoteRecord) => boolean
   onSelectNote: (note: NoteRecord) => void
   onDeleteNote?: (note: NoteRecord) => void
-  onTagClick: (tag: string) => void
+  onTagClick?: (tag: string) => void
   onLoadMore: () => void
   hasMore: boolean
   isFetchingNextPage: boolean
+  emptyState?: ReactNode
 
   // FTS Search Props
   ftsQuery?: string
@@ -86,12 +88,13 @@ interface ItemData {
   selectionMode: boolean
   selectedIds: Set<string>
   onToggleSelect?: (note: NoteRecord) => void
+  canSelectNote?: (note: NoteRecord) => boolean
   onSelectNote: (note: NoteRecord) => void
   onDeleteNote?: (note: NoteRecord) => void
   isMobile: boolean
   openSwipeId: string | null
   setOpenSwipeId: (id: string | null) => void
-  onTagClick: (tag: string) => void
+  onTagClick?: (tag: string) => void
   hasMore: boolean
   isLoadingMore: boolean
   onLoadMore: () => void
@@ -107,7 +110,7 @@ interface SearchItemData {
   isMobile: boolean
   openSwipeId: string | null
   setOpenSwipeId: (id: string | null) => void
-  onTagClick: (tag: string) => void
+  onTagClick?: (tag: string) => void
   hasMore: boolean
   isLoadingMore: boolean
   onLoadMore: () => void
@@ -123,6 +126,7 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
     selectionMode,
     selectedIds,
     onToggleSelect,
+    canSelectNote,
     onSelectNote,
     onDeleteNote,
     isMobile,
@@ -157,7 +161,12 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
     )
   }
 
-  const renderNote = (note: NoteRecord) => (
+  const renderNote = (note: NoteRecord) => {
+    const toggle = onToggleSelect && (canSelectNote?.(note) ?? true)
+      ? () => onToggleSelect(note)
+      : undefined
+    const selecting = selectionMode && !!toggle
+    return (
       <SwipeableNoteRow
         title={note.title}
         enabled={isMobile && !selectionMode && !!onDeleteNote}
@@ -169,18 +178,15 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
           note={note}
           variant="compact"
           layout={layout}
-          isSelected={selectionMode ? selectedIds.has(note.id) : selectedNoteId === note.id}
-          selectionMode={selectionMode}
-          onToggleSelect={() => onToggleSelect?.(note)}
-          onClick={() =>
-            selectionMode
-              ? onToggleSelect?.(note)
-              : onSelectNote(note)
-          }
+          isSelected={selecting ? selectedIds.has(note.id) : selectedNoteId === note.id}
+          selectionMode={selecting}
+          onToggleSelect={toggle}
+          onClick={selecting ? toggle : () => onSelectNote(note)}
           onTagClick={onTagClick}
         />
       </SwipeableNoteRow>
-  )
+    )
+  }
 
   if (layout === "grid") {
     return (
@@ -303,12 +309,14 @@ export const NoteList = memo(function NoteList({
   selectionMode = false,
   selectedIds = new Set(),
   onToggleSelect,
+  canSelectNote,
   onSelectNote,
   onDeleteNote,
   onTagClick,
   onLoadMore,
   hasMore,
   isFetchingNextPage,
+  emptyState,
   ftsQuery = "",
   ftsLoading = false,
   showFTSResults = false,
@@ -353,6 +361,7 @@ export const NoteList = memo(function NoteList({
     selectionMode,
     selectedIds,
     onToggleSelect,
+    canSelectNote,
     onSelectNote,
     onDeleteNote,
     isMobile,
@@ -369,6 +378,7 @@ export const NoteList = memo(function NoteList({
     selectionMode,
     selectedIds,
     onToggleSelect,
+    canSelectNote,
     onSelectNote,
     onDeleteNote,
     isMobile,
@@ -490,8 +500,12 @@ export const NoteList = memo(function NoteList({
   if (notes.length === 0) {
     return (
       <div className="p-8 text-center text-muted-foreground">
-        <p>No notes yet</p>
-        <p className="text-sm mt-2">Create your first note to get started!</p>
+        {emptyState ?? (
+          <>
+            <p>No notes yet</p>
+            <p className="text-sm mt-2">Create your first note to get started!</p>
+          </>
+        )}
       </div>
     )
   }

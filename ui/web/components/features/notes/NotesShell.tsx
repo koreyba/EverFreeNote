@@ -557,7 +557,17 @@ export function NotesShell({ controller }: NotesShellProps) {
       />
 
       {activeMainView === "trash" ? (
-        <TrashPage key={user?.id} isOffline={isOffline} loadPending={controller.loadPendingTrash} onChanged={refreshAfterTrash} refreshToken={trashRevision} />
+        <TrashPage
+          key={user?.id}
+          isOffline={isOffline}
+          loadPending={controller.loadPendingTrash}
+          onChanged={refreshAfterTrash}
+          refreshToken={trashRevision}
+          noteListLayout={noteListLayout}
+          onChangeNoteListLayout={handleChangeNoteListLayout}
+          onOpenSettings={() => void handleOpenSettings()}
+          onSignOut={handleSignOut}
+        />
       ) : activeMainView === "tags" ? (
         <main className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
           <DeviceSyncStatus isOffline={isOffline} pendingCount={pendingCount} failedCount={failedCount} syncStateReady={syncStateReady} storageReadError={storageReadError} legacyUnverifiedCount={legacyUnverifiedCount} unqueuedLocalCount={unqueuedLocalCount} unavailableRemoteEdits={unavailableRemoteEdits} legacyClaimBlocked={legacyClaimBlocked} localCleanupCount={localCleanupCount} onRetryLocalDeletion={() => void retryLocalDeletion?.()} restoredNoteCheck={restoredNoteCheck} onRetryRestoredNoteCheck={retryRestoredNoteCheck} onRetryLocalVerification={() => void retryLocalVerification?.()} />

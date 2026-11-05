@@ -1,9 +1,27 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ComponentType, ReactNode } from 'react'
 import { TrashPage } from '@ui/web/components/features/notes/TrashPage'
 import { SupabaseTestProvider } from '@ui/web/providers/SupabaseProvider'
 import { NoteService } from '@core/services/notes'
 
 jest.mock('@core/services/notes')
+// JSDOM has no viewport measurements. Keep the real cards and render their
+// virtual rows eagerly; browser tests exercise the actual scrolling layout.
+jest.mock('react-virtualized-auto-sizer', () => ({
+  __esModule: true,
+  default: ({ children }: { children: (size: { height: number; width: number }) => ReactNode }) =>
+    children({ height: 500, width: 320 }),
+}))
+jest.mock('react-window', () => ({
+  List: ({ rowCount, rowComponent: Row, rowProps }: {
+    rowCount: number
+    rowComponent: ComponentType<Record<string, unknown>>
+    rowProps: Record<string, unknown>
+  }) => Array.from({ length: rowCount }, (_, index) => (
+    <Row key={index} index={index} style={{}} ariaAttributes={{ role: 'listitem' }} {...rowProps} />
+  )),
+  useDynamicRowHeight: () => 140,
+}))
 const entry = {
   trash_id: 'entry',
   original_note_id: 'note',
@@ -14,6 +32,7 @@ const entry = {
   created_at: '2026-01-01',
   updated_at: '2026-01-01',
   body_bytes: 20,
+  preview_html: '<p>Card excerpt</p>',
 }
 const list = jest.fn(),
   preview = jest.fn(),
@@ -62,16 +81,19 @@ beforeEach(() => {
 describe('Trash page', () => {
   it('loads a read-only preview only when the user opens a note', async () => {
     show()
+    expect(await screen.findByText('Card excerpt')).toBeTruthy()
+    expect(preview).not.toHaveBeenCalled()
     fireEvent.click(await screen.findByRole('button', { name: 'Deleted note' }))
     expect(await screen.findByText('Saved body')).toBeTruthy()
     expect(preview).toHaveBeenCalledWith('entry', 'owner')
-    expect(screen.queryByRole('button', { name: 'Edit note' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
   })
 
   it('restores an explicit entry and refreshes active data', async () => {
     const { changed } = show()
+    fireEvent.click(await screen.findByRole('button', { name: 'Deleted note' }))
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Restore Deleted note' }),
+      await screen.findByRole('button', { name: 'Restore note' }),
     )
     await waitFor(() => expect(restore).toHaveBeenCalledWith(['entry']))
     await waitFor(() => expect(changed).toHaveBeenCalled())
@@ -79,16 +101,17 @@ describe('Trash page', () => {
 
   it('requires confirmation before permanently deleting a single note', async () => {
     show()
+    fireEvent.click(await screen.findByRole('button', { name: 'Deleted note' }))
     fireEvent.click(
       await screen.findByRole('button', {
-        name: 'Delete Deleted note forever',
+        name: 'Delete note forever',
       }),
     )
     expect(purge).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(purge).not.toHaveBeenCalled()
     fireEvent.click(
-      screen.getByRole('button', { name: 'Delete Deleted note forever' }),
+      screen.getByRole('button', { name: 'Delete note forever' }),
     )
     fireEvent.click(screen.getByRole('button', { name: 'Delete forever' }))
     await waitFor(() => expect(purge).toHaveBeenCalledWith(['entry']))
@@ -123,11 +146,11 @@ describe('Trash page', () => {
         clientUpdatedAt: '2026-11-01',
       },
     ])
-    expect(await screen.findByText('Offline draft')).toBeTruthy()
-    expect(
-      (screen.getByRole('button', { name: 'Empty Trash' }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true)
+    fireEvent.click(await screen.findByRole('button', { name: 'Offline draft' }))
+    expect(await screen.findByText(/Pending sync/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Restore note' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete note forever' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Empty Trash' })).toBeNull()
     expect(list).not.toHaveBeenCalled()
   })
 
@@ -248,9 +271,9 @@ describe('Trash page', () => {
     await screen.findByText(/1 notes could not be deleted/)
     expect(
       screen
-        .getByRole('checkbox', { name: 'Select Deleted note' })
+        .getByRole('checkbox', { name: 'Select note "Deleted note"' })
         .getAttribute('aria-checked'),
     ).toBe('true')
-    expect(screen.getByText('1 selected')).toBeTruthy()
+    expect(screen.getByLabelText('1 selected')).toBeTruthy()
   })
 })

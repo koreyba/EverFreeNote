@@ -6,10 +6,13 @@ interface SelectionModeActionsProps {
   selectedCount: number
   onSelectAll: () => void
   onDelete: () => void
+  onRestore?: () => void
+  deleteLabel?: string
   onCancel: () => void
   selectingAllDisabled?: boolean
   deletingDisabled?: boolean
   deleting?: boolean
+  busy?: boolean
   className?: string
 }
 
@@ -17,10 +20,13 @@ export function SelectionModeActions({
   selectedCount,
   onSelectAll,
   onDelete,
+  onRestore,
+  deleteLabel,
   onCancel,
   selectingAllDisabled = false,
   deletingDisabled = false,
   deleting = false,
+  busy = false,
   className,
 }: SelectionModeActionsProps) {
   return (
@@ -38,24 +44,35 @@ export function SelectionModeActions({
       >
         {selectedCount}
       </div>
-      <div data-testid="selection-mode-buttons" className="flex items-center gap-1 min-w-0">
+      <div data-testid="selection-mode-buttons" className={cn("flex items-center gap-1 min-w-0", onRestore && "flex-wrap justify-end")}>
         <Button
           data-testid="selection-mode-select-all"
           variant="ghost"
           size="sm"
           className="rounded-full h-11 px-2.5 text-xs md:h-7 md:text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
           onClick={onSelectAll}
-          disabled={selectingAllDisabled}
+          disabled={selectingAllDisabled || busy}
         >
           Select all
         </Button>
+        {onRestore && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full h-11 px-2.5 text-xs md:h-7 md:text-[11px]"
+            onClick={onRestore}
+            disabled={busy || deleting || deletingDisabled}
+          >
+            Restore
+          </Button>
+        )}
         <Button
           data-testid="selection-mode-delete"
           variant="outline"
           size="sm"
           className="rounded-full h-11 px-3 text-xs md:h-7 md:text-[11px] font-medium text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm transition-all"
           onClick={onDelete}
-          disabled={deleting || deletingDisabled}
+          disabled={busy || deleting || deletingDisabled}
         >
           {deleting ? (
             <span className="inline-flex items-center gap-1">
@@ -63,7 +80,7 @@ export function SelectionModeActions({
               <span>Deleting</span>
             </span>
           ) : (
-            `Delete (${selectedCount})`
+            deleteLabel ?? `Delete (${selectedCount})`
           )}
         </Button>
         <Button
@@ -72,7 +89,7 @@ export function SelectionModeActions({
           size="sm"
           className="rounded-full h-11 px-2.5 text-xs md:h-7 md:text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
           onClick={onCancel}
-          disabled={deleting}
+          disabled={busy || deleting}
         >
           Cancel
         </Button>

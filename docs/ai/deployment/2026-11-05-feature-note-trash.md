@@ -28,12 +28,12 @@ The Edge worker uses managed `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` plus a d
 2. Deploy `trash-cleanup` using the existing Supabase CLI workflow. Set its dedicated secret through managed secrets; create the two Vault entries through the environment's administrative secret workflow. No secret belongs in the repository, browser bundle or literal cron command.
 3. Apply `20261105193001_schedule_note_trash.sql` after local/Stage safety checks. It enables available extensions and calls `configure_note_trash_cron()`. A false result means Cron is unavailable; the activity fallback still works. Re-run the privileged helper after enabling extensions if necessary.
 4. Inspect jobs `purge-note-trash` (`17 * * * *`) and `cleanup-note-trash-media` (`27 * * * *`). Confirm successful `cron.job_run_details`, then inspect worker results/outbox progress. Missing Vault/pg_net configuration makes dispatch return NULL; it is not successful file cleanup.
-5. Deploy the web bundle and rebuilt Android shell. Verify single/bulk Delete → Trash → preview/restore, selected/empty permanent deletion, offline reload/reconnect and expired-note catch-up.
+5. Apply `20261105193002_add_trash_card_previews.sql`, then reload the PostgREST schema and verify owner-only reads. Deploy the web bundle and rebuilt Android shell. Verify single/bulk Delete → Trash → open/restore, selected/empty permanent deletion, offline reload/reconnect and expired-note catch-up.
 6. Run controlled Stage expiry with synthetic server timestamps; prove no early deletion, bounded progress and shared-image protection through the actual Storage API. Measure HTTP/Storage/cloud load. Repeat the validated rollout in Production and record runtime evidence separately from merge/CI.
 
 ## Database Migrations
 
-Both migrations are additive. Trash retention starts at server acceptance; earlier deleted notes cannot be recovered. A full `db push` applies both migrations in order, so perform safety validation before that command and verify schedule state afterwards. First rollout has no aged Trash rows by default; never backdate real retention to simulate a test.
+The migrations are additive. Trash retention starts at server acceptance; earlier deleted notes cannot be recovered. A full `db push` applies the migrations in order, so perform safety validation before that command and verify schedule state afterwards. First rollout has no aged Trash rows by default; never backdate real retention to simulate a test.
 
 The media inventory backfills at most 100 legacy notes per worker claim before file GC is enabled. Large existing datasets can delay physical removal for several scheduled runs. Unknown paths conservatively block file GC and need operator investigation; they do not block database note expiry.
 

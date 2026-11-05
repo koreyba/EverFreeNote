@@ -38,10 +38,11 @@ export default function InteractiveTag({
       variant="secondary"
       data-cy="interactive-tag"
       className={cn(
-        "cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground group relative",
+        "group relative",
+        onClick && "cursor-pointer transition-all duration-200 hover:bg-accent hover:text-accent-foreground",
         className
       )}
-      onClick={handleTagClick}
+      onClick={onClick ? handleTagClick : undefined}
     >
       {showIcon && <Tag className="w-3 h-3 mr-1" />}
       {tag}

@@ -138,6 +138,7 @@ localPostgres('Trash lifecycle in PostgreSQL', () => {
     for (const file of [
       '20261105193000_add_note_trash.sql',
       '20261105193001_schedule_note_trash.sql',
+      '20261105193002_add_trash_card_previews.sql',
     ]) {
       const migration = resolve('supabase/migrations', file)
       if (existsSync(migration)) execute(readFileSync(migration, 'utf8'))
@@ -155,6 +156,17 @@ localPostgres('Trash lifecycle in PostgreSQL', () => {
       TRUNCATE storage.objects,note_trash_private.trash_media_cleanup;
       UPDATE note_trash_private.trash_media_inventory SET last_id=NULL,complete=true;
       INSERT INTO auth.users VALUES('${owner}'),('${other}')`)
+  })
+
+  it('exposes a bounded card excerpt and tags to the owner only', async () => {
+    await seed('<p>' + 'text '.repeat(500) + '</p>')
+    await sql(`DELETE FROM public.notes WHERE id='${noteId}'`, owner)
+    expect(await sql(
+      "SELECT length(preview_html), starts_with(preview_html, '<p>text '), tags FROM public.notes_trash_list",
+      owner,
+    )).toBe('2048|t|{work}')
+    expect(await sql('SELECT count(*) FROM public.notes_trash_list', other)).toBe('0')
+    expect(await sql("SELECT has_table_privilege('anon', 'public.notes_trash_list', 'SELECT')")).toBe('f')
   })
 
   it('archives a legacy authenticated DELETE with exact content and timestamps', async () => {

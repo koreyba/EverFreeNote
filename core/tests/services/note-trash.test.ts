@@ -71,23 +71,24 @@ describe('Trash service and durable deletion content', () => {
     )
   })
 
-  it('reads paginated owner-only summaries without downloading note bodies', async () => {
+  it('reads a page of owned card excerpts without downloading note bodies', async () => {
     const chain = query({
-      data: [{ trash_id: 'entry', title: 'Deleted' }],
+      data: [{ trash_id: 'entry', title: 'Deleted', preview_html: '<p>Excerpt</p>' }],
       count: 1,
       error: null,
     })
-    const service = new NoteService({
-      from: jest.fn().mockReturnValue(chain),
-    } as never)
+    const from = jest.fn().mockReturnValue(chain)
+    const service = new NoteService({ from } as never)
     expect(await service.getTrash('owner')).toMatchObject({
-      notes: [{ trash_id: 'entry' }],
+      notes: [{ trash_id: 'entry', preview_html: '<p>Excerpt</p>' }],
       totalCount: 1,
     })
+    expect(from).toHaveBeenCalledWith('notes_trash_list')
     expect(chain.eq).toHaveBeenCalledWith('user_id', 'owner')
     expect(
       chain.select.mock.calls[0][0].split(',').map((x: string) => x.trim()),
     ).not.toContain('description')
+    expect(chain.select.mock.calls[0][0]).toContain('preview_html')
     expect(chain.range).toHaveBeenCalledWith(0, 49)
   })
 

@@ -35,7 +35,8 @@ Single and bulk deletion currently remove server notes immediately. Users need a
 ## Success Criteria
 
 - Single and bulk normal deletion retain their current confirmation strength, with copy explaining the 30-day recovery window.
-- Trash has a paginated list, read-only preview, Restore, selection, Select all / Unselect all, Delete forever and Empty Trash.
+- Trash reuses the Notes sidebar, list/grid cards (including excerpts and tags), and reader. It fits desktop and tablet layouts and opens the reader full width on phones.
+- Trash supports Restore, Select all, Cancel selection, Delete forever and Empty Trash. Restore makes the note editable again.
 - Select all follows the existing visible/loaded-set behavior; Empty Trash explicitly gathers all entry IDs across pages before showing the confirmation count.
 - Destructive actions freeze entry IDs before confirmation, prevent duplicate submission and report actual per-entry outcomes. A failed action retains failed selections.
 - Restoration returns the original content and tags. Old public links remain revoked; AI indexing can be regenerated through the existing indexing flow.

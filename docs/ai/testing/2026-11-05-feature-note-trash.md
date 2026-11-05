@@ -106,3 +106,9 @@ Remaining release checks: actual Cron/extensions/Vault, Storage API partial/fail
 - Stage preview, both migrations and worker are live. Real Stage SQL smoke checks passed for move/restore/owner isolation/permanent delete/expiry with all synthetic data rolled back. Both hourly jobs are active; manual Vault → pg_net → Edge dispatch returned HTTP 200. This verifies dispatch and the worker response, not removal of an actual uploaded file or a naturally elapsed hourly trigger.
 - After aligning six component fixtures with the Trash RPC and confirmation copy, the focused Electron regression run passed all 73 tests (Allure: `allure-agent-8OBSen`).
 - Stage browser acceptance and production deployment remain pending.
+
+### Shared Notes UI checkpoint
+
+- 143 Electron component tests passed across Trash and the shared Notes components (`allure-agent-2YYAyI`). The Trash scenarios cover 1,280px desktop, 768px portrait tablet with expanded navigation, 320px phone, and 844×390 landscape. They verify the cards and tags, list/grid switch, lazy reader, scroll pagination, restoration, single/bulk confirmation, and frozen Empty Trash IDs. Desktop, tablet, and phone screenshots were inspected.
+- 72 focused Jest tests passed, including real PostgreSQL owner isolation and the 2,048-character projection bound; the opt-in vector workload was skipped in this run (`allure-agent-OHJ08F`). Type-check and ESLint passed.
+- A rolled-back Stage check returned the bounded excerpt and tags for the synthetic owner, no row for another account, and no anonymous SELECT privilege.

@@ -1,17 +1,19 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowCounterClockwise, Trash } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 import {
   NoteService,
+  TRASH_CARD_PREVIEW_LENGTH,
   type TrashEntry,
   type TrashSummary,
 } from '@core/services/notes'
+import type { Note } from '@core/types/domain'
 import type { MutationQueueItem } from '@core/types/offline'
 import { compactQueue } from '@core/utils/compactQueue'
-import { SanitizationService } from '@core/services/sanitizer'
 import { useSupabase } from '@ui/web/providers/SupabaseProvider'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -23,15 +25,24 @@ import {
   AlertDialogAction,
 } from '@/components/ui/alert-dialog'
 import { BulkDeleteDialog } from './BulkDeleteDialog'
-import { RenderedNoteContent } from '@/components/RenderedNoteContent'
-import { NOTE_CONTENT_CLASS } from '@core/constants/typography'
+import { NoteList, type NoteListLayout } from './NoteList'
+import { NoteView } from './NoteView'
+import { NoteListSidebar } from './Sidebar'
+import { SelectionModeActions } from './SelectionModeActions'
+import { PullToRefresh } from '@/components/PullToRefresh'
+import { APP_BACK_PRIORITY, useAppBackHandler } from '@ui/web/lib/appBack'
 import { clearTrashCache, trashCacheKey } from '@ui/web/lib/trashCache'
+import { cn } from '@ui/web/lib/utils'
 
 export type TrashPageProps = {
   isOffline: boolean
   loadPending: () => Promise<MutationQueueItem[]>
   onChanged: () => void | Promise<void>
   refreshToken?: number
+  noteListLayout?: NoteListLayout
+  onChangeNoteListLayout?: (layout: NoteListLayout) => void
+  onOpenSettings?: () => void
+  onSignOut?: () => void
 }
 type PendingEntry = TrashSummary & { localBody: string; pending: true }
 type CachedTrash = {
@@ -79,11 +90,28 @@ const message = (error: unknown) =>
     ? String(error.message)
     : 'Could not complete the Trash action. Please retry.'
 
+// The same note can return to Trash. Selection always refers to this deletion.
+function asNote(entry: Omit<TrashEntry, 'description'>, description: string): Note {
+  return {
+    id: entry.trash_id,
+    user_id: entry.user_id,
+    title: entry.title || 'Untitled',
+    tags: entry.tags,
+    created_at: entry.created_at,
+    updated_at: entry.updated_at,
+    description,
+  }
+}
+
 export function TrashPage({
   isOffline,
   loadPending,
   onChanged,
   refreshToken = 0,
+  noteListLayout = 'list',
+  onChangeNoteListLayout,
+  onOpenSettings,
+  onSignOut,
 }: TrashPageProps) {
   const { supabase, user, getSessionSnapshot } = useSupabase()
   const owner = user?.id ?? ''
@@ -91,6 +119,7 @@ export function TrashPage({
   const [initialCache] = useState(() => readCache(owner))
   const cache = useRef(initialCache)
   const refreshSequence = useRef(0)
+  const refreshing = useRef(false)
   const previewSequence = useRef(0)
   const [rows, setRows] = useState<TrashSummary[]>(cache.current.notes)
   const [total, setTotal] = useState(cache.current.totalCount)
@@ -107,7 +136,6 @@ export function TrashPage({
     (TrashEntry & { pending?: boolean }) | null
   >(null)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<{
     kind: 'single' | 'bulk'
     ids: string[]
@@ -135,12 +163,14 @@ export function TrashPage({
 
   const refresh = useCallback(
     async (nextPage = 0) => {
-      if (!owner) return
+      if (!owner || (nextPage > 0 && (refreshing.current || working.current))) return
       const started = getSessionSnapshot?.()
       const sequence = ++refreshSequence.current
       const isLatest = () =>
         currentSession(started) && sequence === refreshSequence.current
+      refreshing.current = true
       setLoading(true)
+      setError(null)
       try {
         const queued = await loadPending()
         if (!isLatest()) return
@@ -164,6 +194,7 @@ export function TrashPage({
               updated_at: item.clientUpdatedAt,
               deleted_at: item.clientUpdatedAt,
               body_bytes: 0,
+              preview_html: item.payload.description!.slice(0, TRASH_CARD_PREVIEW_LENGTH),
               localBody: item.payload.description!,
               pending: true,
             })),
@@ -174,11 +205,9 @@ export function TrashPage({
         const notes =
           nextPage === 0
             ? result.notes
-            : [...cache.current.notes, ...result.notes].filter(
-                (row, index, all) =>
-                  all.findIndex((other) => other.trash_id === row.trash_id) ===
-                  index,
-              )
+            : [...new Map(
+                [...cache.current.notes, ...result.notes].map((row) => [row.trash_id, row]),
+              ).values()]
         setRows(notes)
         setTotal(result.totalCount)
         setHasMore(result.hasMore)
@@ -202,9 +231,15 @@ export function TrashPage({
         )
         saveCache(owner, cache.current)
       } catch (error) {
-        if (isLatest()) setError(message(error))
+        if (isLatest()) {
+          if (nextPage > 0) setHasMore(false)
+          setError(message(error))
+        }
       } finally {
-        if (isLatest()) setLoading(false)
+        if (isLatest()) {
+          refreshing.current = false
+          setLoading(false)
+        }
       }
     },
     [
@@ -223,6 +258,7 @@ export function TrashPage({
   const openPreview = async (row: TrashSummary | PendingEntry) => {
     const started = getSessionSnapshot?.()
     const sequence = ++previewSequence.current
+    setError(null)
     try {
       const body =
         'pending' in row
@@ -263,7 +299,6 @@ export function TrashPage({
     working.current = true
     setBusy(true)
     setError(null)
-    setNotice(null)
     const started = getSessionSnapshot?.()
     const failed: string[] = []
     const completed = new Set<string>()
@@ -324,7 +359,7 @@ export function TrashPage({
         )
       } else {
         setSelectionMode(false)
-        setNotice(
+        toast.success(
           action === 'restore'
             ? 'Notes restored.'
             : 'Notes permanently deleted.',
@@ -346,10 +381,7 @@ export function TrashPage({
       const ids = await service.getAllTrashIds(owner)
       if (currentSession(started)) {
         if (ids.length) setConfirmation({ kind: 'bulk', ids: [...ids] })
-        else {
-          setNotice('Trash is empty.')
-          await refresh()
-        }
+        else await refresh()
       }
     } catch (error) {
       if (currentSession(started)) setError(message(error))
@@ -358,199 +390,168 @@ export function TrashPage({
       if (currentSession(started)) setBusy(false)
     }
   }
-  const html = useMemo(
-    () => SanitizationService.sanitizeForReading(preview?.description ?? ''),
-    [preview?.description],
+  const closePreview = useCallback(() => {
+    previewSequence.current++
+    setPreview(null)
+  }, [])
+  const exitSelection = useCallback(() => {
+    setSelectionMode(false)
+    setSelected(new Set())
+  }, [])
+  useAppBackHandler(APP_BACK_PRIORITY.editor, () => {
+    if (working.current) return true
+    if (preview) closePreview()
+    else if (selectionMode) exitSelection()
+    else return false
+    return true
+  })
+
+  const entries = useMemo(
+    () => new Map([...pending, ...rows].map((entry) => [entry.trash_id, entry])),
+    [pending, rows],
+  )
+  const notes = useMemo(
+    () => Array.from(entries.values(), (entry) => asNote(entry, entry.preview_html ?? '')),
+    [entries],
+  )
+  const canSelectNote = useCallback((note: Note) => !isOffline && !note.id.startsWith('local:'), [isOffline])
+  const toggleNoteSelection = (note: Note) => {
+    if (working.current) return
+    setSelectionMode(true)
+    setSelected((previous) => {
+      const next = new Set(previous)
+      if (next.has(note.id)) next.delete(note.id)
+      else next.add(note.id)
+      return next
+    })
+  }
+  const loadMore = useCallback(() => {
+    if (!isOffline && hasMore) void refresh(page + 1)
+  }, [hasMore, isOffline, page, refresh])
+  const errorMessage = error && (
+    <div role="alert" className="border-b px-4 py-2 text-xs text-destructive">
+      {error}
+      {!isOffline && (
+        <Button variant="link" size="sm" onClick={() => void refresh()} className="h-8 px-2">
+          Refresh
+        </Button>
+      )}
+    </div>
+  )
+  const offlineMessage = isOffline && (
+    <p role="status" className="border-b px-4 py-2 text-xs text-muted-foreground">
+      Offline. Connect to restore or permanently delete notes.
+    </p>
   )
 
   return (
-    <main
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-16 md:pb-0"
-      aria-label="Trash"
-    >
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
-        <div>
-          <h1 className="text-xl font-semibold">Trash</h1>
-          <p className="text-sm text-muted-foreground">
-            Notes are kept for 30 days, then automatically deleted.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            disabled={busy || isOffline || !rows.length}
-            onClick={() => {
-              setSelectionMode(!selectionMode)
-              setSelected(new Set())
-            }}
-          >
-            {selectionMode ? 'Cancel selection' : 'Select Notes'}
-          </Button>
-          <Button
-            variant="destructive"
-            disabled={busy || isOffline || !total || loading}
-            onClick={() => void prepareEmptyTrash()}
-          >
-            Empty Trash
-          </Button>
-        </div>
-      </header>
-      {isOffline && (
-        <p role="status" className="px-4 py-2 text-sm">
-          Offline. Connect to restore or permanently delete notes. Showing
-          cached and pending notes.
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="px-4 py-2 text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="px-4 py-2 text-sm">
-          {notice}
-        </p>
-      )}
-      {selectionMode && (
-        <div className="flex flex-wrap items-center gap-2 border-b p-3">
-          <span className="text-sm">{selected.size} selected</span>
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() =>
-              setSelected(new Set(rows.map((row) => row.trash_id)))
-            }
-          >
-            Select all
-          </Button>
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => setSelected(new Set())}
-          >
-            Unselect all
-          </Button>
-          <Button
-            variant="outline"
-            disabled={busy || isOffline || !selected.size}
-            onClick={() => void actOnEntries('restore', [...selected])}
-          >
-            Restore selected
-          </Button>
-          <Button
-            variant="destructive"
-            disabled={busy || isOffline || !selected.size}
-            onClick={() =>
-              setConfirmation({ kind: 'bulk', ids: [...selected] })
-            }
-          >
-            Delete selected forever
-          </Button>
-        </div>
-      )}
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <section
-          className={`min-h-0 flex-1 overflow-auto p-4 ${preview ? 'hidden md:block' : ''}`}
-          aria-label="Deleted notes"
-        >
-          {loading && <p role="status">Loading Trash…</p>}
-          {!loading && !rows.length && !pending.length && (
-            <p className="text-muted-foreground">Trash is empty.</p>
-          )}
-          {[...pending, ...rows].map((row) => (
-            <article
-              key={row.trash_id}
-              className="mb-2 flex flex-wrap items-center gap-3 rounded-lg border p-3"
-            >
-              {selectionMode && !('pending' in row) && (
-                <Checkbox
-                  aria-label={`Select ${row.title || 'Untitled'}`}
-                  checked={selected.has(row.trash_id)}
-                  disabled={busy || isOffline}
-                  onCheckedChange={(checked) =>
-                    setSelected((previous) => {
-                      const next = new Set(previous)
-                      if (checked) next.add(row.trash_id)
-                      else next.delete(row.trash_id)
-                      return next
-                    })
-                  }
-                />
-              )}
-              <div className="min-w-0 flex-1">
-                <button
-                  className="max-w-full truncate text-left font-medium hover:underline"
-                  onClick={() => void openPreview(row)}
-                >
-                  {row.title || 'Untitled'}
-                </button>
-                <p className="text-xs text-muted-foreground">
-                  {'pending' in row
-                    ? 'Pending sync — retained on this device'
-                    : `Deleted ${new Date(row.deleted_at).toLocaleDateString()} · eligible for deletion ${new Date(Date.parse(row.deleted_at) + 720 * 3600000).toLocaleDateString()}`}
-                </p>
+    <main className="flex min-h-0 min-w-0 flex-1 overflow-hidden" aria-label="Trash">
+      <NoteListSidebar
+        user={user}
+        isOffline={isOffline}
+        notesDisplayed={notes.length}
+        notesTotal={total + pending.length}
+        noteListLayout={noteListLayout}
+        onChangeNoteListLayout={onChangeNoteListLayout}
+        onOpenSettings={onOpenSettings}
+        onSignOut={onSignOut}
+        className={cn("min-w-0", preview ? "hidden md:flex" : "w-full")}
+        aria-label="Trash notes"
+        data-testid="trash-sidebar"
+        primaryControls={
+          <div className="flex w-full min-w-0 items-center justify-between gap-1">
+            <h1 className="text-xl font-bold tracking-tight">Trash</h1>
+            {!isOffline && !selectionMode && total > 0 && (
+              <div className="flex shrink-0 items-center gap-0.5">
+                {rows.length > 0 && (
+                  <Button type="button" variant="ghost" size="sm" className="h-11 rounded-full px-2.5 md:h-8"
+                    disabled={busy} onClick={() => setSelectionMode(true)}>
+                    Select
+                  </Button>
+                )}
+                <Button type="button" variant="ghost" size="sm" className="h-11 rounded-full px-2.5 text-destructive hover:text-destructive md:h-8"
+                  disabled={busy || loading} onClick={() => void prepareEmptyTrash()}>
+                  Empty Trash
+                </Button>
               </div>
-              {!('pending' in row) && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    aria-label={`Restore ${row.title || 'Untitled'}`}
-                    disabled={busy || isOffline}
-                    onClick={() => void actOnEntries('restore', [row.trash_id])}
-                  >
-                    Restore
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Delete ${row.title || 'Untitled'} forever`}
-                    disabled={busy || isOffline}
-                    onClick={() =>
-                      setConfirmation({
-                        kind: 'single',
-                        ids: [row.trash_id],
-                        title: row.title,
-                      })
-                    }
-                  >
-                    Delete forever
-                  </Button>
-                </div>
-              )}
-            </article>
-          ))}
-          {hasMore && !isOffline && (
-            <Button
-              variant="outline"
-              disabled={busy || loading}
-              onClick={() => void refresh(page + 1)}
-            >
-              Load more
-            </Button>
-          )}
-        </section>
-        {preview && (
-          <section
-            aria-label="Trash note preview"
-            className="min-h-0 flex-1 overflow-auto border-l p-4"
-          >
-            <Button
-              variant="ghost"
-              onClick={() => {
-                previewSequence.current++
-                setPreview(null)
-              }}
-            >
-              Back to Trash
-            </Button>
-            <h2 className="my-4 text-xl font-semibold">
-              {preview.title || 'Untitled'}
-            </h2>
-            <RenderedNoteContent html={html} className={NOTE_CONTENT_CLASS} />
-          </section>
+            )}
+          </div>
+        }
+        controlsHint={<p className="text-xs text-muted-foreground">Notes are deleted after 30 days.</p>}
+        selectionControls={selectionMode && (
+          <SelectionModeActions
+            className="notes-sidebar-selection"
+            selectedCount={selected.size}
+            onSelectAll={() => setSelected((previous) => new Set([...previous, ...rows.map((row) => row.trash_id)]))}
+            onRestore={() => void actOnEntries('restore', [...selected])}
+            onDelete={() => setConfirmation({ kind: 'bulk', ids: [...selected] })}
+            onCancel={exitSelection}
+            deleteLabel="Delete forever"
+            selectingAllDisabled={isOffline || rows.every((row) => selected.has(row.trash_id))}
+            deletingDisabled={isOffline || selected.size === 0}
+            deleting={busy && confirmation?.kind === 'bulk'}
+            busy={busy}
+          />
         )}
-      </div>
+      >
+        <div className="flex h-full min-h-0 flex-col">
+          {!preview && errorMessage}
+          {!preview && offlineMessage}
+          <div className="min-h-0 flex-1">
+            <PullToRefresh onRefresh={() => refresh()}>
+              <NoteList
+                notes={notes}
+                layout={noteListLayout}
+                isLoading={loading}
+                selectionMode={selectionMode}
+                selectedIds={selected}
+                selectedNoteId={preview?.trash_id}
+                onToggleSelect={toggleNoteSelection}
+                canSelectNote={canSelectNote}
+                onSelectNote={(note) => {
+                  const entry = entries.get(note.id)
+                  if (entry) void openPreview(entry)
+                }}
+                onLoadMore={loadMore}
+                hasMore={hasMore && !isOffline}
+                isFetchingNextPage={loading || busy}
+                emptyState={error ? <></> : <p className="text-sm">Trash is empty.</p>}
+              />
+            </PullToRefresh>
+          </div>
+        </div>
+      </NoteListSidebar>
+
+      {preview && (
+        <section data-testid="trash-note-reader" aria-label="Deleted note" className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {errorMessage}
+          {offlineMessage}
+          {preview.pending && <p role="status" className="border-b px-4 py-2 text-xs text-muted-foreground">Pending sync. This note is still on this device.</p>}
+          <NoteView
+            key={preview.trash_id}
+            note={asNote(preview, preview.description)}
+            onBack={closePreview}
+            actions={!preview.pending && (
+              <>
+                <Button type="button" size="sm" onClick={() => void actOnEntries('restore', [preview.trash_id])}
+                  aria-label="Restore note" title="Restore note" disabled={busy || isOffline}
+                  className="h-11 min-w-11 rounded-xl px-0 shadow-none md:h-9 md:min-w-9 lg:px-3">
+                  <ArrowCounterClockwise className="h-4 w-4 lg:mr-1.5" aria-hidden="true" />
+                  <span className="hidden lg:inline">Restore</span>
+                </Button>
+                <Button type="button" variant="ghost" size="sm"
+                  onClick={() => setConfirmation({ kind: 'single', ids: [preview.trash_id], title: preview.title })}
+                  aria-label="Delete note forever" title="Delete note forever" disabled={busy || isOffline}
+                  className="h-11 min-w-11 rounded-xl px-0 text-destructive hover:bg-destructive/10 hover:text-destructive md:h-9 md:min-w-9 lg:px-3">
+                  <Trash className="h-4 w-4 lg:mr-1.5" aria-hidden="true" />
+                  <span className="hidden lg:inline">Delete forever</span>
+                </Button>
+              </>
+            )}
+          />
+        </section>
+      )}
+
       <BulkDeleteDialog
         action="purge"
         open={confirmation?.kind === 'bulk'}
