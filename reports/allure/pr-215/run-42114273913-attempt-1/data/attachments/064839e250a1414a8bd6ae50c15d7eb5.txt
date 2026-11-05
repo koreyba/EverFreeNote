@@ -1,0 +1,6 @@
+Error: Command failed: docker exec -i everfreenote-trash-test-3451 psql -h 127.0.0.1 -XqAt -v ON_ERROR_STOP=1 -U postgres
+ERROR:  new row for relation "notes_trash" violates check constraint "fixture_archive_failure"
+DETAIL:  Failing row contains (c638f427-a960-413b-bf3d-1875f73ad20d, 33333333-3333-4333-8333-333333333333, 11111111-1111-4111-8111-111111111111, Recover me, <p>Recover this</p>, {work}, 2026-01-01 00:00:00+00, 2026-01-02 00:00:00+00, 2026-11-05 21:38:43.587308+00, 19).
+CONTEXT:  SQL statement "INSERT INTO public.notes_trash(original_note_id,user_id,title,description,tags,created_at,updated_at)
+    VALUES(OLD.id,OLD.user_id,OLD.title,OLD.description,OLD.tags,OLD.created_at,OLD.updated_at)"
+PL/pgSQL function note_trash_private.archive_deleted_note() line 6 at SQL statement
