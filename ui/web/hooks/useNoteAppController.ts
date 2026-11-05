@@ -39,6 +39,7 @@ import { mergeNoteFields, pickLatestNote } from '@core/utils/noteSnapshot'
 import { assertTagLocalState } from '@ui/web/lib/tagLocalPreflight'
 import { advanceNoteListRevision, noteListRevision } from '@ui/web/lib/noteListRevision'
 import { snapshotEvidence } from '@ui/web/lib/offlineOwnership'
+import { getPendingOwnerNotes } from '@ui/web/lib/ownerNoteWrites'
 import { canCloseRecoveredTabs, forgetLocalDeletionRecovery } from '@ui/web/lib/localDeletionRecovery'
 
 
@@ -1694,6 +1695,78 @@ export function useNoteAppController() {
     runTagMutation(cleanUnusedOrEmptyTagsInNotes, 'Cleaned up empty and duplicate tags')
   ), [runTagMutation])
 
+  const versionRestoreBlockedReason = useCallback((tabId: string, noteId: string) => {
+    if (isOffline) return 'Connect to the internet to restore a version.'
+    if (!syncStateReady || storageReadError || hasPendingLocalWrites(noteId) || hasPendingWritesForTab(tabId)) {
+      return 'Finish syncing this note before restoring a version.'
+    }
+    if (tagMutationInProgress) return 'Wait for the tag update to finish.'
+    if (tabs.some(tab => tab.id === tabId && tab.saveState !== 'saved')) {
+      return 'Save your changes before restoring a version.'
+    }
+    return null
+  }, [isOffline, syncStateReady, storageReadError, hasPendingLocalWrites, hasPendingWritesForTab, tagMutationInProgress, tabs])
+
+  const restoreNoteVersion = useCallback(async (tabId: string, noteId: string, version: number, expectedVersion: number) => {
+    const started = getSessionSnapshot?.()
+    if (!workspaceUserId || !isCurrentSession(started)) throw new Error('Sign in to restore a version.')
+    const reason = versionRestoreBlockedReason(tabId, noteId)
+    if (reason) throw new Error(reason)
+
+    const readingSameNote = () => currentTabsRef.current.some(tab => (
+      tab.id === tabId && tab.noteId === noteId && tab.mode === 'reading' && tab.saveState === 'saved'
+    ))
+    const [queue, cachedNotes] = await Promise.all([
+      offlineQueueRef.current.getQueue(),
+      offlineCache.loadNotes(),
+    ])
+    if (!isCurrentSession(started) || !readingSameNote()) throw new Error('Open this note again to restore a version.')
+    const cached = cachedNotes.find(note => note.id === noteId && note.user_id === workspaceUserId)
+    if (tagMutationInProgressRef.current || queue.some(item => item.noteId === noteId) ||
+      getPendingOwnerNotes(workspaceUserId).some(note => note.id === noteId) ||
+      (cached && (cached.status !== 'synced' || cached.pendingOps?.length))) {
+      throw new Error('Finish syncing this note before restoring a version.')
+    }
+
+    const { data, error } = await supabase.rpc('restore_note_version', {
+      p_note_id: noteId,
+      p_version: version,
+      p_expected_version: expectedVersion,
+    }).single()
+    if (error?.code === 'PT409') throw new Error('The note changed. Review the latest version and try again.')
+    if (error || !data) throw new Error('Could not restore this version.')
+    if (!isCurrentSession(started)) return
+
+    const note = data as NoteViewModel
+    const restored = { title: note.title ?? '', description: note.description ?? '', tags: note.tags ?? [] }
+    advanceNoteListRevision(queryClient, workspaceUserId)
+    if (readingSameNote()) {
+      updateTabForNote(tabId, noteId, {
+        note,
+        draft: { ...restored, tags: restored.tags.join(', ') },
+      })
+    }
+    void queryClient.invalidateQueries({ queryKey: ['notes'] })
+    void queryClient.invalidateQueries({ queryKey: ['tags', 'all-with-counts'] })
+
+    if (cached && !cached.deleted) {
+      const changes = { ...restored, updatedAt: note.updated_at }
+      const updated = await offlineCache.patchSyncedNote(cached, changes).catch(() => false)
+      if (!isCurrentSession(started)) return
+      if (!updated) {
+        toast.warning(`Version ${version} restored. This device could not refresh its offline copy.`)
+        return
+      }
+      const expected = snapshotEvidence(cached)
+      setOfflineOverlay(previous => previous.map(entry => (
+        entry.id === noteId && snapshotEvidence(entry) === expected
+          ? { ...entry, ...changes, content: undefined }
+          : entry
+      )))
+    }
+    toast.success(`Version ${version} restored`)
+  }, [getSessionSnapshot, isCurrentSession, offlineCache, offlineQueueRef, queryClient, setOfflineOverlay, supabase, updateTabForNote, versionRestoreBlockedReason, workspaceUserId])
+
   const paneSaveServices: Omit<UseNoteSaveHandlersParams,
     'selectedNote' | 'selectedNoteRef' | 'setSelectedNote' | 'setIsEditing' | 'setLastSavedAt' | 'rememberPendingCreate' | 'beginWorkspaceWrite'
   > = {
@@ -1719,6 +1792,7 @@ export function useNoteAppController() {
     preserveWorkspaceForNavigation,
     refreshNotes,
     refreshSelectedNote,
+    noteVersions: workspaceUserId ? { restore: restoreNoteVersion, blockedReason: versionRestoreBlockedReason } : undefined,
     // State
     user,
     loading: authLoadingState,

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { NoteTagList } from "@/components/NoteTagList"
 import { PullToRefresh } from "@/components/PullToRefresh"
 import { MoreActionsMenu } from "@/components/features/notes/MoreActionsMenu"
+import type { NoteVersionHistoryOptions } from "@/components/features/notes/NoteVersionHistoryDialog"
 import { NoteFindBar } from "@/components/features/notes/NoteFindBar"
 import { RenderedNoteContent } from "@/components/RenderedNoteContent"
 import { SanitizationService } from "@core/services/sanitizer"
@@ -46,6 +47,7 @@ interface NoteViewProps {
   registerViewScrollSurface?: RegisterViewScrollSurface
   visible?: boolean
   preview?: boolean
+  versionHistory?: NoteVersionHistoryOptions
 }
 
 export const NoteView = React.memo(function NoteView({
@@ -65,6 +67,7 @@ export const NoteView = React.memo(function NoteView({
   registerViewScrollSurface,
   visible = true,
   preview = false,
+  versionHistory,
 }: NoteViewProps) {
   const bodyHtml = note.description || note.content || ''
 
@@ -207,6 +210,7 @@ export const NoteView = React.memo(function NoteView({
             noteId={note.id}
             wordpressConfigured={wordpressConfigured}
             getExportNote={getExportNote}
+            versionHistory={versionHistory}
           />}
           {actions}
         </div>

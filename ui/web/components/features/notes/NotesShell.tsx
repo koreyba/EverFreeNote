@@ -921,6 +921,7 @@ function EditorPane({
   }
 
   if (selectedNote) {
+    const noteVersions = controller.noteVersions
     return (
       <NoteView
         key={`workspace-tab-${activeTabId}-note-${selectedNote.id}`}
@@ -931,6 +932,10 @@ function EditorPane({
         onRemoveTag={(tag) => handleRemoveTagFromNote(selectedNote.id, tag)}
         onBack={onBack}
         wordpressConfigured={wordpressConfigured}
+        versionHistory={focused && noteVersions ? {
+          restoreBlockedReason: noteVersions.blockedReason(activeTabId, selectedNote.id),
+          onRestore: (version, expectedVersion) => noteVersions.restore(activeTabId, selectedNote.id, version, expectedVersion),
+        } : undefined}
         initialScrollTop={activeTab.view.scrollTop}
         onRefresh={focused ? controller.refreshSelectedNote : undefined}
         visible={visible}

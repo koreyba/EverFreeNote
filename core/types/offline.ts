@@ -15,6 +15,8 @@ export interface CachedNote extends Partial<Note> {
   deleted?: boolean // For optimistic delete UI
 }
 
+export type SyncedNoteChanges = Pick<CachedNote, 'title' | 'description' | 'tags' | 'updatedAt'>
+
 export interface MutationQueueItem {
   id: string
   noteId: string
@@ -54,6 +56,8 @@ export interface OfflineStorageAdapter {
   getLegacyClaims?(ownerId: string, notes: CachedNote[]): Promise<string[]>
   /** Atomically update tags only when each cached snapshot is still synced and unqueued. */
   patchSyncedTags?(patches: Array<{ expected: CachedNote; tags: string[] }>): Promise<string[]>
+  /** Replace an unchanged, owned synced snapshot when no operation remains for it. */
+  patchSyncedNote?(expected: CachedNote, changes: SyncedNoteChanges): Promise<boolean>
   getQueue(): Promise<MutationQueueItem[]>
   upsertQueueItem(item: MutationQueueItem): Promise<void>
   upsertQueue(items: MutationQueueItem[]): Promise<void>
