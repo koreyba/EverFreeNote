@@ -1,0 +1,1 @@
+SELECT complete FROM note_trash_private.trash_media_inventory

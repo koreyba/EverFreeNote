@@ -1,0 +1,1 @@
+{"id":"8681d4bdfb958494464be06518abffd8","fullName":"everfreenote:ui/web/tests/unit/hooks/useMobileViewport.test.tsx#mobile visual viewport falls back to CSS when VisualViewport is unavailable","name":"falls back to CSS when VisualViewport is unavailable","status":"passed","testResultsByEnv":{"default":"8ea6c2e83c56c1bc0d4dee7a8d7a867e"}}

@@ -1,0 +1,1 @@
+{"id":"5d6106ff93570d1305aaac1de9c83b45","fullName":"everfreenote:core/tests/integration/note-trash-postgres.test.ts#Trash lifecycle in PostgreSQL archives the owned service-role DELETE used by older API clients","name":"archives the owned service-role DELETE used by older API clients","status":"passed","testResultsByEnv":{"default":"4d2c72abcba5c0fcaa43d32cc43f759a"}}

@@ -1,0 +1,1 @@
+{"id":"15f009998dff3424140f9b0c75843703","fullName":"everfreenote:core/tests/integration/note-trash-postgres.test.ts#Trash lifecycle in PostgreSQL restores the original ID and content without restoring public sharing","name":"restores the original ID and content without restoring public sharing","status":"passed","testResultsByEnv":{"default":"977ae5999f4efdecc8b2de8673b3195d"}}

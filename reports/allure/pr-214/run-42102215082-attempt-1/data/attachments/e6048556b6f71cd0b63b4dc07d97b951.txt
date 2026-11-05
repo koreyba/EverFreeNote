@@ -1,0 +1,3 @@
+Error: Command failed: docker exec -i everfreenote-trash-test-3145 psql -h 127.0.0.1 -XqAt -v ON_ERROR_STOP=1 -U postgres
+ERROR:  A complete title, description and tags snapshot is required
+CONTEXT:  PL/pgSQL function public.trash_notes(jsonb) line 29 at RAISE
