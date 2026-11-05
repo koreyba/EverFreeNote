@@ -1,0 +1,1 @@
+{"id":"dfc18561171b17b0488233ba720f8906","fullName":"everfreenote:core/tests/unit/core-mcp-noteWorkflows.test.ts#MCP note workflows reads twenty requested notes with a single batch repository call","name":"reads twenty requested notes with a single batch repository call","status":"passed","testResultsByEnv":{"default":"5fefb2ababd4d31c630d63a36e91b850"}}

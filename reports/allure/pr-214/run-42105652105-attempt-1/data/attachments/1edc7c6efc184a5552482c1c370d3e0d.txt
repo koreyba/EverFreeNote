@@ -1,0 +1,1 @@
+SET ROLE authenticated; SET request.jwt.claim.sub = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; SELECT public.search_notebook_notes('hiring', search_mode => 'semantic', query_embedding => ('[1,' || repeat('0,', 1534) || '0]')::vector, tag_filters => ARRAY['urgent'], result_limit => 2);

@@ -1,0 +1,1 @@
+SET ROLE authenticated; SET request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222'; SELECT public.purge_notes(ARRAY['b643bcc3-3d52-4117-a897-6495f29be81b']::uuid[])

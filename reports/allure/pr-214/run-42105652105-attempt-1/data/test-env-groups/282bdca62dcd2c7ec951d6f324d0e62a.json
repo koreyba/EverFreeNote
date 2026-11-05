@@ -1,0 +1,1 @@
+{"id":"282bdca62dcd2c7ec951d6f324d0e62a","fullName":"everfreenote:core/tests/integration/note-trash-postgres.test.ts#Trash lifecycle in PostgreSQL retains an imported image while another note still references it","name":"retains an imported image while another note still references it","status":"passed","testResultsByEnv":{"default":"14e59aa91245dc65a9638396d346488b"}}

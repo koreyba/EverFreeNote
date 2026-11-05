@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://project.invalid/functions/v1/rag-search",
+    "body": {
+      "notebookSearch": {
+        "query": "hiring",
+        "mode": "semantic",
+        "min_similarity": 0
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "notes": [],
+      "total": 0,
+      "has_more": false,
+      "mode": "hybrid"
+    }
+  }
+}
