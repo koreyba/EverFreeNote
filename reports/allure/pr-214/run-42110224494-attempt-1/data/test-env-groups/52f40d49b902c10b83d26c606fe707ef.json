@@ -1,0 +1,1 @@
+{"id":"52f40d49b902c10b83d26c606fe707ef","fullName":"everfreenote:core/tests/integration/note-trash-postgres.test.ts#Trash lifecycle in PostgreSQL rejects an incomplete snapshot before changing an existing note","name":"rejects an incomplete snapshot before changing an existing note","status":"passed","testResultsByEnv":{"default":"a94d22e4910585c6ab00019c88d3bf30"}}

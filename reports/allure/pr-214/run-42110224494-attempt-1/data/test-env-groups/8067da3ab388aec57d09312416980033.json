@@ -1,0 +1,1 @@
+{"id":"8067da3ab388aec57d09312416980033","fullName":"everfreenote:cypress/component/ui/web/hooks/useNoteSaveHandlers.cy.tsx#useNoteSaveHandlers handleAutoSave does nothing when user is not logged in","name":"handleAutoSave does nothing when user is not logged in","status":"passed","testResultsByEnv":{"default":"f785b410cbd97480eb8f2e7abf901755"}}

@@ -1,0 +1,1 @@
+{"id":"60b71a25b34cfefa1c09cd7bf3dc9a86","fullName":"everfreenote:ui/web/tests/unit/lib/noteFind.test.ts#findInNote preserves original text offsets after characters whose lowercase form expands","name":"preserves original text offsets after characters whose lowercase form expands","status":"passed","testResultsByEnv":{"default":"33d9c0b85637c4ea26ff7f4009f6fd7d"}}

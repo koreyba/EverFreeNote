@@ -1,1 +1,0 @@
-{"id":"5ae38130964a3638ce4b15233c57f93e","fullName":"everfreenote:ui/web/tests/unit/adapters/oauth.test.ts#web OAuth adapter waits for asynchronous navigation before reporting that OAuth started","name":"waits for asynchronous navigation before reporting that OAuth started","status":"passed","testResultsByEnv":{"default":"dd0d1a7a00ff8f784db226dfcb31b520"}}

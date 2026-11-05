@@ -3,6 +3,42 @@
     "family": "allure",
     "familyLabel": "Allure Report",
     "suites": [
+      "core-unit",
+      "core-integration",
+      "web-unit",
+      "component",
+      "e2e"
+    ],
+    "suiteLabels": [
+      "Core Unit",
+      "Core Integration",
+      "Web Unit",
+      "Web Component",
+      "Web E2E"
+    ],
+    "path": "reports/allure/pr-214/run-42110224494-attempt-1",
+    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-214/run-42110224494-attempt-1/",
+    "runId": "42110224494",
+    "runAttempt": "1",
+    "prNumber": "214",
+    "ref": "codex/feature-note-trash",
+    "sha": "ed163809bb0ec22a0bc20336cea5d9ce65b2869e",
+    "outcome": "success",
+    "previewUrl": null,
+    "e2eRef": null,
+    "workflow": "PR Tests",
+    "scopeType": "pr",
+    "scopeLabel": "PR #214",
+    "historyPath": "_history/allure/history.jsonl",
+    "generatedAt": "2026-11-05T21:24:37.729Z",
+    "hasResults": true,
+    "reportOutputDir": ".allure-publish/allure/report",
+    "combinedResultsDir": ".allure-publish/allure/results"
+  },
+  {
+    "family": "allure",
+    "familyLabel": "Allure Report",
+    "suites": [
       "e2e"
     ],
     "suiteLabels": [
@@ -613,42 +649,6 @@
     "scopeLabel": "main",
     "historyPath": "_history/allure/history.jsonl",
     "generatedAt": "2026-11-04T16:45:04.660Z",
-    "hasResults": true,
-    "reportOutputDir": ".allure-publish/allure/report",
-    "combinedResultsDir": ".allure-publish/allure/results"
-  },
-  {
-    "family": "allure",
-    "familyLabel": "Allure Report",
-    "suites": [
-      "core-unit",
-      "core-integration",
-      "web-unit",
-      "component",
-      "e2e"
-    ],
-    "suiteLabels": [
-      "Core Unit",
-      "Core Integration",
-      "Web Unit",
-      "Web Component",
-      "Web E2E"
-    ],
-    "path": "reports/allure/pr-211/run-41864289164-attempt-2",
-    "url": "https://koreyba.github.io/EverFreeNote/reports/allure/pr-211/run-41864289164-attempt-2/",
-    "runId": "41864289164",
-    "runAttempt": "2",
-    "prNumber": "211",
-    "ref": "codex/sonar-main-green",
-    "sha": "4c6cf7c96fc2d75f971db622dbe1f7d6435bdf4b",
-    "outcome": "success",
-    "previewUrl": null,
-    "e2eRef": null,
-    "workflow": "PR Tests",
-    "scopeType": "pr",
-    "scopeLabel": "PR #211",
-    "historyPath": "_history/allure/history.jsonl",
-    "generatedAt": "2026-11-04T16:35:33.903Z",
     "hasResults": true,
     "reportOutputDir": ".allure-publish/allure/report",
     "combinedResultsDir": ".allure-publish/allure/results"

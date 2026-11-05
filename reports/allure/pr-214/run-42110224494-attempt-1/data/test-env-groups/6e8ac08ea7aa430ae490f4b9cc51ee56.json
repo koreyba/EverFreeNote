@@ -1,0 +1,1 @@
+{"id":"6e8ac08ea7aa430ae490f4b9cc51ee56","fullName":"everfreenote:core/tests/services/note-trash.test.ts#Trash service and durable deletion content sends a complete offline snapshot through the transactional Trash RPC","name":"sends a complete offline snapshot through the transactional Trash RPC","status":"passed","testResultsByEnv":{"default":"99b291e5a85632b0f560d81c1395d19a"}}

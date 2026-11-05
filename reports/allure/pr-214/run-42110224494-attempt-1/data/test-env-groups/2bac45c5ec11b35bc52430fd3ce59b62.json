@@ -1,0 +1,1 @@
+{"id":"2bac45c5ec11b35bc52430fd3ce59b62","fullName":"everfreenote:core/tests/integration/note-trash-postgres.test.ts#Trash lifecycle in PostgreSQL keeps ambiguous image edits local while a Storage deletion is leased","name":"keeps ambiguous image edits local while a Storage deletion is leased","status":"passed","testResultsByEnv":{"default":"4f406c67fee7618c84f7fdf45d549494"}}

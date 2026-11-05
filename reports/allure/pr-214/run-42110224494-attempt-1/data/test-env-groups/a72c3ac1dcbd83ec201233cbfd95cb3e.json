@@ -1,0 +1,1 @@
+{"id":"a72c3ac1dcbd83ec201233cbfd95cb3e","fullName":"everfreenote:core/tests/unit/core-mcp-noteEdits.test.ts#MCP HTML block editing rejects additions that sanitize to nothing and bounds combined new content","name":"rejects additions that sanitize to nothing and bounds combined new content","status":"passed","testResultsByEnv":{"default":"8e0847473193397eda6380387e885bff"}}

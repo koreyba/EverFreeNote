@@ -1,0 +1,1 @@
+SELECT public.complete_trash_media_cleanup_batch('[{"object_path":"11111111-1111-4111-8111-111111111111/33333333-3333-4333-8333-333333333333/retry.png","lease_id":"e5b01826-a786-40ab-9e42-23a20a08515c"}]'::jsonb,false)
