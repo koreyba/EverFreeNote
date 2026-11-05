@@ -1,1 +1,0 @@
-{"id":"c2b71990df6c01fb12a58bf7bfb50042","fullName":"everfreenote:ui/web/tests/unit/components/SplitNotePreviewStrict.test.tsx#SplitNotePreview under StrictMode restores a clamped position after the initial effect cleanup","name":"restores a clamped position after the initial effect cleanup","status":"passed","testResultsByEnv":{"default":"c01232ff114283720ed89a81f53020f3"}}

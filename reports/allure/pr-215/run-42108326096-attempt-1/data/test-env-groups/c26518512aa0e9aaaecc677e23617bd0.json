@@ -1,0 +1,1 @@
+{"id":"c26518512aa0e9aaaecc677e23617bd0","fullName":"everfreenote:ui/web/tests/unit/lib/imageDimensionSanitization.test.ts#image dimensions in sanitized note HTML drops the invalid dimension: negative","name":"drops the invalid dimension: negative","status":"passed","testResultsByEnv":{"default":"c30ba6d13e4679339fbf9213a7c1aab3"}}

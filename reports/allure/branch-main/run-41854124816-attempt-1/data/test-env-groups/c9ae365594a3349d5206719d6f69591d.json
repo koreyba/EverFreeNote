@@ -1,1 +1,0 @@
-{"id":"c9ae365594a3349d5206719d6f69591d","fullName":"everfreenote:cypress/component/features/notes/SplitLayoutPersistence.cy.tsx#Restoring a split workspace does not mix layouts or notes while switching A → B → A","name":"does not mix layouts or notes while switching A → B → A","status":"passed","testResultsByEnv":{"default":"4b59498b4990b895d61f4be5cd6d8ab8"}}
