@@ -69,6 +69,7 @@ function renderSyncHook(mutations: {
   create?: jest.Mock
   update?: jest.Mock
   delete?: jest.Mock
+  verify?:jest.Mock
 } = {}) {
   return renderHook(() =>
     useNoteSync({
@@ -77,6 +78,7 @@ function renderSyncHook(mutations: {
       createNoteMutation: { mutateAsync: mutations.create ?? jest.fn() },
       updateNoteMutation: { mutateAsync: mutations.update ?? jest.fn() },
       deleteNoteMutation: { mutateAsync: mutations.delete ?? jest.fn() },
+      verifyLegacyNotes:mutations.verify,
     }),
   )
 }
@@ -89,6 +91,24 @@ function renderSyncHook(mutations: {
 afterEach(async () => { await act(async () => {}) })
 
 describe('useNoteSync — performSync upsert', () => {
+  it('uses its acknowledged update version when a deletion follows an in-flight save',async()=>{
+    const update=jest.fn().mockResolvedValue({ id:'note-1',updated_at:'2026-11-05T12:00:00Z' })
+    const remove=jest.fn().mockResolvedValue('note-1')
+    renderSyncHook({ update,delete:remove })
+    await act(async()=>{
+      await capturedPerformSync!(makeQueueItem())
+      await capturedPerformSync!(makeQueueItem({ operation:'delete',payload:{ user_id:'user-1',title:'Title',description:'Desc',tags:['t'],base_updated_at:'2024-01-01' } }))
+    })
+    expect(remove).toHaveBeenCalledWith(expect.objectContaining({ expectedUpdatedAt:'2026-11-05T12:00:00Z' }))
+  })
+  it('delivers the complete deletion snapshot before acknowledging the queue item', async () => {
+    const remove=jest.fn().mockResolvedValue('note-1')
+    renderSyncHook({ delete:remove })
+    await capturedPerformSync!(makeQueueItem({ operation:'delete' }))
+    expect(remove).toHaveBeenCalledWith(expect.objectContaining({
+      id:'note-1',snapshot:expect.objectContaining({ title:'Title',description:'Desc',tags:['t'] }),
+    }))
+  })
   beforeEach(() => {
     capturedPerformSync = null
   })
@@ -147,6 +167,13 @@ describe('useNoteSync — performSync upsert', () => {
 })
 
 describe('durable create synchronization', () => {
+  it('does not overwrite a restored or changed note just because a create ID already exists',async()=>{
+    const create=jest.fn().mockRejectedValue({code:'23505'})
+    const update=jest.fn()
+    renderSyncHook({create,update})
+    await expect(capturedPerformSync!(makeQueueItem({operation:'create'}))).rejects.toThrow(/exists|verify|local/i)
+    expect(update).not.toHaveBeenCalled()
+  })
   it('uses the local ID and suppresses background notifications', async () => {
     const create = jest.fn().mockResolvedValue({})
     renderSyncHook({ create })
@@ -154,12 +181,14 @@ describe('durable create synchronization', () => {
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1', silent: true }))
   })
 
-  it('retries an acknowledged-on-server create by updating the same ID', async () => {
+  it('acknowledges a proven identical create retry without rewriting the server', async () => {
     const create = jest.fn().mockRejectedValue({ code: '23505' })
     const update = jest.fn().mockResolvedValue({})
-    renderSyncHook({ create, update })
+    const verify=jest.fn().mockResolvedValue([{id:'note-1',user_id:'user-1',title:'Title',description:'Desc',tags:['t'],updated_at:'2026-11-05'}])
+    renderSyncHook({ create, update,verify })
     await capturedPerformSync!(makeQueueItem({ operation: 'create' }))
-    expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1', title: 'Title', silent: true }))
+    expect(verify).toHaveBeenCalledWith(['note-1'],'user-1')
+    expect(update).not.toHaveBeenCalled()
   })
 
   it('keeps a missing remote update queued by propagating its error', async () => {

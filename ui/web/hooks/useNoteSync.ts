@@ -35,6 +35,7 @@ export function useNoteSync({
     getSessionSnapshot,
 }: UseNoteSyncProps) {
     const userId = user?.id
+    const acknowledgedVersions=useRef(new Map<string,string>())
     const [offlineOverlay, setOfflineOverlay] = useState<CachedNote[]>([])
     const [pendingOwnerNotes, setPendingOwnerNotes] = useState<CachedNote[]>(() => userId ? getPendingOwnerNotes(userId) : [])
     const pendingOwnerNotesRef = useRef(pendingOwnerNotes)
@@ -157,6 +158,12 @@ export function useNoteSync({
                 throw new Error('User not authenticated - sync skipped')
             }
             const ownerId = item.payload.user_id ?? (item.payload as { userId?: string }).userId
+            const versionKey=`${expectedOwner}:${item.noteId}`
+            const rememberVersion=(note:unknown)=>{
+                if (isActive() && note && typeof note==='object' && 'updated_at' in note && typeof note.updated_at==='string') {
+                    acknowledgedVersions.current.set(versionKey,note.updated_at)
+                }
+            }
             if (ownerId && ownerId !== currentUser.id) throw new Error('Queued note belongs to another account')
             const [allQueue, cached] = await Promise.all([offlineQueueRef.current.getQueue(), offlineCacheRef.current.loadNotes()])
             const evidence = await loadEvidence(cached, currentUser.id)
@@ -185,22 +192,28 @@ export function useNoteSync({
                     silent: true,
                 }
                 try {
-                    await createMutationRef.current.mutateAsync({ ...data, userId: payload.userId ?? currentUser.id })
+                    rememberVersion(await createMutationRef.current.mutateAsync({ ...data, userId: payload.userId ?? currentUser.id }))
                 } catch (error) {
                     // The insert may have succeeded before its response was lost.
                     if (!error || typeof error !== 'object' || !('code' in error) || error.code !== '23505') throw error
-                    await updateMutationRef.current.mutateAsync(data)
+                    const existing=await verifyLegacyNotes?.([item.noteId],currentUser.id)
+                    const remote=existing?.find(note=>note.id===item.noteId && note.user_id===currentUser.id)
+                    if (!isActive() || !remote || remote.title!==data.title || remote.description!==data.description
+                        || JSON.stringify(remote.tags)!==JSON.stringify(data.tags)) {
+                        throw new Error('A note with this ID already exists. Your local copy remains until its content can be verified.')
+                    }
+                    rememberVersion(remote)
                 }
             } else if (item.operation === 'update') {
                 const payload = item.payload as Partial<NoteUpdate>
                 try {
-                    await updateMutationRef.current.mutateAsync({
+                    rememberVersion(await updateMutationRef.current.mutateAsync({
                         id: item.noteId,
                         silent: true,
                         title: payload.title ?? 'Untitled',
                         description: payload.description ?? '',
                         tags: payload.tags ?? [],
-                    })
+                    }))
                 } catch (error) {
                     if (!isPostgrestNoRowsError(error)) throw error
                     // Absence may be a deletion on another device. Preserve the
@@ -208,7 +221,15 @@ export function useNoteSync({
                     throw new Error(MISSING_REMOTE_NOTE)
                 }
             } else if (item.operation === 'delete') {
-                await deleteMutationRef.current.mutateAsync({ id: item.noteId, silent: true })
+                const { base_updated_at,locally_created,...snapshot }=item.payload
+                const expectedUpdatedAt=acknowledgedVersions.current.get(versionKey) ?? (!locally_created ? base_updated_at : undefined)
+                const complete=typeof snapshot.title==='string' && typeof snapshot.description==='string' && Array.isArray(snapshot.tags)
+                await deleteMutationRef.current.mutateAsync({ id:item.noteId,silent:true,...(complete ? {
+                    operationId:item.id,
+                    snapshot:{ ...snapshot,id:item.noteId },
+                    ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
+                } : {}) })
+                acknowledgedVersions.current.delete(versionKey)
             }
         },
         onFailure: (ownerId: string, isActive: () => boolean) => withQueueStateUpdate(async () => {

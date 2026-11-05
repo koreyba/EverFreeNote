@@ -41,7 +41,7 @@ describe('compactQueue additional branch behavior', () => {
     ])
 
     expect(result).toEqual([
-      item('delete', 'temporary-note', 'delete', '2026-01-01T00:00:04Z', {}, { status: 'pending' }),
+      item('delete', 'temporary-note', 'delete', '2026-01-01T00:00:04Z', { title: 'edited again' }, { status: 'pending' }),
     ])
   })
 
@@ -55,7 +55,7 @@ describe('compactQueue additional branch behavior', () => {
     ])
 
     expect(result).toEqual([
-      item('delete', 'deleted-note', 'delete', '2026-01-01T00:00:02Z', { reason: 'removed' }, { status: 'pending' }),
+      item('delete', 'deleted-note', 'delete', '2026-01-01T00:00:02Z', { title: 'before delete', reason: 'removed' }, { status: 'pending' }),
       item('final-update', 'updated-note', 'update', '2026-01-01T00:00:05Z', { title: 'final update' }, { status: 'pending' }),
     ])
 

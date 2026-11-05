@@ -19,7 +19,7 @@ export interface MutationQueueItem {
   id: string
   noteId: string
   operation: MutationOperation
-  payload: Partial<Note>
+  payload: Partial<Note> & { base_updated_at?: string; locally_created?: boolean }
   clientUpdatedAt: string
   status: MutationStatus
   attempts?: number

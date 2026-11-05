@@ -1,12 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { FileText, Tag, MagnifyingGlass as Search, Gear as Settings, Sidebar as PanelLeftClose, SidebarSimple as PanelLeft } from "@phosphor-icons/react"
+import { FileText, Tag, Trash, MagnifyingGlass as Search, Gear as Settings, Sidebar as PanelLeftClose, SidebarSimple as PanelLeft } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 import { useMobileNavigationHidden } from "./MobileWorkspace"
 
-export type MainNavView = "notes" | "tags" | "settings"
+export type MainNavView = "notes" | "tags" | "trash" | "settings"
 
 interface NavRailProps {
   readonly activeView: MainNavView
@@ -74,6 +74,13 @@ export function NavRail({
       icon: Tag,
       onClick: () => onSelectView("tags"),
       active: activeView === "tags",
+    },
+    {
+      id: "trash" as MainNavView,
+      label: "Trash",
+      icon: Trash,
+      onClick: () => onSelectView("trash"),
+      active: activeView === "trash",
     },
   ]
 

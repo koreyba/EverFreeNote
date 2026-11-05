@@ -8,6 +8,7 @@ import type { useDeleteNote } from './useNotesMutations'
 import type { QueryClient } from '@tanstack/react-query'
 import type { useLocalDeletionRecovery } from './useLocalDeletionRecovery'
 import { snapshotEvidence } from '@ui/web/lib/offlineOwnership'
+import { buildTrashPayload } from '@core/utils/compactQueue'
 
 export type NotesDeletedHandler = (noteIds: string[]) => void
 
@@ -21,6 +22,7 @@ type UseNoteBulkActionsParams = {
   setOfflineOverlay: ReturnType<typeof useNoteSync>['setOfflineOverlay']
   setPendingCount: ReturnType<typeof useNoteSync>['setPendingCount']
   deleteNoteMutation: Pick<ReturnType<typeof useDeleteNote>, 'mutateAsync'>
+  deleteNotesBatch?: (ids:string[])=>Promise<{succeeded:string[];failed:string[]}>
   exitSelectionMode: ReturnType<typeof useNoteSelection>['exitSelectionMode']
   setBulkDeleting: ReturnType<typeof useNoteSelection>['setBulkDeleting']
   /** Receives the IDs that were actually deleted (or queued for deletion offline). */
@@ -56,6 +58,7 @@ export function useNoteBulkActions({
   setOfflineOverlay,
   setPendingCount,
   deleteNoteMutation,
+  deleteNotesBatch,
   exitSelectionMode,
   setBulkDeleting,
   onNotesDeleted,
@@ -97,7 +100,9 @@ export function useNoteBulkActions({
         queuedPath = true
         if (!userId) throw new Error('User not authenticated - deletion skipped')
         const now = nextMutationTimestamp(queue, new Set(queuedIds))
+        const snapshots = new Map(queuedIds.map(id => [id,buildTrashPayload(notes.find(note => note.id===id) ?? { id },userId,queue)]))
         const updates: CachedNote[] = queuedIds.map((id) => ({
+          ...snapshots.get(id),
           id,
           user_id: userId,
           status: 'pending' as const,
@@ -108,7 +113,7 @@ export function useNoteBulkActions({
           queuedIds.map((id) => ({
             noteId: id,
             operation: 'delete' as const,
-            payload: { user_id: userId },
+            payload: snapshots.get(id)!,
             clientUpdatedAt: now,
           })),
           async () => {
@@ -146,9 +151,24 @@ export function useNoteBulkActions({
           failed = immediateIds.length
         }
         if (!localCheckFailed) {
-          const results = await Promise.allSettled(
-            immediateIds.map((id) => deleteNoteMutation.mutateAsync({ id, silent: true }))
-          )
+          const results:PromiseSettledResult<unknown>[]=[]
+          for (let offset=0;offset<immediateIds.length;offset+=100) {
+            const chunk=immediateIds.slice(offset,offset+100)
+            if (deleteNotesBatch) {
+              try {
+                if (isDeleteSessionCurrent?.()===false) throw new Error('Account changed before deletion.')
+                const outcome=await deleteNotesBatch(chunk)
+                for (const id of chunk) results.push(outcome.succeeded.includes(id)
+                  ? { status:'fulfilled',value:id } : { status:'rejected',reason:new Error('Could not move note to Trash') })
+              } catch(error) { results.push(...chunk.map(()=>({status:'rejected' as const,reason:error}))) }
+            } else {
+              // Compatibility for injected adapters: still bound concurrency to one request.
+              for (const id of chunk) {
+                try { results.push({status:'fulfilled',value:await deleteNoteMutation.mutateAsync({id,silent:true})}) }
+                catch(error) { results.push({status:'rejected',reason:error}) }
+              }
+            }
+          }
           failedIds = immediateIds.filter((_, index) => results[index].status === 'rejected')
           failed = failedIds.length
           const immediateDeleted = immediateIds.filter((_, index) => results[index].status === 'fulfilled')
@@ -189,6 +209,8 @@ export function useNoteBulkActions({
       void Promise.resolve().then(() => Promise.all([
         queryClient.invalidateQueries({ queryKey: ['notes'] }, { throwOnError: true }),
         queryClient.invalidateQueries({ queryKey: ['aiSearch'] }, { throwOnError: true }),
+        queryClient.invalidateQueries({ queryKey: ['tags','all-with-counts'] }, { throwOnError: true }),
+        queryClient.invalidateQueries({ queryKey: ['trash'] }, { throwOnError: true }),
       ])).catch((error) => {
         console.warn('Failed to refresh notes after deletion:', error)
       })

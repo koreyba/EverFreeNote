@@ -25,7 +25,7 @@ describe('owner-scoped offline deletion', () => {
     const { result } = renderHook(() => useNoteSaveHandlers(props as never))
     await act(async () => { expect(await result.current.confirmDeleteNote()).toBe(true) })
 
-    expect(enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ noteId: note.id, operation: 'delete', payload: { user_id: 'owner-a' } }), expect.any(Function))
+    expect(enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ noteId: note.id, operation: 'delete', payload: note }), expect.any(Function))
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: note.id, deleted: true, user_id: 'owner-a', updatedAt: enqueueMutation.mock.calls[0][0].clientUpdatedAt }))
   })
 
@@ -56,14 +56,14 @@ describe('owner-scoped offline deletion', () => {
       userId: 'owner-a', selectedNoteIds: new Set<string>(), isOffline: true, enqueueBatchAndDrainIfOnline,
       offlineQueueRef: { current: { getQueue: jest.fn().mockResolvedValue([]) } }, offlineCache: { saveNote }, setOfflineOverlay: jest.fn(), setPendingCount: jest.fn(),
       deleteNoteMutation: { mutateAsync: jest.fn() }, exitSelectionMode: jest.fn(), setBulkDeleting: jest.fn(),
-      onNotesDeleted: jest.fn(), queryClient: new QueryClient(), notes: [note], selectAllVisibleCallback: jest.fn(),
+      onNotesDeleted: jest.fn(), queryClient: new QueryClient(), notes: [note, { ...note,id:'note-2' }], selectAllVisibleCallback: jest.fn(),
     }
     const { result } = renderHook(() => useNoteBulkActions(props as never))
     await act(async () => { await result.current.deleteNotesByIds(['note-1', 'note-2']) })
     const queued = enqueueBatchAndDrainIfOnline.mock.calls[0][0]
     expect(queued).toEqual(expect.arrayContaining([
-      expect.objectContaining({ noteId: 'note-1', operation: 'delete', payload: { user_id: 'owner-a' } }),
-      expect.objectContaining({ noteId: 'note-2', operation: 'delete', payload: { user_id: 'owner-a' } }),
+      expect.objectContaining({ noteId: 'note-1', operation: 'delete', payload: note }),
+      expect.objectContaining({ noteId: 'note-2', operation: 'delete', payload: { ...note,id:'note-2' } }),
     ]))
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1', user_id: 'owner-a', updatedAt: queued[0].clientUpdatedAt }))
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-2', user_id: 'owner-a', updatedAt: queued[1].clientUpdatedAt }))
@@ -88,7 +88,7 @@ describe('owner-scoped offline deletion', () => {
     await act(async () => { expect(await result.current.confirmDeleteNote()).toBe(true) })
 
     expect(deleteNote).not.toHaveBeenCalled()
-    expect(enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ noteId: note.id, operation: 'delete', payload: { user_id: 'owner-a' } }), expect.any(Function))
+    expect(enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({ noteId: note.id, operation: 'delete', payload: { ...note,locally_created:true } }), expect.any(Function))
     const deletion = enqueueMutation.mock.calls[0][0]
     expect(Date.parse(deletion.clientUpdatedAt)).toBeGreaterThan(Date.parse(queuedAt))
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: note.id, deleted: true, user_id: 'owner-a', updatedAt: deletion.clientUpdatedAt }))
@@ -106,7 +106,7 @@ describe('owner-scoped offline deletion', () => {
       offlineQueueRef: { current: { getQueue } }, offlineCache: { saveNote, deleteNote: jest.fn() },
       setOfflineOverlay: jest.fn(), setPendingCount: jest.fn(), deleteNoteMutation: { mutateAsync: directDelete },
       exitSelectionMode: jest.fn(), setBulkDeleting: jest.fn(), onNotesDeleted: jest.fn(), queryClient: new QueryClient(),
-      notes: [note], selectAllVisibleCallback: jest.fn(),
+      notes: [note, { ...note,id:'note-2' }], selectAllVisibleCallback: jest.fn(),
     }
     const { result } = renderHook(() => useNoteBulkActions(props as never))
     await act(async () => { await result.current.deleteNotesByIds(['note-1', 'note-2']) })
@@ -114,7 +114,7 @@ describe('owner-scoped offline deletion', () => {
     expect(directDelete).toHaveBeenCalledWith({ id: 'note-2', silent: true })
     const queued = enqueueBatchAndDrainIfOnline.mock.calls[0][0]
     expect(queued).toHaveLength(1)
-    expect(queued[0]).toEqual(expect.objectContaining({ noteId: 'note-1', operation: 'delete', payload: { user_id: 'owner-a' } }))
+    expect(queued[0]).toEqual(expect.objectContaining({ noteId: 'note-1', operation: 'delete', payload: { ...note,locally_created:true } }))
     expect(Date.parse(queued[0].clientUpdatedAt)).toBeGreaterThan(Date.parse(queuedAt))
     expect(saveNote).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1', user_id: 'owner-a', updatedAt: queued[0].clientUpdatedAt }))
     expect(props.onNotesDeleted).toHaveBeenCalledWith(expect.arrayContaining(['note-1', 'note-2']))

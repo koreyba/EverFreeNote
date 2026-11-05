@@ -199,7 +199,7 @@ describe("Sidebar", () => {
 
       // Dialog opens
       expect(screen.getByTestId("bulk-delete-dialog")).toBeTruthy()
-      expect(screen.getByText(/This action will delete 2 notes\./i)).toBeTruthy()
+      expect(screen.getByText(/This action will move 2 notes to Trash\./i)).toBeTruthy()
 
       const input = screen.getByTestId("bulk-delete-confirm-input")
       fireEvent.change(input, { target: { value: "2" } })

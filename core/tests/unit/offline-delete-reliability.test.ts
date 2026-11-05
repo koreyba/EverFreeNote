@@ -43,7 +43,7 @@ describe('offline deletion after an uncertain create', () => {
     await manager.handleOnline()
 
     expect([...server]).toEqual(['other-note'])
-    expect(calls).toEqual([expect.objectContaining({ operation: 'delete', noteId: 'note-1', payload: { user_id: 'owner-a' } })])
+    expect(calls).toEqual([expect.objectContaining({ operation: 'delete', noteId: 'note-1', payload: { user_id: 'owner-a', title: 'note' } })])
     expect(storage.queue).toEqual([])
     manager.dispose()
   })
@@ -76,7 +76,7 @@ describe('offline deletion after an uncertain create', () => {
 
     await manager.handleOnline()
     expect(server.has('note-1')).toBe(true)
-    expect(storage.queue).toEqual([expect.objectContaining({ operation: 'delete', status: 'failed', payload: { user_id: 'owner-a' } })])
+    expect(storage.queue).toEqual([expect.objectContaining({ operation: 'delete', status: 'failed', payload: { user_id: 'owner-a', title: 'note' } })])
     await manager.drainQueue()
     expect(server.has('note-1')).toBe(false)
     expect(calls).toBe(2)
@@ -99,7 +99,7 @@ describe('offline deletion after an uncertain create', () => {
     await manager.handleOnline()
     expect(server.has('note-1')).toBe(true)
     expect(calls).toEqual([])
-    expect(storage.queue).toEqual([expect.objectContaining({ operation: 'delete', status: 'failed', payload: { user_id: 'owner-a' } })])
+    expect(storage.queue).toEqual([expect.objectContaining({ operation: 'delete', status: 'failed', payload: { user_id: 'owner-a', title: 'note' } })])
     currentUser = 'owner-a'
     await manager.drainQueue()
     expect(server.has('note-1')).toBe(false)

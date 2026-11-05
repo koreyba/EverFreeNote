@@ -2,6 +2,23 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Tables } from '@/supabase/types'
 
 type Note = Tables<'notes'>
+export type TrashEntry = Omit<Note, 'id'> & {
+  trash_id: string
+  original_note_id: string
+  deleted_at: string
+  body_bytes: number
+}
+export type TrashSummary = Omit<TrashEntry, 'description'>
+export type TrashActionResult = {
+  trash_id: string
+  id?: string
+  status: 'restored' | 'purged' | 'missing' | 'conflict'
+}
+export type DeleteNoteOptions = {
+  snapshot?: Partial<Note>
+  expectedUpdatedAt?: string
+  operationId?: string
+}
 export type NoteLookupResult =
   | { status: 'found'; note: Note }
   | { status: 'not_found' }
@@ -90,10 +107,185 @@ export class NoteService {
     return data
   }
 
-  async deleteNote(id: string) {
+  async deleteNote(id: string, options?: DeleteNoteOptions) {
+    if (
+      options?.snapshot ||
+      options?.expectedUpdatedAt ||
+      options?.operationId
+    ) {
+      const { data, error } = await this.supabase.rpc('trash_notes', {
+        p_notes: [
+          {
+            id,
+            ...(options.snapshot ? { snapshot: options.snapshot } : {}),
+            ...(options.expectedUpdatedAt
+              ? { expected_updated_at: options.expectedUpdatedAt }
+              : {}),
+            ...(options.operationId
+              ? { operation_id: options.operationId }
+              : {}),
+          },
+        ],
+      })
+      if (error) throw error
+      const outcome = Array.isArray(data)
+        ? data.find((row) => row.id === id)
+        : undefined
+      if (outcome?.status === 'conflict')
+        throw new Error(
+          'The note changed on another device. Your local draft remains in Trash pending sync.',
+        )
+      if (!outcome || !['trashed', 'already_trashed'].includes(outcome.status))
+        throw new Error(
+          'The server could not confirm that the note was saved in Trash.',
+        )
+      return id
+    }
+    // Older ID-only callers are protected by the archive-before-delete database trigger.
     const { error } = await this.supabase.from('notes').delete().eq('id', id)
     if (error) throw error
     return id
+  }
+
+  async getTrash(userId: string, page = 0) {
+    const { data, error, count } = await this.supabase
+      .from('notes_trash')
+      .select(
+        'trash_id, original_note_id, user_id, title, tags, created_at, updated_at, deleted_at, body_bytes',
+        { count: 'exact' },
+      )
+      .eq('user_id', userId)
+      .order('deleted_at', { ascending: false })
+      .order('trash_id', { ascending: false })
+      .range(page * 50, page * 50 + 49)
+    if (error) throw error
+    return {
+      notes: (data ?? []) as TrashSummary[],
+      totalCount: count ?? 0,
+      hasMore: (page + 1) * 50 < (count ?? 0),
+    }
+  }
+
+  async trashNotesBatch(
+    ids: string[],
+  ): Promise<{ succeeded: string[]; failed: string[] }> {
+    if (ids.length > 100)
+      throw new Error('Process at most 100 notes at a time.')
+    const { data, error } = await this.supabase.rpc('trash_notes', {
+      p_notes: ids.map((id) => ({ id })),
+    })
+    if (error) throw error
+    const succeeded: string[] = [],
+      failed: string[] = []
+    for (const id of ids) {
+      const row = Array.isArray(data)
+        ? data.find((item) => item.id === id)
+        : undefined
+      if (
+        !row ||
+        !['trashed', 'already_trashed', 'missing', 'conflict'].includes(
+          row.status,
+        )
+      )
+        throw new Error('Incomplete Trash confirmation.')
+      if (row.status === 'conflict') failed.push(id)
+      else succeeded.push(id)
+    }
+    return { succeeded, failed }
+  }
+
+  async getTrashedNote(trashId: string, userId: string): Promise<TrashEntry> {
+    const { data, error } = await this.supabase
+      .from('notes_trash')
+      .select('*')
+      .eq('trash_id', trashId)
+      .eq('user_id', userId)
+      .single()
+    if (error) throw error
+    return { ...data, description: data.description ?? '' } as TrashEntry
+  }
+
+  async getAllTrashIds(userId: string): Promise<string[]> {
+    const ids = new Set<string>()
+    let cursor: { trash_id: string; deleted_at: string } | undefined
+    while (true) {
+      let query = this.supabase
+        .from('notes_trash')
+        .select('trash_id, deleted_at')
+        .eq('user_id', userId)
+        .order('deleted_at', { ascending: false })
+        .order('trash_id', { ascending: false })
+        .limit(500)
+      if (cursor)
+        query = query.or(
+          `deleted_at.lt.${cursor.deleted_at},and(deleted_at.eq.${cursor.deleted_at},trash_id.lt.${cursor.trash_id})`,
+        )
+      const { data, error } = await query
+      if (error) throw error
+      if (!data) throw new Error('Could not load the complete Trash selection.')
+      const size = ids.size
+      for (const row of data) ids.add(row.trash_id)
+      if (data.length < 500) return [...ids]
+      if (size === ids.size)
+        throw new Error('Trash pagination did not advance. Refresh and retry.')
+      cursor = data[data.length - 1]
+    }
+  }
+
+  async restoreTrashedNotes(ids: string[]): Promise<TrashActionResult[]> {
+    return this.trashEntryAction('restore_notes', ids)
+  }
+
+  async cleanupExpiredTrash(
+    run: string,
+    isCurrent: () => boolean = () => true,
+  ): Promise<number> {
+    const started = Date.now()
+    let removed = 0
+    for (
+      let batch = 0;
+      batch < 5 && isCurrent() && Date.now() - started < 2000;
+      batch++
+    ) {
+      const { data, error } = await this.supabase.rpc('cleanup_my_trash', {
+        p_run: run,
+      })
+      if (error) throw error
+      if (typeof data !== 'number' || data < 0 || data > 100)
+        throw new Error('Invalid cleanup confirmation.')
+      removed += data
+      if (data < 100) break
+    }
+    return removed
+  }
+
+  async purgeTrashedNotes(ids: string[]): Promise<TrashActionResult[]> {
+    return this.trashEntryAction('purge_notes', ids)
+  }
+
+  private async trashEntryAction(
+    action: 'restore_notes' | 'purge_notes',
+    ids: string[],
+  ): Promise<TrashActionResult[]> {
+    if (ids.length > 100)
+      throw new Error('Process at most 100 Trash entries at a time.')
+    const { data, error } = await this.supabase.rpc(action, { p_ids: ids })
+    if (error) throw error
+    const statuses =
+      action === 'restore_notes'
+        ? ['restored', 'missing', 'conflict']
+        : ['purged', 'missing']
+    if (
+      !Array.isArray(data) ||
+      data.length !== new Set(ids).size ||
+      data.some(
+        (row) =>
+          !row || !ids.includes(row.trash_id) || !statuses.includes(row.status),
+      ) ||
+      ids.some((id) => !data.some((row) => row.trash_id === id))
+    )
+      throw new Error('Incomplete Trash confirmation. Refresh before retrying.')
+    return data as TrashActionResult[]
   }
 
   async getNote(id: string) {

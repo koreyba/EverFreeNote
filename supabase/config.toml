@@ -405,6 +405,11 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# Validates user tokens or the managed scheduler secret inside the handler.
+[functions.trash-cleanup]
+enabled = true
+verify_jwt = false
+
 [functions.get-notes]
 enabled = true
 verify_jwt = false

@@ -100,7 +100,7 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
       noteId: 'generated-note-id',
       operation: 'create',
-      payload: { title: 'New note', description: 'Body', tags: ['alpha', 'beta'], userId: 'user-1', user_id: 'user-1' },
+      payload: { title: 'New note', description: 'Body', tags: ['alpha', 'beta'], userId: 'user-1', user_id: 'user-1', locally_created: true },
     }))
     expect(params.setOfflineOverlay).toHaveBeenCalledWith(expect.any(Function))
     expect(params.setPendingCount).toHaveBeenCalledWith(expect.any(Function))
@@ -157,7 +157,7 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
       operation: 'update',
       noteId: note.id,
-      payload: { title: 'Updated', description: 'Original body', tags: ['one', 'two'], user_id: 'user-1' },
+      payload: { title: 'Updated', description: 'Original body', tags: ['one', 'two'], user_id: 'user-1', base_updated_at: note.updated_at },
     }))
     expect(params.setOfflineOverlay).toHaveBeenCalledWith(expect.any(Function))
   })
@@ -199,7 +199,7 @@ describe('useNoteSaveHandlers additional observable behavior', () => {
     expect(params.enqueueMutation).toHaveBeenCalledWith(expect.objectContaining({
       noteId: note.id,
       operation: 'delete',
-      payload: { user_id: 'user-1' },
+      payload: note,
     }), expect.any(Function))
     expect(params.offlineCache.saveNote).toHaveBeenCalledWith(expect.objectContaining({
       id: note.id,

@@ -1,4 +1,5 @@
 import type { MutationQueueItem, MutationStatus, MutationOperation } from '../types/offline'
+import type { Note } from '../types/domain'
 
 type Op = MutationOperation
 
@@ -51,7 +52,9 @@ export function compactQueue(items: MutationQueueItem[]): MutationQueueItem[] {
     // Preserve the known owner even for legacy deletes that omitted it.
     if (lastOp === 'delete') {
       const owner = owners.values().next().value
-      const payload = owner ? { ...last.payload, user_id: owner } : last.payload
+      // Deletion is now recoverable: keep the last complete draft until Trash acknowledges it.
+      const content = sorted.reduce<MutationQueueItem['payload']>((payload, op) => ({ ...payload, ...op.payload }), {})
+      const payload = owner ? { ...content, user_id: owner } : content
       result.push(withPendingStatus({ ...last, payload }))
       continue
     }
@@ -93,3 +96,21 @@ const withPendingStatus = (item: MutationQueueItem): MutationQueueItem => ({
 
 const ownerId = (item: MutationQueueItem): string | undefined =>
   item.payload.user_id ?? (item.payload as { userId?: string }).userId
+
+/** The durable queue is the local Trash until the server acknowledges the snapshot. */
+export function buildTrashPayload(
+  note: Partial<Note> & { id: string; content?: string | null }, owner: string, queue: MutationQueueItem[],
+): MutationQueueItem['payload'] {
+  const related = queue.filter(item => item.noteId === note.id).sort((a,b) => Date.parse(a.clientUpdatedAt)-Date.parse(b.clientUpdatedAt))
+  if ((note.user_id && note.user_id !== owner) || related.some(item => ownerId(item) && ownerId(item) !== owner)) {
+    throw new Error('The note belongs to another account.')
+  }
+  const payload: MutationQueueItem['payload'] = { ...note, description: note.description ?? note.content ?? undefined }
+  for (const item of related) {
+    for (const [key,value] of Object.entries(item.payload)) if (value !== undefined) Object.assign(payload,{ [key]: value })
+  }
+  if (typeof payload.title !== 'string' || typeof payload.description !== 'string' || !Array.isArray(payload.tags)) {
+    throw new Error('The complete note content could not be preserved. Keep the local snapshot and retry.')
+  }
+  return { ...payload, id: note.id, user_id: owner, ...(related.some(item => item.operation==='create') ? { locally_created: true } : {}) }
+}
