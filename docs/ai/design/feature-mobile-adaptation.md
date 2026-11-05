@@ -114,4 +114,6 @@ The controller retains the workspace tab while hiding its pane. The mobile tab s
 
 The swipe action is separate from vertical scrolling and long-press selection, and it reuses single-note confirmation and deletion. Find-in-note scans title and text ranges, paints transient highlights without editing the document, and scrolls to the selected match. Browsers without custom highlights use a visual overlay; the editor title uses an outline when it is the selected match.
 
-The notes list stores the chosen layout locally. List view retains the existing dynamic virtual rows; grid view virtualizes pairs of notes with a fixed row height and translates the visible-row index back into a note index for pagination. Both layouts use the same card, selection and swipe actions.
+The notes list stores the chosen layout locally. Both layouts measure virtual rows; grid view groups pairs of notes with a minimum row height of 200 px and translates the visible-row index back into a note index for pagination. Taller content expands the row, keeping dates visible and rows separate when text is enlarged. Switching layouts resets the row measurement cache. Both layouts use the same card, selection and swipe actions.
+
+The Tags count explanation, management status and local-cache notice share a bordered panel. Load and check actions stack as full-width, 44 px buttons on phones, with loading labels and indicators; desktop actions sit side by side.

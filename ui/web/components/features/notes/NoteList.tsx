@@ -23,7 +23,7 @@ export type NoteListLayout = "list" | "grid"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const VirtualList = ReactWindow.List as any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const useDynamicRowHeight = (ReactWindow as any).useDynamicRowHeight as (options: { defaultRowHeight: number }) => unknown
+const useDynamicRowHeight = (ReactWindow as any).useDynamicRowHeight as (options: { defaultRowHeight: number; key?: string }) => unknown
 
 // Row component props type for react-window v2
 type RowComponentProps<T> = {
@@ -184,7 +184,7 @@ const NoteRow = memo(({ index, style, ariaAttributes, ...props }: RowComponentPr
 
   if (layout === "grid") {
     return (
-      <div style={style} className="grid grid-cols-2 gap-2 px-2 py-1" role="presentation">
+      <div style={style} className="grid min-h-[200px] grid-cols-2 gap-2 px-2 py-1" role="presentation">
         {items.slice(firstIndex, firstIndex + columns).map((note, offset) => (
           <div key={note.id} className="min-w-0" role="listitem" aria-posinset={firstIndex + offset + 1} aria-setsize={items.length}>
             {renderNote(note)}
@@ -342,7 +342,7 @@ export const NoteList = memo(function NoteList({
   }, [ftsHasMore, ftsLoadingMore, onLoadMoreFts, searchResultCount])
 
   // Dynamic row height for virtualized lists - measures actual content height
-  const dynamicRowHeight = useDynamicRowHeight({ defaultRowHeight: 140 })
+  const dynamicRowHeight = useDynamicRowHeight({ defaultRowHeight: layout === "grid" ? 200 : 140, key: layout })
   const dynamicSearchRowHeight = useDynamicRowHeight({ defaultRowHeight: 180 })
 
   // Memoize item data for virtualized list (notes only)
@@ -507,7 +507,7 @@ export const NoteList = memo(function NoteList({
               height={height}
               width={width}
               rowCount={(layout === "grid" ? Math.ceil(notes.length / 2) : notes.length) + (hasMore ? 1 : 0)}
-              rowHeight={layout === "grid" ? 200 : dynamicRowHeight}
+              rowHeight={dynamicRowHeight}
               rowProps={itemData}
               overscanCount={5}
               onRowsRendered={handleNoteRowsRendered}
