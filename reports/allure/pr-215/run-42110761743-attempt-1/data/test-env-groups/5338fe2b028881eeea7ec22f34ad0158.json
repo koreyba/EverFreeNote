@@ -1,0 +1,1 @@
+{"id":"5338fe2b028881eeea7ec22f34ad0158","fullName":"everfreenote:ui/web/tests/unit/components/features/notes/Sidebar.test.tsx#Sidebar Search & Navigation Actions renders fallback text when notes count props are omitted","name":"renders fallback text when notes count props are omitted","status":"passed","testResultsByEnv":{"default":"17384d19ba9bf8d719d70c5d3b00c799"}}
