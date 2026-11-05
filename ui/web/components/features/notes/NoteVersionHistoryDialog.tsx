@@ -165,12 +165,25 @@ export function NoteVersionHistoryDialog({
               <div className="grid w-full min-w-0 grid-cols-2 gap-3 sm:w-auto">
                 {COMPARISON_SLOTS.map(({ key, label }) => {
                   const triggerId = `${comparisonId}-${key}`
+                  const slotVersion = comparison[key]
+                  const currentBadgeId = slotVersion === latestVersion ? `${triggerId}-current` : undefined
                   return (
-                    <div key={key} className="grid min-w-0 gap-1.5 sm:w-40">
-                      <Label htmlFor={triggerId} className="text-xs text-muted-foreground">{label}</Label>
-                      <Select value={String(comparison[key])} onValueChange={(value) => chooseComparisonVersion(key, Number(value))}>
-                        <SelectTrigger id={triggerId} className="min-w-0 gap-2 bg-background [&>svg]:shrink-0">
-                          <SelectValue placeholder="Choose a version" />
+                    <div key={key} className="grid min-w-0 grid-rows-[1fr_auto] gap-1.5 sm:w-40">
+                      <div className="flex min-h-4 flex-wrap content-start items-center gap-x-1 gap-y-0.5">
+                        <Label htmlFor={triggerId} className="text-xs text-muted-foreground">{label}</Label>
+                        {currentBadgeId && (
+                          <Badge id={currentBadgeId} variant="secondary" className="shrink-0 px-1 py-0 text-[10px] leading-tight">
+                            Current
+                          </Badge>
+                        )}
+                      </div>
+                      <Select value={String(slotVersion)} onValueChange={(value) => chooseComparisonVersion(key, Number(value))}>
+                        <SelectTrigger
+                          id={triggerId}
+                          aria-describedby={currentBadgeId}
+                          className="h-auto min-h-9 min-w-0 gap-1.5 bg-background px-2 py-1.5 text-left text-xs sm:gap-2 sm:px-3 sm:text-sm [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:break-words [&>svg]:shrink-0"
+                        >
+                          <SelectValue>Version {slotVersion}</SelectValue>
                         </SelectTrigger>
                         <SelectContent align="start" className="max-h-[var(--radix-select-content-available-height)]">
                           {versions.map(entry => (

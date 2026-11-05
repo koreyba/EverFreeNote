@@ -476,6 +476,18 @@ describe("MoreActionsMenu", () => {
     const from = history.getByRole("combobox", { name: "From version" })
     const to = history.getByRole("combobox", { name: "To version" })
 
+    await step("Show a short current version in the trigger and its full label in the menu", async () => {
+      expect(to.textContent?.trim()).toBe("Version 64")
+      const currentMarker = history.getByText("Current", { exact: true })
+      expect(to.contains(currentMarker)).toBe(false)
+      expect(history.getByRole("combobox", { name: "To version", description: "Current" })).toBeTruthy()
+
+      const options = await openVersionOptions(to)
+      const currentOption = options.getByRole("option", { name: "Version 64 (current)" })
+      fireEvent.keyDown(currentOption, { key: "Escape" })
+      await waitFor(() => expect(document.activeElement === to).toBe(true))
+    })
+
     await step("Load page two and choose a pair spanning both pages", async () => {
       const options = await openVersionOptions(from)
       expect(options.queryByRole("option", { name: "Version 5" })).toBeNull()
