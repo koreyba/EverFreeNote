@@ -1,3 +1,5 @@
+import type { NotebookSearchInput, NotebookSearchResult } from './notebookSearch.ts'
+
 // Shared contracts for the notebook MCP server.
 //
 // This directory is consumed by both Node (Jest, web) and Deno (Supabase Edge
@@ -66,6 +68,9 @@ export interface NotebookRepository {
   listNotes(params: ListNotesParams): Promise<ListNotesResult>
   /** Resolves `null` when the note does not exist or belongs to another user. */
   getNote(id: string): Promise<NoteRecord | null>
+  getNotes(ids: string[]): Promise<NoteRecord[]>
+  searchNotes(input: NotebookSearchInput): Promise<NotebookSearchResult>
+  updateNoteIfVersion(id: string, patch: UpdateNotePatch, expectedUpdatedAt: string | null): Promise<NoteRecord | null>
   createNote(input: CreateNoteInput): Promise<NoteRecord>
   /** Resolves `null` when nothing was updated (missing or foreign note). */
   updateNote(id: string, patch: UpdateNotePatch): Promise<NoteRecord | null>

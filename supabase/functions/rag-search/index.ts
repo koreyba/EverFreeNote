@@ -5,6 +5,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "@supabase/supabase-js"
 
+import { notebookSearchInputSchema, notebookSearchRpcParams } from "../../../core/mcp/notebookSearch.ts"
 import { getRagChunkBodyText } from "../../../core/rag/chunkTemplate.ts"
 import {
   DEFAULT_RAG_EMBEDDING_MODEL,
@@ -267,9 +268,14 @@ const getRagSearchRuntimeConfig = () => {
 }
 
 const readRagSearchPayload = async (req: Request) => {
-  let payload: { query?: unknown; topK?: unknown; threshold?: unknown; filterTag?: unknown } = {}
+  let payload: { query?: unknown; topK?: unknown; threshold?: unknown; filterTag?: unknown; notebookSearch?: unknown } = {}
   try { payload = await req.json() } catch { /* empty body */ }
 
+  if (payload.notebookSearch !== undefined) {
+    const parsed = notebookSearchInputSchema.safeParse(payload.notebookSearch)
+    if (!parsed.success || parsed.data.mode === 'text') throw createHttpError(400, 'Invalid semantic/hybrid notebook search request')
+    return { query: parsed.data.query, topK: parsed.data.limit, threshold: parsed.data.min_similarity ?? 0.55, tagFilter: null, requestedMatchCount: parsed.data.limit, notebookSearch: parsed.data }
+  }
   const { query, topK, threshold, filterTag } = payload
 
   if (typeof query !== "string" || query.trim().length === 0) {
@@ -593,7 +599,7 @@ serve(async (req: Request) => {
 
   try {
     const { supabaseUrl, serviceRoleKey, anonKey, encryptionSecret } = getRagSearchRuntimeConfig()
-    const { query, topK, threshold, tagFilter, requestedMatchCount } = await readRagSearchPayload(req)
+    const { query, topK, threshold, tagFilter, requestedMatchCount, notebookSearch } = await readRagSearchPayload(req)
     const { supabaseAdmin, token, userId } = await authenticateRagSearchRequest(req, supabaseUrl, serviceRoleKey)
     const geminiApiKey = await loadGeminiApiKey(supabaseAdmin, userId, encryptionSecret)
     const ragSearchSettings = await loadStoredRagSearchSettings(supabaseAdmin, userId)
@@ -618,6 +624,14 @@ serve(async (req: Request) => {
     const supabaseUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
+    if (notebookSearch) {
+      const { data, error } = await supabaseUser.rpc('search_notebook_notes', {
+        ...notebookSearchRpcParams({ ...notebookSearch, min_similarity: notebookSearch.min_similarity ?? ragSearchSettings.similarity_threshold }),
+        query_embedding: queryEmbedding,
+      })
+      if (error) throw error
+      return jsonResponse(data)
+    }
     const chunks = await executeMatchNotesSearch({
       supabaseAdmin,
       supabaseUser,

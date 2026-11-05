@@ -2,6 +2,7 @@
   "version": "5",
   "specifiers": {
     "npm:@modelcontextprotocol/sdk@1.30.0": "1.30.0_zod@4.1.12",
+    "npm:htmlparser2@10.1.0": "10.1.0",
     "npm:sanitize-html@2.17.0": "2.17.0",
     "npm:zod@4.1.12": "4.1.12"
   },
@@ -137,7 +138,7 @@
       "dependencies": [
         "domelementtype",
         "domhandler",
-        "entities"
+        "entities@4.5.0"
       ]
     },
     "domelementtype@2.3.0": {
@@ -173,6 +174,9 @@
     },
     "entities@4.5.0": {
       "integrity": "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="
+    },
+    "entities@7.0.1": {
+      "integrity": "sha512-TWrgLOFUQTH994YUyl1yT4uyavY5nNB5muff+RtWaqNVCAK408b5ZnnbNAUEWLTCpum9w6arT70i1XdQ4UeOPA=="
     },
     "es-define-property@1.0.1": {
       "integrity": "sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g=="
@@ -308,13 +312,22 @@
     "hono@4.13.7": {
       "integrity": "sha512-c8/gF9ac8Y78/agExVocyLevgR+JlpNB444Py0FSX8pJoPdYUfUzRcXtYEYGwt6l19qIlVZPN5Mfsw9jFShmQQ=="
     },
+    "htmlparser2@10.1.0": {
+      "integrity": "sha512-VTZkM9GWRAtEpveh7MSF6SjjrpNVNNVJfFup7xTY3UpFtm67foy9HDVXneLtFVt4pMz5kZtgNcvCniNFb1hlEQ==",
+      "dependencies": [
+        "domelementtype",
+        "domhandler",
+        "domutils",
+        "entities@7.0.1"
+      ]
+    },
     "htmlparser2@8.0.2": {
       "integrity": "sha512-GYdjWKDkbRLkZ5geuHs5NY1puJ+PXwP7+fHPRz06Eirsb9ugf6d8kkXav6ADhcODhFFPMIXyxkxSuMf3D6NCFA==",
       "dependencies": [
         "domelementtype",
         "domhandler",
         "domutils",
-        "entities"
+        "entities@4.5.0"
       ]
     },
     "http-errors@2.0.1": {
@@ -482,7 +495,7 @@
       "dependencies": [
         "deepmerge",
         "escape-string-regexp",
-        "htmlparser2",
+        "htmlparser2@8.0.2",
         "is-plain-object",
         "parse-srcset",
         "postcss"
@@ -643,6 +656,7 @@
   "workspace": {
     "dependencies": [
       "npm:@modelcontextprotocol/sdk@1.30.0",
+      "npm:htmlparser2@10.1.0",
       "npm:sanitize-html@2.17.0",
       "npm:zod@4.1.12"
     ]

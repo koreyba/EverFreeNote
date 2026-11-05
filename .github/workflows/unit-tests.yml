@@ -22,6 +22,18 @@ permissions:
 jobs:
   unit-tests-core:
     runs-on: ubuntu-latest
+    services:
+      mcp-database:
+        image: public.ecr.aws/supabase/postgres:17.6.1.143
+        env:
+          POSTGRES_PASSWORD: local-mcp-test
+          POSTGRES_DB: mcp_workflows
+        options: >-
+          --label com.everfreenote.test-purpose=mcp-note-workflows
+          --health-cmd "pg_isready -U postgres -d mcp_workflows"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     outputs:
       has_allure_results: ${{ steps.core-allure-check.outputs.has_allure_results }}
 
@@ -56,6 +68,7 @@ jobs:
         continue-on-error: true
         env:
           COVERAGE_ENABLED: ${{ inputs.coverage }}
+          MCP_DATABASE_CONTAINER: ${{ job.services.mcp-database.id }}
         run: |
           coverage_args=()
           if [ "${COVERAGE_ENABLED}" = "true" ]; then

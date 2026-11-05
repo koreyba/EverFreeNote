@@ -9,6 +9,11 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 
 import { buildExcerpt, htmlToPlainText } from './noteContent.ts'
+import { applyContentEdits, contentEditSchema } from './noteEdits.ts'
+import {
+  notebookSearchInputShape, notebookSearchInputSchema, notebookSearchOutputShape,
+  type NotebookSearchInput, type NotebookSemanticSearch,
+} from './notebookSearch.ts'
 import { sanitizeNoteHtml } from './noteHtml.ts'
 import { describeEmptyResult, type SemanticSearch } from './semanticSearch.ts'
 import { filterTags } from './tagVocabulary.ts'
@@ -17,15 +22,15 @@ import type { EditNoteTagsInput, NotebookRepository, NoteRecord, TagMatch } from
 export const NOTEBOOK_MCP_SERVER_INFO = {
   name: 'everfreenote-notebook',
   title: 'EverFreeNote notebook',
-  version: '1.0.0',
+  version: '1.1.0',
 } as const
 
 export const NOTEBOOK_MCP_INSTRUCTIONS = [
   "This server gives access to the signed-in user's EverFreeNote notebook.",
   'Finding notes: list_notes matches text and tags, search_notes_semantic matches meaning when it is available.',
-  'Both return short summaries; call get_note for the full body of the ones that look right.',
+  'search_notes adds ranked text/semantic/hybrid search with date ranges and multiple tags. Search results are summaries; use get_note or get_notes to read bodies.',
   'Use list_tags to learn which tags exist before filtering by one.',
-  'Writing: create_note adds a note, update_note replaces fields, and edit_note_tags adds or removes',
+  'Writing: create_note adds a note; update_note supports content_edits for partial block edits with expected_updated_at from a prior read. Legacy fields replace values. edit_note_tags adds or removes',
   'individual tags without touching the others. Prefer it over update_note when only tags change.',
   'Deleting notes is not available.',
   'Note bodies are HTML produced by the EverFreeNote editor; when writing, convert Markdown into that HTML.',
@@ -199,6 +204,8 @@ const updateNoteInputShape = {
   title: titleSchema.optional().describe('New title'),
   content_html: contentHtmlSchema.optional(),
   tags: tagsSchema.optional().describe('Full replacement tag list'),
+  expected_updated_at: z.iso.datetime({ offset: true }).nullable().optional().describe('Exact updated_at from get_note; required for content_edits. A stale version causes a conflict.'),
+  content_edits: z.array(contentEditSchema).min(1).max(20).optional().describe('Sequential HTML block edits; anchors must match exactly once and contain complete top-level blocks. Cannot combine with content_html.'),
 }
 export const updateNoteInputSchema = z.object(updateNoteInputShape)
 
@@ -284,6 +291,7 @@ function errorResult(message: string): CallToolResult {
 export function createNotebookMcpServer(
   repository: NotebookRepository,
   semanticSearch?: SemanticSearch,
+  notebookSemanticSearch?: NotebookSemanticSearch,
 ): McpServer {
   const server = new McpServer(NOTEBOOK_MCP_SERVER_INFO, { instructions: NOTEBOOK_MCP_INSTRUCTIONS })
 
@@ -344,6 +352,69 @@ export function createNotebookMcpServer(
     },
   )
 
+  server.registerTool('get_notes', {
+    title: 'Read several notes',
+    description: 'Read up to 50 unique note ids in one call, in requested order. Text by default. max_chars bounds total body characters; every id receives ok, not_found or limit_exceeded. Bodies are never silently truncated; use get_note for an over-budget note.',
+    inputSchema: {
+      ids: z.array(noteIdSchema).min(1).max(50).refine(ids => new Set(ids).size === ids.length, 'ids must be unique'),
+      format: z.enum(['text', 'html']).default('text'),
+      max_chars: z.number().int().min(1000).max(500_000).default(100_000),
+    },
+    outputSchema: {
+      notes: z.array(z.object({
+        id: z.string(),
+        status: z.enum(['ok', 'not_found', 'limit_exceeded']),
+        title: z.string().optional(), tags: z.array(z.string()).optional(),
+        created_at: timestampSchema.optional(), updated_at: timestampSchema.optional(),
+        content: z.string().optional(), content_format: z.enum(['text', 'html']).optional(),
+        content_length: z.number().int().nonnegative().optional(),
+      })),
+      partial: z.boolean(), total_requested: z.number().int().positive(),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async ({ ids, format, max_chars }: { ids: string[]; format: 'text' | 'html'; max_chars: number }) => {
+    try {
+      const rows = await repository.getNotes(ids)
+      const byId = new Map(rows.map(note => [note.id, note]))
+      let remaining = max_chars
+      const notes = ids.map(id => {
+        const note = byId.get(id)
+        if (!note) return { id, status: 'not_found' as const }
+        const content = format === 'html' ? note.contentHtml : htmlToPlainText(note.contentHtml)
+        const metadata = {
+          id, title: note.title, tags: note.tags,
+          created_at: note.created_at, updated_at: note.updated_at,
+          content_format: format, content_length: content.length,
+        }
+        if (content.length > remaining) return { ...metadata, status: 'limit_exceeded' as const }
+        remaining -= content.length
+        return { ...metadata, status: 'ok' as const, content }
+      })
+      return successResult({ notes, partial: notes.some(note => note.status !== 'ok'), total_requested: ids.length })
+    } catch (error) { return errorResult(`Failed to read notes: ${describeToolError(error)}`) }
+  })
+
+  server.registerTool('search_notes', {
+    title: 'Search and rank notebook notes',
+    description: 'Search by words, meaning or both. Filter by creation/update timestamps and several case-insensitive tags before ranking and pagination. Text mode is free; semantic/hybrid spend Gemini quota and require an index. Hybrid falls back to text with a warning only when AI search is not configured.',
+    inputSchema: notebookSearchInputShape, outputSchema: notebookSearchOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (args: NotebookSearchInput) => {
+    try {
+      const parsed = notebookSearchInputSchema.safeParse(args)
+      if (!parsed.success) return errorResult(parsed.error.issues.map(issue => issue.message).join('; '))
+      const input = parsed.data
+      if (input.mode === 'text') return successResult(await repository.searchNotes(input))
+      const outcome = notebookSemanticSearch
+        ? await notebookSemanticSearch.searchNotes(input)
+        : { status: 'unavailable' as const, message: 'Semantic search is not configured on this server.' }
+      if (outcome.status === 'ok') return successResult(outcome.result)
+      if (input.mode === 'semantic') return errorResult(outcome.message)
+      const fallback = await repository.searchNotes({ ...input, mode: 'text' })
+      return successResult({ ...fallback, warnings: [outcome.message] })
+    } catch (error) { return errorResult(`Failed to search notes: ${describeToolError(error)}`) }
+  })
+
   server.registerTool(
     'create_note',
     {
@@ -372,23 +443,33 @@ export function createNotebookMcpServer(
     {
       title: 'Update a note',
       description:
-        'Updates the title, body and/or tags of an existing note. Provided fields replace the current ' +
-        'values entirely (send the full new body, not a diff). Returns the updated note.',
+        'Updates title, body or tags. content_html replaces the whole body. Prefer content_edits to append/prepend, insert before/after or replace exact complete HTML blocks. Read with get_note first and pass its exact expected_updated_at to detect conflicts. Edits apply sequentially and cannot combine with content_html. Returns the updated note.',
       inputSchema: updateNoteInputShape,
       outputSchema: noteDetailShape,
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     },
-    async ({ id, title, content_html, tags }: UpdateNoteToolInput) => {
-      if (title === undefined && content_html === undefined && tags === undefined) {
+    async ({ id, title, content_html, tags, content_edits, expected_updated_at }: UpdateNoteToolInput) => {
+      if (content_html !== undefined && content_edits !== undefined) return errorResult('content_html and content_edits cannot be combined')
+      if (content_edits !== undefined && expected_updated_at === undefined) return errorResult('content_edits requires expected_updated_at from get_note')
+      if (title === undefined && content_html === undefined && tags === undefined && content_edits === undefined) {
         return errorResult('Provide at least one of title, content_html or tags')
       }
 
       try {
-        const note = await repository.updateNote(id, {
+        let body = content_html === undefined ? undefined : sanitizeNoteHtml(content_html)
+        if (content_edits !== undefined) {
+          const current = await repository.getNote(id)
+          if (!current) return errorResult('Note not found')
+          body = applyContentEdits(current.contentHtml, content_edits)
+        }
+        const patch = {
           ...(title === undefined ? {} : { title }),
-          ...(content_html === undefined ? {} : { contentHtml: sanitizeNoteHtml(content_html) }),
+          ...(body === undefined ? {} : { contentHtml: body }),
           ...(tags === undefined ? {} : { tags: normalizeTags(tags) }),
-        })
+        }
+        const note = expected_updated_at === undefined
+          ? await repository.updateNote(id, patch)
+          : await repository.updateNoteIfVersion(id, patch, expected_updated_at)
         if (!note) return errorResult('Note not found')
         return successResult(toNoteDetail(note))
       } catch (error) {

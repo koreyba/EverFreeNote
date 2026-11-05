@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { mapNotebookSearchResult, type NotebookSemanticSearch } from './notebookSearch.ts'
 import { RAG_SEARCH_EDITABLE_DEFAULTS, RAG_SEARCH_TOP_K_MAX } from '../rag/searchSettings.ts'
 import {
   groupChunksByNote,
@@ -50,5 +51,24 @@ export const createRagSemanticSearch = (
     }
     const chunks = (body as { chunks?: RagSearchChunk[] } | null)?.chunks ?? []
     return { status: 'ok', notes: groupChunksByNote(chunks, params.limit) }
+  },
+})
+
+/** Note-level search reuses the RAG service's key, saved threshold and model validation. */
+export const createRagNotebookSearch = (functionsOrigin: string, token: string): NotebookSemanticSearch => ({
+  async searchNotes(input) {
+    const response = await fetch(`${functionsOrigin}/functions/v1/rag-search`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notebookSearch: input }),
+    })
+    const body: unknown = await response.json().catch(() => null)
+    if (!response.ok) {
+      const unavailable = mapUnavailableResponse(response.status, body)
+      if (unavailable?.status === 'unavailable') return { status: 'unavailable', message: unavailable.message }
+      const message = typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string' ? body.error : `rag-search returned ${response.status}`
+      throw new Error(message)
+    }
+    return { status: 'ok', result: mapNotebookSearchResult(body) }
   },
 })

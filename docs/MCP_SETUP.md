@@ -28,7 +28,7 @@ Source code:
 | What | Where |
 |---|---|
 | HTTP handler (CORS, routing, token validation, transport) | `supabase/functions/mcp/index.ts` |
-| Tool definitions (all seven) | `core/mcp/notebookServer.ts` |
+| Tool definitions (all nine) | `core/mcp/notebookServer.ts` |
 | Tag aggregation and incremental tag edits | `core/mcp/tagVocabulary.ts` |
 | Semantic-search port and response mapping | `core/mcp/semanticSearch.ts` |
 | Database access under RLS | `core/mcp/supabaseNotebookRepository.ts` |
@@ -140,13 +140,56 @@ Any client that implements the MCP authorization spec (Streamable HTTP + OAuth 2
 | Tool | Description |
 |------|-------------|
 | `list_notes` | Most recently updated notes; optional `query` (substring in title/body), `tags` with `tag_match` (`all` by default, or `any`), `limit` (1–100), `offset`. Returns summaries with a plain-text excerpt. |
-| `get_note` | Full note: `content_html` (editor HTML) and `content_text`. |
+| `get_note` | Full note: `content_html` (editor HTML), `content_text`, and `updated_at` for safe edits. |
+| `get_notes` | Read 1–50 unique ids in one call, in requested order. `format`: text (default) or html; `max_chars`: total body-character budget, default 100000, maximum 500000. Every id reports ok, not_found or limit_exceeded. |
 | `list_tags` | Every tag with the number of notes carrying it, most used first. Optional substring `query` and `limit`. |
 | `create_note` | `title`, optional `content_html`, optional `tags`. |
-| `update_note` | Replace `title`, `content_html` and/or `tags` of a note. Tags are replaced wholesale. |
+| `update_note` | Replace fields or use `content_edits` to append/prepend, insert before/after a block or replace a block. Edits require `expected_updated_at` from reading the note. Tags are replaced wholesale. |
 | `edit_note_tags` | Add and/or remove individual tags on a note, leaving the others alone. Use this rather than `update_note` when only tags change. |
+| `search_notes` | Ranked text (default), semantic or hybrid search. Date ranges, multiple case-insensitive tags with all/any, sort by relevance/updated_at/created_at, limit and offset. Text is free; semantic/hybrid use Gemini. |
 | `search_notes_semantic` | Finds notes close in meaning to the query using the notebook's AI index. Optional `limit`, `min_similarity`, `tag`. Returns one entry per note with matching passages. |
 
+
+### Safe edits inside a note
+
+Read the note first and pass its exact `updated_at` as `expected_updated_at` (including null for a legacy null timestamp). Do not round timestamps through JavaScript Date. `content_edits` apply sequentially and cannot be combined with `content_html`.
+
+```json
+{
+  "id": "<note-uuid>",
+  "expected_updated_at": "<exact updated_at from get_note>",
+  "content_edits": [
+    { "operation": "insert_after", "anchor_html": "<h2>Decisions</h2>", "content_html": "<p>New decision.</p>" },
+    { "operation": "append", "content_html": "<p>Meeting minutes.</p>" }
+  ]
+}
+```
+
+Anchors must match exactly once and contain complete top-level HTML blocks from the read result: an entire paragraph, heading, list, or several adjacent blocks. Replace the containing paragraph/list to change its text. Missing, ambiguous or nested-only anchors cause an error without a write. Anchored edits also reject overlapping block ranges in malformed stored HTML; open and save such a note in the editor first. A stale version causes a conflict: read again and reconcile the new content. Existing whole-field replacements remain compatible and can opt into the same version check.
+
+`get_notes` never silently truncates a body. An over-budget item has `limit_exceeded` and its original `content_length`; use `get_note` separately when needed. Missing and foreign ids both return `not_found`. Metadata is outside the body-character budget; characters are not a token estimate.
+
+### Ranked search with dates and tags
+
+```json
+{
+  "query": "project interview",
+  "mode": "hybrid",
+  "tags": ["work", "urgent"],
+  "tag_match": "all",
+  "created_after": "2026-10-01T00:00:00Z",
+  "created_before": "2026-11-01T00:00:00Z",
+  "sort": "relevance",
+  "limit": 20,
+  "offset": 0
+}
+```
+
+Created and updated ranges are independent. Lower bounds are inclusive, upper bounds exclusive; supply ISO timestamps with timezone offsets and at most six fractional digits. Use the user's timezone when defining a calendar month. Filters apply before ranking and pagination. Text mode supports quoted phrases, OR and excluded words using PostgreSQL web-search syntax. Semantic mode ranks each note by its best matching passage; hybrid combines text and semantic rank positions. Scores are comparable only within the same mode/query. Semantic/hybrid use the saved similarity threshold unless `min_similarity` is supplied.
+
+If hybrid search lacks a key or has a model/configuration setup gap, it returns text results with `mode: "text"` and a warning. A genuine upstream error remains an error. Semantic results depend on indexed content; new or edited unindexed content can still be found through text search.
+
+Deploy `20261105183000_mcp_note_workflows.sql` before updating `rag-search` and `mcp`. See `docs/ai/deployment/2026-11-05-feature-mcp-note-workflows.md` for rollout checks.
 
 ### Semantic search prerequisites
 
