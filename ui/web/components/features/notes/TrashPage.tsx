@@ -458,34 +458,33 @@ export function TrashPage({
         className={cn("min-w-0", preview ? "hidden md:flex" : "w-full")}
         aria-label="Trash notes"
         data-testid="trash-sidebar"
+        onEnterSelectionMode={!isOffline && rows.length > 0 ? () => setSelectionMode(true) : undefined}
+        onExitSelectionMode={exitSelection}
+        selectionToggleDisabled={busy}
         primaryControls={
-          <div className="flex w-full min-w-0 items-center justify-between gap-1">
+          <div className="flex min-h-11 w-full min-w-0 items-center justify-between gap-1 md:min-h-9">
             <h1 className="text-xl font-bold tracking-tight">Trash</h1>
-            {!isOffline && !selectionMode && total > 0 && (
-              <div className="flex shrink-0 items-center gap-0.5">
-                {rows.length > 0 && (
-                  <Button type="button" variant="ghost" size="sm" className="h-11 rounded-full px-2.5 md:h-8"
-                    disabled={busy} onClick={() => setSelectionMode(true)}>
-                    Select
-                  </Button>
-                )}
-                <Button type="button" variant="ghost" size="sm" className="h-11 rounded-full px-2.5 text-destructive hover:text-destructive md:h-8"
-                  disabled={busy || loading} onClick={() => void prepareEmptyTrash()}>
-                  Empty Trash
-                </Button>
-              </div>
+            {total > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-11 shrink-0 rounded-lg px-2.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive md:h-9"
+                disabled={isOffline || selectionMode || busy || loading}
+                onClick={() => void prepareEmptyTrash()}
+              >
+                Empty Trash
+              </Button>
             )}
           </div>
         }
         controlsHint={<p className="text-xs text-muted-foreground">Notes are deleted after 30 days.</p>}
         selectionControls={selectionMode && (
           <SelectionModeActions
-            className="notes-sidebar-selection"
             selectedCount={selected.size}
             onSelectAll={() => setSelected((previous) => new Set([...previous, ...rows.map((row) => row.trash_id)]))}
             onRestore={() => void actOnEntries('restore', [...selected])}
             onDelete={() => setConfirmation({ kind: 'bulk', ids: [...selected] })}
-            onCancel={exitSelection}
             deleteLabel="Delete forever"
             selectingAllDisabled={isOffline || rows.every((row) => selected.has(row.trash_id))}
             deletingDisabled={isOffline || selected.size === 0}

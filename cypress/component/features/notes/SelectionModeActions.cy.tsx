@@ -16,10 +16,10 @@ describe('SelectionModeActions', () => {
       />
     )
 
-    cy.get('[aria-label="4 selected"]').should('be.visible').and('contain', '4')
+    cy.get('[data-testid="selection-mode-count"]').should('be.visible').and('have.text', '4 selected')
     cy.contains('button', 'Select all').click()
-    cy.contains('button', 'Delete (4)').click()
-    cy.contains('button', 'Cancel').click()
+    cy.get('button[aria-label="Move to Trash"]').click()
+    cy.contains('button', 'Done').click()
 
     cy.get('@onSelectAll').should('have.been.calledOnce')
     cy.get('@onDelete').should('have.been.calledOnce')
@@ -40,8 +40,8 @@ describe('SelectionModeActions', () => {
     )
 
     cy.contains('button', 'Select all').should('be.disabled')
-    cy.contains('button', 'Cancel').should('be.disabled')
-    cy.contains('button', /^Deleting$/).should('be.disabled')
+    cy.contains('button', 'Done').should('be.disabled')
+    cy.get('button[aria-label="Deleting"]').should('be.disabled')
     cy.get('button').find('.animate-spin').should('have.length', 1)
   })
 })

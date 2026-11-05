@@ -274,6 +274,6 @@ describe('Trash page', () => {
         .getByRole('checkbox', { name: 'Select note "Deleted note"' })
         .getAttribute('aria-checked'),
     ).toBe('true')
-    expect(screen.getByLabelText('1 selected')).toBeTruthy()
+    expect(screen.getByText('1 selected')).toBeTruthy()
   })
 })

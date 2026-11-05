@@ -63,6 +63,8 @@ Expected server versions and successful in-session save versions protect against
 
 Trash reuses the Notes sidebar, virtual list/grid cards, selection toolbar and read view. The existing layout preference is shared; on phones the note replaces the list until Back. Tags and excerpts come from the archived snapshot. Restore and Delete forever are reader actions; active note editing and sharing require restoration.
 
+Select sits beside the layout controls in Notes and Trash. Selection uses the same row for the count, Select all and bulk actions. Done exits selection and restores the layout controls. Action labels appear when the sidebar has room. New Note and Empty Trash stay visible and are disabled during selection.
+
 Trash loads 50 summaries per page through the security-invoker `notes_trash_list` view. It inherits the base table's owner RLS and projects at most 2,048 body characters per card. The full body is fetched only when the note is opened. Offline access is cached/read-only; restore/permanent actions require online access. The disposable owner cache holds ≤100 summaries and ≤3 full previews of ≤250,000 characters. Refresh discards removed previews; sign-out/account deletion clears that owner's reading cache without wiping the durable queue.
 
 Single permanent deletion uses confirmation; bulk/Empty Trash reuse the exact-count dialog. Empty Trash freezes ID-only keyset pages/count before confirmation, excluding new arrivals. Select all selects loaded rows. Actions send sequential chunks of 100, prevent duplicate submission and retain failed selections. Session/request-order guards reject stale account/list/preview responses.

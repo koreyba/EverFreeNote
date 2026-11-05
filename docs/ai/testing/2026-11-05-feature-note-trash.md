@@ -112,3 +112,8 @@ Remaining release checks: actual Cron/extensions/Vault, Storage API partial/fail
 - 143 Electron component tests passed across Trash and the shared Notes components (`allure-agent-2YYAyI`). The Trash scenarios cover 1,280px desktop, 768px portrait tablet with expanded navigation, 320px phone, and 844×390 landscape. They verify the cards and tags, list/grid switch, lazy reader, scroll pagination, restoration, single/bulk confirmation, and frozen Empty Trash IDs. Desktop, tablet, and phone screenshots were inspected.
 - 72 focused Jest tests passed, including real PostgreSQL owner isolation and the 2,048-character projection bound; the opt-in vector workload was skipped in this run (`allure-agent-OHJ08F`). Type-check and ESLint passed.
 - A rolled-back Stage check returned the bounded excerpt and tags for the synthetic owner, no row for another account, and no anonymous SELECT privilege.
+
+### Selection toolbar checkpoint
+
+- The focused browser run passed 115 scenarios, including stable list placement, keyboard focus, 44px phone targets and confirmation. The tag affordance spec passed all 8 cases after loading the application stylesheet in its fixture. The offline scenario checks that the exact delete is in IndexedDB before reconnecting.
+- All 59 focused web unit tests passed. Type-check and ESLint passed.

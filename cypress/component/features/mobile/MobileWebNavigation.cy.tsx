@@ -71,7 +71,7 @@ describe('Mobile web navigation', { retries: 0 }, () => {
   it('offers an explicit way to select notes for bulk actions', () => {
     cy.contains('[data-testid="sidebar-container"] button', 'Select').click()
     cy.contains('[data-testid="note-card"] button', 'Navigation note').click()
-    cy.get('[data-testid="selection-mode-count"]').should('have.attr', 'aria-label', '1 selected')
+    cy.get('[data-testid="selection-mode-count"]').should('have.text', '1 selected')
     cy.get('[data-testid="selection-mode-delete"]').should('be.enabled')
     cy.get('[data-testid="selection-mode-cancel"]').click()
     cy.get('[data-testid="selection-mode-actions"]').should('not.exist')
@@ -112,7 +112,7 @@ describe('Mobile web navigation', { retries: 0 }, () => {
     cy.contains('[data-testid="note-card"] button', 'Navigation note')
       .trigger('pointerup', { pointerType: 'touch', pointerId: 1, clientX: 200, clientY: 200 })
       .trigger('click')
-    cy.get('[data-testid="selection-mode-count"]').should('have.attr', 'aria-label', '1 selected')
+    cy.get('[data-testid="selection-mode-count"]').should('have.text', '1 selected')
     cy.get('[data-testid="sidebar-container"]').should('be.visible')
   })
 

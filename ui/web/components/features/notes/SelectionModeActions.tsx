@@ -1,4 +1,4 @@
-import { CircleNotch as Loader2 } from "@phosphor-icons/react"
+import { ArrowCounterClockwise, CircleNotch, Trash } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@ui/web/lib/utils"
 
@@ -8,7 +8,7 @@ interface SelectionModeActionsProps {
   onDelete: () => void
   onRestore?: () => void
   deleteLabel?: string
-  onCancel: () => void
+  onCancel?: () => void
   selectingAllDisabled?: boolean
   deletingDisabled?: boolean
   deleting?: boolean
@@ -16,12 +16,15 @@ interface SelectionModeActionsProps {
   className?: string
 }
 
+const actionButton = "h-11 min-w-11 shrink-0 rounded-lg px-0 @min-[350px]/selection:px-2.5"
+const actionLabel = "hidden @min-[350px]/selection:inline"
+
 export function SelectionModeActions({
   selectedCount,
   onSelectAll,
   onDelete,
   onRestore,
-  deleteLabel,
+  deleteLabel = "Move to Trash",
   onCancel,
   selectingAllDisabled = false,
   deletingDisabled = false,
@@ -29,70 +32,78 @@ export function SelectionModeActions({
   busy = false,
   className,
 }: SelectionModeActionsProps) {
+  const working = busy || deleting
   return (
     <div
       data-testid="selection-mode-actions"
-      className={cn(
-        "flex items-center justify-between gap-3 px-3 py-2 text-xs border border-border/40 bg-card/65 dark:bg-card/45 backdrop-blur-md rounded-2xl shadow-sm",
-        className
-      )}
+      role="group"
+      aria-label="Selection actions"
+      aria-busy={working || undefined}
+      className={cn("@container/selection flex h-12 min-w-0 flex-1 items-center gap-0.5", className)}
     >
       <div
         data-testid="selection-mode-count"
-        className="flex items-center justify-center h-6 min-w-[24px] px-2 rounded-full bg-primary/10 text-primary text-[11px] font-bold tabular-nums shrink-0"
-        aria-label={`${selectedCount} selected`}
+        aria-live="polite"
+        aria-atomic="true"
+        className={cn("min-w-0 text-[11px] font-semibold leading-tight tabular-nums", selectedCount ? "text-primary" : "text-muted-foreground")}
       >
-        {selectedCount}
+        {selectedCount} selected
       </div>
-      <div data-testid="selection-mode-buttons" className={cn("flex items-center gap-1 min-w-0", onRestore && "flex-wrap justify-end")}>
-        <Button
-          data-testid="selection-mode-select-all"
-          variant="ghost"
-          size="sm"
-          className="rounded-full h-11 px-2.5 text-xs md:h-7 md:text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
-          onClick={onSelectAll}
-          disabled={selectingAllDisabled || busy}
-        >
-          Select all
-        </Button>
+      <Button
+        type="button"
+        data-testid="selection-mode-select-all"
+        variant="ghost"
+        size="sm"
+        title="Select all loaded notes"
+        className="h-11 shrink-0 rounded-lg px-1"
+        onClick={onSelectAll}
+        disabled={selectingAllDisabled || working}
+      >
+        Select all
+      </Button>
+      <div data-testid="selection-mode-buttons" className="ml-auto flex shrink-0 items-center">
         {onRestore && (
           <Button
-            variant="outline"
+            type="button"
+            variant="ghost"
             size="sm"
-            className="rounded-full h-11 px-2.5 text-xs md:h-7 md:text-[11px]"
+            aria-label="Restore"
+            title="Restore selected notes"
+            className={cn(actionButton, "text-primary hover:bg-primary/10 hover:text-primary")}
             onClick={onRestore}
-            disabled={busy || deleting || deletingDisabled}
+            disabled={working || deletingDisabled}
           >
-            Restore
+            <ArrowCounterClockwise aria-hidden="true" />
+            <span className={actionLabel}>Restore</span>
           </Button>
         )}
         <Button
+          type="button"
           data-testid="selection-mode-delete"
-          variant="outline"
-          size="sm"
-          className="rounded-full h-11 px-3 text-xs md:h-7 md:text-[11px] font-medium text-destructive dark:text-red-400 hover:text-destructive dark:hover:text-red-300 hover:bg-destructive/10 dark:hover:bg-red-950/30 border-destructive/25 dark:border-red-900/50 hover:border-destructive/30 shadow-sm transition-all"
-          onClick={onDelete}
-          disabled={busy || deleting || deletingDisabled}
-        >
-          {deleting ? (
-            <span className="inline-flex items-center gap-1">
-               <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Deleting</span>
-            </span>
-          ) : (
-            deleteLabel ?? `Delete (${selectedCount})`
-          )}
-        </Button>
-        <Button
-          data-testid="selection-mode-cancel"
           variant="ghost"
           size="sm"
-          className="rounded-full h-11 px-2.5 text-xs md:h-7 md:text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all"
-          onClick={onCancel}
-          disabled={busy || deleting}
+          aria-label={deleting ? "Deleting" : deleteLabel}
+          title={deleteLabel}
+          className={cn(actionButton, "text-destructive hover:bg-destructive/10 hover:text-destructive")}
+          onClick={onDelete}
+          disabled={working || deletingDisabled}
         >
-          Cancel
+          {deleting ? <CircleNotch className="animate-spin" aria-hidden="true" /> : <Trash aria-hidden="true" />}
+          <span className={actionLabel}>{deleting ? "Deleting" : deleteLabel}</span>
         </Button>
+        {onCancel && (
+          <Button
+            type="button"
+            data-testid="selection-mode-cancel"
+            variant="ghost"
+            size="sm"
+            className="h-11 min-w-11 rounded-lg px-2"
+            onClick={onCancel}
+            disabled={working}
+          >
+            Done
+          </Button>
+        )}
       </div>
     </div>
   )

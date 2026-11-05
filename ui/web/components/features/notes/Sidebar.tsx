@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { SignOut as LogOut, Plus, MagnifyingGlass as Search, Gear as Settings, ListBullets, SquaresFour } from "@phosphor-icons/react"
+import { Check, ListChecks, SignOut as LogOut, Plus, MagnifyingGlass as Search, Gear as Settings, ListBullets, SquaresFour } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BrandLogo } from "@/components/BrandLogo"
@@ -38,17 +38,19 @@ interface NoteListSidebarProps {
   primaryControls: React.ReactNode
   controlsHint?: React.ReactNode
   selectionControls?: React.ReactNode
+  onEnterSelectionMode?: () => void
+  onExitSelectionMode?: () => void
+  selectionToggleDisabled?: boolean
   children: React.ReactNode
   className?: string
   "aria-label"?: string
   "data-testid"?: string
 }
 
-interface SidebarProps extends Omit<NoteListSidebarProps, "mobileHeading" | "primaryControls" | "controlsHint" | "selectionControls"> {
+interface SidebarProps extends Omit<NoteListSidebarProps, "mobileHeading" | "primaryControls" | "controlsHint" | "selectionControls" | "selectionToggleDisabled"> {
   selectionMode: boolean
   selectedCount: number
   bulkDeleting: boolean
-  onEnterSelectionMode?: () => void
   onExitSelectionMode: () => void
   onSelectAll: () => void
   onBulkDelete: () => void
@@ -87,21 +89,18 @@ export function Sidebar({
       <NoteListSidebar
         {...sidebarProps}
         mobileHeading="Notes"
+        onEnterSelectionMode={hasVisibleNotes ? onEnterSelectionMode : undefined}
+        onExitSelectionMode={onExitSelectionMode}
+        selectionToggleDisabled={bulkDeleting}
         primaryControls={
-          <>
-            {!selectionMode && hasVisibleNotes && onEnterSelectionMode && (
-              <Button type="button" variant="ghost" onClick={onEnterSelectionMode} className="h-11 px-3 md:hidden">
-                Select
-              </Button>
-            )}
-            <Button
-              onClick={onCreateNote}
-              className={cn("h-11 rounded-full px-4 shadow-sm hover:shadow transition-all duration-200 active:translate-y-0 md:h-9 md:w-full md:hover:-translate-y-[0.5px]", selectionMode && "hidden md:inline-flex")}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Note
-            </Button>
-          </>
+          <Button
+            onClick={onCreateNote}
+            disabled={selectionMode}
+            className="h-11 rounded-full px-4 shadow-sm hover:shadow transition-all duration-200 active:translate-y-0 md:h-9 md:w-full md:hover:-translate-y-[0.5px]"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Note
+          </Button>
         }
         controlsHint={createNoteDestination && (
           <p className="text-center text-xs text-muted-foreground" aria-live="polite">
@@ -110,11 +109,9 @@ export function Sidebar({
         )}
         selectionControls={selectionMode && (
           <SelectionModeActions
-            className="notes-sidebar-selection"
             selectedCount={selectedCount}
             onSelectAll={onSelectAll}
             onDelete={requestBulkDelete}
-            onCancel={onExitSelectionMode}
             selectingAllDisabled={!hasVisibleNotes || allVisibleSelected || bulkDeleting}
             deletingDisabled={selectedCount === 0 || bulkDeleting}
             deleting={bulkDeleting}
@@ -158,6 +155,9 @@ export function NoteListSidebar({
   primaryControls,
   controlsHint,
   selectionControls,
+  onEnterSelectionMode,
+  onExitSelectionMode,
+  selectionToggleDisabled,
   children,
   className,
   "aria-label": ariaLabel = "Sidebar",
@@ -177,6 +177,9 @@ export function NoteListSidebar({
     const displayed = typeof notesDisplayed === "number" ? notesDisplayed : "-"
     return typeof notesTotal === "number" ? `${displayed} of ${notesTotal} notes` : `${displayed} notes shown`
   }, [notesDisplayed, notesTotal])
+  const selecting = Boolean(selectionControls)
+  const toggleSelection = selecting ? onExitSelectionMode : onEnterSelectionMode
+  const selectionLabel = selecting ? "Done" : "Select"
 
   return (
     <aside
@@ -252,26 +255,48 @@ export function NoteListSidebar({
             {primaryControls}
           </div>
           {controlsHint}
-          <div className="notes-sidebar-count flex items-center justify-between gap-3">
-            <p className="min-w-0 text-[11px] text-muted-foreground tracking-wide uppercase font-semibold">
-              {notesCountText}
-            </p>
-            {onChangeNoteListLayout && (
-              <div role="group" aria-label="Note layout" className="flex shrink-0 items-center rounded-full bg-muted/70 p-0.5">
-                <Button type="button" variant="ghost" size="icon" aria-label="List view" aria-pressed={noteListLayout === "list"}
-                  onClick={() => onChangeNoteListLayout("list")}
-                  className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "list" && "bg-background text-foreground shadow-sm")}>
-                  <ListBullets className="h-4 w-4" aria-hidden="true" />
-                </Button>
-                <Button type="button" variant="ghost" size="icon" aria-label="Grid view" aria-pressed={noteListLayout === "grid"}
-                  onClick={() => onChangeNoteListLayout("grid")}
-                  className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "grid" && "bg-background text-foreground shadow-sm")}>
-                  <SquaresFour className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
+          <div className={cn("notes-sidebar-count flex min-h-12 min-w-0 items-center gap-1", selecting && "notes-sidebar-selection gap-0.5")}>
+            {selectionControls || (
+              <>
+                <p title={notesCountText} className="line-clamp-2 min-w-0 flex-1 text-[11px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground">
+                  {notesCountText}
+                </p>
+                {onChangeNoteListLayout && (
+                  <div role="group" aria-label="Note layout" className="flex shrink-0 items-center rounded-full bg-muted/70 p-0.5">
+                    <Button type="button" variant="ghost" size="icon" aria-label="List view" aria-pressed={noteListLayout === "list"}
+                      onClick={() => onChangeNoteListLayout("list")}
+                      className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "list" && "bg-background text-foreground shadow-sm")}>
+                      <ListBullets className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" aria-label="Grid view" aria-pressed={noteListLayout === "grid"}
+                      onClick={() => onChangeNoteListLayout("grid")}
+                      className={cn("h-11 w-11 rounded-full text-muted-foreground", noteListLayout === "grid" && "bg-background text-foreground shadow-sm")}>
+                      <SquaresFour className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+            {toggleSelection && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={selectionLabel}
+                title={selecting ? "Done selecting notes" : "Select notes"}
+                data-testid={selecting ? "selection-mode-cancel" : "selection-mode-enter"}
+                disabled={selectionToggleDisabled}
+                onClick={toggleSelection}
+                className={cn(
+                  "notes-sidebar-selection-toggle h-11 min-w-12 shrink-0 rounded-lg px-2",
+                  selecting && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+                )}
+              >
+                {selecting ? <Check className="hidden" aria-hidden="true" /> : <ListChecks className="hidden" aria-hidden="true" />}
+                <span>{selectionLabel}</span>
+              </Button>
             )}
           </div>
-          {selectionControls}
         </div>
 
         {/* Notes List Container */}

@@ -519,7 +519,7 @@ export const SearchResultsPanel = React.forwardRef<SearchResultsPanelHandle, Sea
                         selectingAllDisabled={allVisibleSelected || !visibleResultIds.length || panelBulkDeleting}
                         deletingDisabled={!selectedCount || panelBulkDeleting}
                         deleting={panelBulkDeleting}
-                        className="border-b bg-transparent"
+                        className="border-b px-3"
                     />
                 </div>
             )

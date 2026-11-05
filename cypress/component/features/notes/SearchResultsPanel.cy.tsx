@@ -185,7 +185,7 @@ describe('SearchResultsPanel', () => {
       .find('[role="checkbox"]')
       .click({ force: true })
 
-    cy.contains('button', 'Delete (1)').click({ force: true })
+    cy.get('[data-testid="selection-mode-delete"][aria-label="Move to Trash"]').click({ force: true })
     cy.wrap(controller.deleteNotesByIds).should('not.have.been.called')
 
     cy.contains('Move selected notes to Trash').should('be.visible')
@@ -272,7 +272,7 @@ describe('SearchResultsPanel', () => {
       .find('[role="checkbox"]')
       .click({ force: true })
 
-    cy.contains('button', 'Delete (1)').click({ force: true })
+    cy.get('[data-testid="selection-mode-delete"][aria-label="Move to Trash"]').click({ force: true })
     cy.get('input[placeholder="1"]').clear().type('1')
     cy.get('[role="alertdialog"]')
       .contains('button', /^Delete$/)
@@ -293,7 +293,7 @@ describe('SearchResultsPanel', () => {
       .find('[role="checkbox"]')
       .click({ force: true })
     cy.get('[data-testid="selection-mode-select-all"]').click({ force: true })
-    cy.get('[data-testid="selection-mode-delete"]').should('contain', 'Delete (2)')
+    cy.get('[data-testid="selection-mode-count"]').should('have.text', '2 selected')
     cy.get('[data-testid="selection-mode-delete"]').click({ force: true })
     cy.get('input[placeholder="2"]').clear().type('2')
     cy.get('[role="alertdialog"]').contains('button', /^Delete$/).click({ force: true })

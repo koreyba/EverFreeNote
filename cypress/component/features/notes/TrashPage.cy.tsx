@@ -125,9 +125,19 @@ describe('Trash recovery and permanent deletion', () => {
       expect($button[0].getBoundingClientRect().right).to.be.lessThan(768)
     })
     cy.screenshot('trash-tablet-preview')
-    cy.get(sidebar).contains('button', /^Select$/).click()
+    cy.get(sidebar).contains('button', 'Empty Trash').then(($empty) => {
+      const headerAction = $empty[0]
+      const headerBounds = headerAction.getBoundingClientRect()
+      cy.get(sidebar).contains('button', /^Select$/).click()
+      cy.get(sidebar).contains('button', 'Empty Trash').should('be.visible').and('be.disabled').and(($next) => {
+        expect($next[0]).to.equal(headerAction)
+        expect($next[0].getBoundingClientRect().top).to.equal(headerBounds.top)
+        expect($next[0].getBoundingClientRect().left).to.equal(headerBounds.left)
+      })
+    })
+    cy.get(sidebar).contains('button', /^Done$/).should('be.visible')
     cy.get('[data-testid="selection-mode-select-all"]').click()
-    cy.get('[aria-label="2 selected"]').should('be.visible')
+    cy.get('[data-testid="selection-mode-count"]').should('have.text', '2 selected')
     cy.screenshot('trash-tablet-selection')
     cy.get('[data-testid="selection-mode-delete"]').should(($button) => {
       expect($button[0].getBoundingClientRect().right).to.be.lessThan(
@@ -147,6 +157,19 @@ describe('Trash recovery and permanent deletion', () => {
     mountTrash()
     cy.get(sidebar).contains(card, 'Deleted one').should('be.visible')
     cy.screenshot('trash-phone-list')
+    cy.get(sidebar).contains('button', /^Select$/).click()
+    cy.get('[data-testid="selection-mode-select-all"]').click()
+    cy.get(sidebar).find('[data-testid="selection-mode-actions"] button, [data-testid="selection-mode-cancel"]')
+      .should('have.length', 4).each(($button) => {
+        const rect = $button[0].getBoundingClientRect()
+        expect(rect.width).to.be.at.least(44)
+        expect(rect.height).to.be.at.least(44)
+        expect(rect.left).to.be.at.least(0)
+        expect(rect.right).to.be.at.most(320)
+      })
+    cy.screenshot('trash-phone-selection')
+    cy.get(sidebar).contains('button', /^Done$/).click()
+    cy.get('[aria-label="Note layout"]').should('be.visible')
     cy.contains('button', 'Deleted one').click()
     cy.get(reader).contains('Full note content one').should('be.visible')
     cy.get(sidebar).should('not.be.visible')

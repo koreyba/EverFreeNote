@@ -163,7 +163,7 @@ describe("Sidebar", () => {
         />
       )
 
-      expect(screen.getByTestId("selection-mode-count").textContent).toBe("3")
+      expect(screen.getByTestId("selection-mode-count").textContent).toBe("3 selected")
     })
 
     it("triggers onSelectAll when select all button is clicked in selection mode", () => {
@@ -212,7 +212,7 @@ describe("Sidebar", () => {
       })
     })
 
-    it("triggers onExitSelectionMode when cancel button is clicked", () => {
+    it("triggers onExitSelectionMode when Done is clicked", () => {
       const onExitSelectionMode = jest.fn()
       render(
         <Sidebar
@@ -223,8 +223,7 @@ describe("Sidebar", () => {
         />
       )
 
-      const cancelBtn = screen.getByRole("button", { name: /Cancel/i })
-      fireEvent.click(cancelBtn)
+      fireEvent.click(screen.getByRole("button", { name: "Done" }))
 
       expect(onExitSelectionMode).toHaveBeenCalledTimes(1)
     })
