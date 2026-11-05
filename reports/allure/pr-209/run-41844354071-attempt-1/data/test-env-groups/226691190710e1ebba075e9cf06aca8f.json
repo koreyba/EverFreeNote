@@ -1,1 +1,0 @@
-{"id":"226691190710e1ebba075e9cf06aca8f","fullName":"everfreenote:core/tests/unit/core-services-smartPaste.test.ts#core/services/smartPaste resolvePaste removes disallowed styles when DOMParser is unavailable","name":"removes disallowed styles when DOMParser is unavailable","status":"passed","testResultsByEnv":{"default":"109b6aeb5d20f4f07347e15f0c26a0f0"}}

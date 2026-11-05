@@ -1,1 +1,0 @@
-{"id":"429453053c2332f4d11b5bfcbfc58192","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteRefresh.test.tsx#preserves a cached note when edit changes during deletion verification","name":"preserves a cached note when edit changes during deletion verification","status":"passed","testResultsByEnv":{"default":"2bd53f536e1f0246615d68fd76b4fb64"}}

@@ -1,1 +1,0 @@
-{"id":"99c7e478c5a9551e0d8bdf745508cf3a","fullName":"everfreenote:core/tests/unit/noteWorkspaceSplitLayout.test.ts#persisted note workspace split layout ignores drops onto a stale pane or of a tab that no longer exists","name":"ignores drops onto a stale pane or of a tab that no longer exists","status":"passed","testResultsByEnv":{"default":"5121814b6d72f7dcee94a9465ffded31"}}
