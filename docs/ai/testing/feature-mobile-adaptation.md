@@ -59,3 +59,12 @@ description: Define testing approach, test cases, and quality assurance for mobi
 - Mobile and desktop component checks cover short and long notes, the editable canvas, save, toolbar position, caret placement, theme and focus. A simulated safe-area inset and resized visual viewport cover the mobile navigation and keyboard layout; an additional scenario checks an image in the canvas.
 - The focused mobile layout and rich-text rendering run passed 45 tests. In a broader 142-test editor run, 137 passed and five keyboard undo/redo scenarios failed or broke on macOS; one of those failures was also reproduced using the original editor files from `origin/main`.
 - Type-check, ESLint, and a production build in an isolated Docker container passed. Physical iOS and Android keyboard/safe-area behavior remains to be checked on devices.
+
+## Mobile tile and Tags layout — 2026-11-05
+
+- Reproduced overlapping rows on unchanged `main` (`bd30c2716af`) at 320 px with a 20 px root font (125%), both with and without selection. The next row started at 205 px while the preceding card extended to 214.625 px. The same cases pass with measured row heights.
+- `MobileContentLayout.cy.tsx` checks 320/390 px grids, complete dates below tags, enlarged text, selection, 44 px Tags buttons, callbacks, loading guards and cache notices. Screenshots capture the layouts.
+- Focused Cypress run: 31 passed, 0 failed across the new layout spec, `MobileNotesGrid`, `NoteCard`, `NoteList`, `NoteListVirtualization` and `NoteListPagination`.
+- Web unit run: 148 suites / 1,300 tests passed, including `tagsPage.test.tsx`. npm consumed the intended Jest scope flags, so this ran the full web unit suite.
+- `npm run type-check`, `npx eslint . --max-warnings=0`, `git diff --check` and `npm run build` passed (exit 0). The static build used placeholder public Supabase configuration and proves compilation/export, not backend connectivity.
+- Outstanding: rebuild the Android APK and confirm on the user's physical phone; no installed-app validation is claimed.

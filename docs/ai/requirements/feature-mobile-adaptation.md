@@ -68,6 +68,8 @@ description: Clarify the problem space, gather requirements, and define success 
 - A left swipe on a note in the mobile list or regular search exposes Delete; deletion uses the existing confirmation. Vertical scrolling and long-press selection must remain usable.
 - Reading and editing expose an in-note search across the title and body, with match counts, highlighting and previous/next navigation. Expanded editing searches the visible body. Searching must not change the draft.
 - The notes list offers a remembered list or two-column tile view. Tiles retain note opening, selection and swipe-to-delete; hidden tags are counted.
+- Tile rows must remain separate and show the complete date at narrow phone widths and enlarged text sizes, including selection mode.
+- Tags must group count coverage, loaded-note status and recovery actions in a readable panel with phone-sized buttons.
 - Maintain the established desktop layout and functionality. Native apps are outside this change.
 
 ## Note editing canvas — 2026-10-28

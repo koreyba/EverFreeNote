@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { MagnifyingGlass as Search, Tag as TagIcon, X } from "@phosphor-icons/react"
+import { ArrowDown, ArrowClockwise, CircleNotch, Info, MagnifyingGlass as Search, Tag as TagIcon, X } from "@phosphor-icons/react"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { getTagsWithCounts, groupTagsAlphabetically } from "@core/services/tags"
 type TagWithCount = { name: string; count: number }
@@ -200,21 +201,33 @@ export function TagsPage({
         </div>
       </div>
 
-      <div className="mb-6 space-y-2 text-sm text-muted-foreground" data-testid="tag-coverage-status">
-        <p>Counts are based on loaded and cached notes and may be incomplete.</p>
-        {managementBlockReason && <p role="status">{managementBlockReason}</p>}
-        {managementNotice && <p>{managementNotice}</p>}
-        {(onLoadMoreNotes || onCheckNotes) && (
-          <div className="flex flex-wrap gap-3">
-            {onLoadMoreNotes && <button type="button" className="underline" onClick={onLoadMoreNotes} disabled={loadingMoreNotes}>
-              {loadingMoreNotes ? 'Loading notes…' : 'Load more notes'}
-            </button>}
-            {onCheckNotes && <button type="button" className="underline" onClick={onCheckNotes} disabled={checkingNotes}>
-              {checkingNotes ? 'Checking notes…' : 'Check loaded notes'}
-            </button>}
+      <section className="mb-6 shrink-0 rounded-2xl border border-border/60 bg-muted/20 p-4 sm:p-5" data-testid="tag-coverage-status" aria-labelledby="tag-coverage-heading">
+        <div className="flex items-start gap-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div className="min-w-0 space-y-1">
+            <h2 id="tag-coverage-heading" className="text-sm font-semibold text-foreground">Tag counts</h2>
+            <p className="text-xs leading-relaxed text-muted-foreground">Counts are based on loaded and cached notes and may be incomplete.</p>
+          </div>
+        </div>
+        {(managementBlockReason || managementNotice) && (
+          <div className="mt-3 space-y-2 rounded-xl bg-background/70 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+            {managementBlockReason && <p role="status" className="font-medium text-foreground/80">{managementBlockReason}</p>}
+            {managementNotice && <p>{managementNotice}</p>}
           </div>
         )}
-      </div>
+        {(onLoadMoreNotes || onCheckNotes) && (
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {onLoadMoreNotes && <Button type="button" variant="secondary" className="h-11 w-full sm:w-auto md:h-9" onClick={onLoadMoreNotes} disabled={loadingMoreNotes} aria-busy={loadingMoreNotes}>
+              {loadingMoreNotes ? <CircleNotch className="animate-spin" aria-hidden="true" /> : <ArrowDown aria-hidden="true" />}
+              {loadingMoreNotes ? 'Loading notes…' : 'Load more notes'}
+            </Button>}
+            {onCheckNotes && <Button type="button" variant="outline" className="h-11 w-full sm:w-auto md:h-9" onClick={onCheckNotes} disabled={checkingNotes} aria-busy={checkingNotes}>
+              {checkingNotes ? <CircleNotch className="animate-spin" aria-hidden="true" /> : <ArrowClockwise aria-hidden="true" />}
+              {checkingNotes ? 'Checking notes…' : 'Check loaded notes'}
+            </Button>}
+          </div>
+        )}
+      </section>
 
       {/* Alphabetical Grid Navigation Bar */}
       {availableLetters.length > 0 && (

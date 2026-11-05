@@ -56,3 +56,11 @@ description: Break down work into actionable tasks and estimate timeline for mob
 - [x] Add mobile swipe-to-reveal deletion and in-note search for reading and editing.
 - [x] Verify local Docker flows and focused regression tests.
 - [ ] Validate touch gestures and the on-screen keyboard on physical iOS and Android browsers.
+
+## Mobile tile and Tags layout — 2026-11-05
+
+- [x] Reproduce tile row overlap with enlarged text and add geometry/date regressions, including selection mode.
+- [x] Measure tile rows and reset measurements when switching between grid and list.
+- [x] Group Tags count coverage and management messages with accessible load/check buttons.
+- [x] Validate the focused component scope, web unit suite, type-check, lint and static production build.
+- [ ] Confirm the updated build on a physical Android phone.
