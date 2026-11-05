@@ -4,6 +4,7 @@
     "@modelcontextprotocol/sdk/": "npm:/@modelcontextprotocol/sdk@1.30.0/",
     "zod": "npm:zod@4.1.12",
     "@core/": "../../../core/",
-    "sanitize-html": "npm:sanitize-html@2.17.0"
+    "sanitize-html": "npm:sanitize-html@2.17.0",
+    "htmlparser2": "npm:htmlparser2@10.1.0"
   }
 }

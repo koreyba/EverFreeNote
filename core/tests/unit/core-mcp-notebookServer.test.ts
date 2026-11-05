@@ -36,6 +36,9 @@ type CallToolOutput = Awaited<ReturnType<Client['callTool']>>
 function createRepositoryMock(): jest.Mocked<NotebookRepository> {
   return {
     listNotes: jest.fn(),
+    getNotes: jest.fn(),
+    updateNoteIfVersion: jest.fn(),
+    searchNotes: jest.fn(),
     getNote: jest.fn(),
     createNote: jest.fn(),
     updateNote: jest.fn(),
@@ -122,7 +125,7 @@ describe('core/mcp/notebookServer', () => {
 
       const { tools } = await session.client.listTools()
       const names = tools.map((tool) => tool.name).sort()
-      expect(names).toEqual(['create_note', 'edit_note_tags', 'get_note', 'list_notes', 'list_tags', 'update_note'])
+      expect(names).toEqual(['create_note', 'edit_note_tags', 'get_note', 'get_notes', 'list_notes', 'list_tags', 'search_notes', 'update_note'])
 
       const listTool = tools.find((tool) => tool.name === 'list_notes')
       expect(listTool?.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false })

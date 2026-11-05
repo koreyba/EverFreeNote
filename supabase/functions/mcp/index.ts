@@ -17,7 +17,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 
 import { createNotebookMcpServer } from '@core/mcp/notebookServer.ts'
 import { createSupabaseNotebookRepository } from '@core/mcp/supabaseNotebookRepository.ts'
-import { createRagSemanticSearch } from '@core/mcp/ragSemanticSearch.ts'
+import { createRagSemanticSearch, createRagNotebookSearch } from '@core/mcp/ragSemanticSearch.ts'
 import {
   buildAuthorizationServerIssuer,
   buildProtectedResourceMetadata,
@@ -122,6 +122,7 @@ const handleRequest = async (req: Request): Promise<Response> => {
   const server = createNotebookMcpServer(
     createSupabaseNotebookRepository(supabase, userId),
     createRagSemanticSearch(supabaseUrl, token, supabase, userId),
+    createRagNotebookSearch(supabaseUrl, token),
   )
   // Stateless: Edge Functions are short-lived and multi-instance, so no session ids and plain JSON responses.
   const transport = new WebStandardStreamableHTTPServerTransport({

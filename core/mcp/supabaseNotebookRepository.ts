@@ -6,6 +6,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+import { mapNotebookSearchResult, notebookSearchRpcParams, type NotebookSearchInput } from './notebookSearch.ts'
 import { applyTagEdit, aggregateTags, tagsUnchanged } from './tagVocabulary.ts'
 import type {
   CreateNoteInput,
@@ -117,6 +118,32 @@ export function createSupabaseNotebookRepository(supabase: SupabaseClient, userI
     },
 
     getNote,
+
+    async getNotes(ids: string[]): Promise<NoteRecord[]> {
+      const { data, error } = await notes().select(NOTE_COLUMNS).in('id', ids).eq('user_id', userId)
+      if (error) throw error
+      return ((data ?? []) as NoteRow[]).map(toNoteRecord)
+    },
+
+    async updateNoteIfVersion(id: string, patch: UpdateNotePatch, expectedUpdatedAt: string | null): Promise<NoteRecord | null> {
+      const changes: Partial<NoteColumns> = {}
+      if (patch.title !== undefined) changes.title = patch.title
+      if (patch.contentHtml !== undefined) changes.description = patch.contentHtml
+      if (patch.tags !== undefined) changes.tags = patch.tags
+      const { data, error } = await supabase.rpc('mcp_update_note', { note_id: id, expected_updated_at: expectedUpdatedAt, patch: changes })
+      if (error) throw error
+      const result = data as { status?: string; note?: NoteRow } | null
+      if (result?.status === 'not_found') return null
+      if (result?.status === 'conflict') throw new Error('Note changed since it was read. Call get_note again, review the changes and retry with its updated_at.')
+      if (result?.status !== 'updated' || !result.note) throw new Error('Unexpected conditional update response')
+      return toNoteRecord(result.note)
+    },
+
+    async searchNotes(input: NotebookSearchInput) {
+      const { data, error } = await supabase.rpc('search_notebook_notes', notebookSearchRpcParams({ ...input, mode: 'text' }))
+      if (error) throw error
+      return mapNotebookSearchResult(data)
+    },
 
     async createNote(input: CreateNoteInput): Promise<NoteRecord> {
       const { data, error } = await notes()
