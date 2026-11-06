@@ -1,1 +1,0 @@
-{"note": {"id": "11111111-1111-4111-8111-111111111111", "tags": ["Work", "urgent"], "title": "Interview", "user_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "created_at": "2026-10-10T00:00:00+00:00", "updated_at": "2026-11-05T18:57:30.738775+00:00", "description": "<p>New</p>"}, "status": "updated"}

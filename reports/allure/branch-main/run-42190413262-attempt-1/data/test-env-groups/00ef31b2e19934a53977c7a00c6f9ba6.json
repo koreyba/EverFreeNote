@@ -1,0 +1,1 @@
+{"id":"00ef31b2e19934a53977c7a00c6f9ba6","fullName":"everfreenote:core/tests/unit/core-utils-compareNoteVersions.test.ts#compareNoteVersions compares whole Unicode words on browsers without Intl.Segmenter","name":"compares whole Unicode words on browsers without Intl.Segmenter","status":"passed","testResultsByEnv":{"default":"f29b55b6274019c2ef5c2828750ebc26"}}
