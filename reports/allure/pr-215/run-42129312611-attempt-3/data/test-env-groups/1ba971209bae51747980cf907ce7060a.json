@@ -1,0 +1,1 @@
+{"id":"1ba971209bae51747980cf907ce7060a","fullName":"everfreenote:core/tests/services/note-trash.test.ts#Trash service and durable deletion content refuses to lose an incomplete or foreign offline snapshot","name":"refuses to lose an incomplete or foreign offline snapshot","status":"passed","testResultsByEnv":{"default":"90ddaae65796e745c4cc5acc76acdb54"}}

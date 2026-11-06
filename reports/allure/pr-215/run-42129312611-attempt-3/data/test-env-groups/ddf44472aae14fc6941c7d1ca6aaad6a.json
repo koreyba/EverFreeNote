@@ -1,0 +1,1 @@
+{"id":"ddf44472aae14fc6941c7d1ca6aaad6a","fullName":"everfreenote:ui/web/tests/unit/providers/offlineAuth.test.tsx#opens an expired saved session while refresh is unreachable (chunked=false)","name":"opens an expired saved session while refresh is unreachable (chunked=false)","status":"passed","testResultsByEnv":{"default":"16ac3274f3b0ece116c48a1958045051"}}

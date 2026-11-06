@@ -1,0 +1,1 @@
+{"id":"b08123810a1fc5a513dc706a9e89e2fd","fullName":"everfreenote:core/tests/integration/note-trash-postgres.test.ts#Trash lifecycle in PostgreSQL uses 720 elapsed hours as the inclusive server-side expiry boundary","name":"uses 720 elapsed hours as the inclusive server-side expiry boundary","status":"passed","testResultsByEnv":{"default":"207238fd900b993a1d3f5e5b829adef4"}}
