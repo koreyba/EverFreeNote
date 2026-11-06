@@ -1,0 +1,1 @@
+UPDATE public.notes_trash SET deleted_at=now()-interval '721 hours'; SELECT public.purge_expired_note_trash()
