@@ -1,5 +1,6 @@
 import type { CachedNote, MutationQueueItem } from '@core/types/offline'
 import { OFFLINE_CACHE_LIMIT_BYTES } from '@core/constants/offline'
+import { OfflineCacheService } from '@core/services/offlineCache'
 
 jest.mock('@core/constants/offline', () => ({
   OFFLINE_CACHE_LIMIT_BYTES: 200,
@@ -105,6 +106,23 @@ describe('webOfflineStorageAdapter localStorage fallback', () => {
     expect(webOfflineStorageAdapter.atomicTagPatches).toBe(false)
     expect(await webOfflineStorageAdapter.patchSyncedTags([])).toEqual([])
     expect(setItem).not.toHaveBeenCalled()
+  })
+
+  it('leaves fallback snapshots and queued drafts intact when reconciling a restore', async () => {
+    const synced = makeNote('note-1', '2026-01-01T00:00:00Z', { user_id: 'user-1' })
+    const pending = makeNote('note-2', '2026-01-01T00:00:00Z', { user_id: 'user-1', status: 'pending' })
+    const operation = makeQueueItem('2')
+    await webOfflineStorageAdapter.saveNotes([synced, pending])
+    await webOfflineStorageAdapter.upsertQueueItem(operation)
+    const setItem = jest.spyOn(Storage.prototype, 'setItem')
+    const cache = new OfflineCacheService(webOfflineStorageAdapter)
+    const changes = { title: 'Restored', description: '', tags: [], updatedAt: '2026-01-02T00:00:00Z' }
+
+    expect(await cache.patchSyncedNote(synced, changes)).toBe(false)
+    expect(await cache.patchSyncedNote(pending, changes)).toBe(false)
+    expect(setItem).not.toHaveBeenCalled()
+    expect(await cache.loadNotes()).toEqual([synced, pending])
+    expect(await webOfflineStorageAdapter.getQueue()).toEqual([operation])
   })
 
   it('does not overwrite a newer or queued cached draft during tag refresh', async () => {

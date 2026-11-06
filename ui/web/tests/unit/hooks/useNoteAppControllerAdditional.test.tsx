@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useNoteAppController } from '@ui/web/hooks/useNoteAppController'
 import type { NoteViewModel, SearchResult } from '@core/types/domain'
-import type { MutationQueueItem } from '@core/types/offline'
+import type { CachedNote, MutationQueueItem } from '@core/types/offline'
 import {
   addWorkspaceTab,
   createNoteWorkspaceState,
@@ -13,12 +13,14 @@ import {
   updateWorkspaceTab,
 } from '@core/services/noteWorkspaceTabs'
 import { NOTE_WORKSPACE_STORAGE_KEY } from '@ui/web/lib/noteWorkspaceStorage'
+import { noteListRevision } from '@ui/web/lib/noteListRevision'
 import { toast } from 'sonner'
 import { setTagMutationRecovery } from '@ui/web/lib/tagMutationRecovery'
 
 let mockSelectedNote: NoteViewModel | null = null
 let mockIsEditing = true
 let mockIsOffline = false
+let mockSyncStateReady = false
 let mockOfflineOverlay: Array<{ id: string; status: string }> = []
 let mockNotes: NoteViewModel[] = []
 let mockTagServerCount: number | null = null
@@ -36,8 +38,11 @@ const mockGetExistingNoteIds = jest.fn()
 const mockLoadCachedNotes = jest.fn()
 const mockRemoveSyncedNotes = jest.fn()
 const mockPatchSyncedTags = jest.fn()
+const mockPatchSyncedNote = jest.fn()
+const mockSetOfflineOverlay = jest.fn()
 const mockGetNoteStatus = jest.fn()
 const mockGetNote = jest.fn()
+const mockRpc = jest.fn()
 const mockGetNotesByIds = jest.fn()
 const mockHandleSelectNote = jest.fn()
 const mockHandleSearchResultClick = jest.fn()
@@ -64,6 +69,7 @@ jest.mock('sonner', () => ({ toast: { error: jest.fn(), info: jest.fn(), success
 jest.mock('@ui/web/providers/SupabaseProvider', () => ({
   useSupabase: () => ({ supabase: {
     key: 'supabase',
+    rpc: mockRpc,
     from: () => ({ select: () => ({ eq: async () => ({ count: mockTagServerCount ?? mockNotes.length, error: null }) }) }),
   }, user: mockProviderUser, getSessionSnapshot: mockGetSessionSnapshot }),
 }))
@@ -128,15 +134,16 @@ jest.mock('@ui/web/hooks/useNoteSelection', () => ({
 jest.mock('@ui/web/hooks/useNoteSync', () => ({
   useNoteSync: () => ({
     offlineOverlay: mockOfflineOverlay,
-    setOfflineOverlay: jest.fn(),
+    setOfflineOverlay: mockSetOfflineOverlay,
     pendingCount: 0,
     setPendingCount: jest.fn(),
     failedCount: 0,
     setFailedCount: jest.fn(),
     isOffline: mockIsOffline,
+    syncStateReady: mockSyncStateReady,
     lastSavedAt: null,
     setLastSavedAt: mockSetLastSavedAt,
-    offlineCache: { deleteNote: jest.fn(), loadNotes: mockLoadCachedNotes, removeSyncedNotes: mockRemoveSyncedNotes, patchSyncedTags: mockPatchSyncedTags, saveNote: jest.fn(), supportsAtomicTagPatches: () => mockAtomicTagPatches },
+    offlineCache: { deleteNote: jest.fn(), loadNotes: mockLoadCachedNotes, removeSyncedNotes: mockRemoveSyncedNotes, patchSyncedTags: mockPatchSyncedTags, patchSyncedNote: mockPatchSyncedNote, saveNote: jest.fn(), supportsAtomicTagPatches: () => mockAtomicTagPatches },
     enqueueMutation: jest.fn(),
     enqueueBatchAndDrainIfOnline: jest.fn(),
     offlineQueueRef: { current: { getQueue: async () => mockTagQueue } },
@@ -261,12 +268,14 @@ describe('useNoteAppController additional observable behavior', () => {
     mockSelectedNote = null
     mockIsEditing = true
     mockIsOffline = false
+    mockSyncStateReady = false
     mockOfflineOverlay = []
     mockNotes = []
     mockTagServerCount = null
     mockTagQueue = []
     mockAtomicTagPatches = true
     mockLoadCachedNotes.mockResolvedValue([])
+    mockPatchSyncedNote.mockReset().mockResolvedValue(true)
     mockGetExistingNoteIds.mockImplementation(async (ids) => ids)
     mockGetNotesByIds.mockImplementation(async (ids) => mockNotes.filter(note => ids.includes(note.id)))
     mockRemoveSyncedNotes.mockImplementation(async (cached) => cached.map((note: { id: string }) => note.id))
@@ -283,6 +292,92 @@ describe('useNoteAppController additional observable behavior', () => {
     mockConfirmDeleteNote.mockReset().mockResolvedValue(true)
     mockUpdateNoteMutation.mockReset()
     mockUpdateNoteMutation.mockResolvedValue(undefined)
+  })
+
+  it('keeps a restored legacy note with a null title usable in its tab', async () => {
+    const note = makeNote()
+    mockSyncStateReady = true
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note })
+    mockRpc.mockReturnValueOnce({
+      single: async () => ({ data: { ...note, title: null, description: null, tags: null }, error: null }),
+    })
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(note) })
+
+    await act(async () => {
+      await result.current.noteVersions!.restore(result.current.activeTabId, note.id, 1, 2)
+    })
+
+    expect(result.current.activeTab.draft).toEqual({ title: '', description: '', tags: '' })
+  })
+
+  it('refreshes search and the matching offline copy after a confirmed restore', async () => {
+    const note = makeNote()
+    const cached: CachedNote = {
+      ...note, content: 'Older offline content', status: 'synced', updatedAt: note.updated_at,
+    }
+    const restored = { ...note, title: 'Restored', description: '', tags: ['saved'], updated_at: '2024-01-02T00:00:00Z' }
+    mockSyncStateReady = true
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note })
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockRpc.mockReturnValueOnce({ single: async () => ({ data: restored, error: null }) })
+    const { result, queryClient } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(note) })
+    const searchKey = ['notes', 'search', 'before restore', 'en', 0.1, 30, 0, null, 'user-1']
+    queryClient.setQueryData(searchKey, { results: [note] })
+    const previousRevision = noteListRevision(queryClient, 'user-1')
+
+    await act(async () => {
+      await result.current.noteVersions!.restore(result.current.activeTabId, note.id, 1, 2)
+    })
+
+    expect(queryClient.getQueryState(searchKey)?.isInvalidated).toBe(true)
+    expect(noteListRevision(queryClient, 'user-1')).toBe(previousRevision + 1)
+    const changes = { title: 'Restored', description: '', tags: ['saved'], updatedAt: restored.updated_at }
+    expect(mockPatchSyncedNote).toHaveBeenCalledWith(cached, changes)
+    const updateOverlay = mockSetOfflineOverlay.mock.calls.at(-1)?.[0] as (notes: CachedNote[]) => CachedNote[]
+    expect(updateOverlay([cached])).toStrictEqual([{ ...cached, ...changes, content: undefined }])
+    const newerDraft: CachedNote = { ...cached, status: 'pending', description: 'New local draft' }
+    expect(updateOverlay([newerDraft])).toEqual([newerDraft])
+  })
+
+  it('keeps the confirmed restore visible when the offline copy cannot be refreshed', async () => {
+    const note = makeNote()
+    const cached: CachedNote = { ...note, status: 'synced', updatedAt: note.updated_at }
+    mockSyncStateReady = true
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note })
+    mockLoadCachedNotes.mockResolvedValue([cached])
+    mockPatchSyncedNote.mockRejectedValueOnce(new Error('Storage failed'))
+    mockRpc.mockReturnValueOnce({
+      single: async () => ({ data: { ...note, title: 'Restored' }, error: null }),
+    })
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(note) })
+
+    await act(async () => {
+      await result.current.noteVersions!.restore(result.current.activeTabId, note.id, 1, 2)
+    })
+
+    expect(result.current.activeTab.note?.title).toBe('Restored')
+    expect(mockSetOfflineOverlay).not.toHaveBeenCalled()
+    expect(toast.warning).toHaveBeenCalledWith('Version 1 restored. This device could not refresh its offline copy.')
+  })
+
+  it('asks the reader to review the latest version after a stale restore conflict', async () => {
+    const note = makeNote()
+    mockSyncStateReady = true
+    mockGetNoteStatus.mockResolvedValue({ status: 'found', note })
+    mockRpc.mockReturnValueOnce({ single: async () => ({ data: null, error: { code: 'PT409' } }) })
+    const { result } = setup()
+    await waitFor(() => expect(result.current.workspaceHydrated).toBe(true))
+    await act(async () => { await result.current.handleSelectNote(note) })
+
+    await expect(result.current.noteVersions!.restore(result.current.activeTabId, note.id, 1, 2))
+      .rejects.toThrow('The note changed. Review the latest version and try again.')
+    expect(result.current.selectedNote).toEqual(note)
   })
 
   it('hides the old workspace immediately when the provider changes users before the auth hook catches up', async () => {

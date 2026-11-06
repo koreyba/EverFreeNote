@@ -232,6 +232,7 @@ describe('Mobile Layout Adaptation', { retries: 0 }, () => {
       createNoteInTab: cy.stub().resolves(),
       openDraggedNoteInPane: cy.stub().resolves(true),
       paneSaveServices: undefined,
+      noteVersions: undefined,
       registerPaneEditorRef: cy.stub(),
       hasUnconfirmedWorkspaceChanges: cy.stub().returns(false),
       updatePaneTab: cy.stub(),

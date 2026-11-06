@@ -1,4 +1,4 @@
-import type { OfflineStorageAdapter, CachedNote, MutationQueueItem } from '../types/offline'
+import type { OfflineStorageAdapter, CachedNote, MutationQueueItem, SyncedNoteChanges } from '../types/offline'
 import { OFFLINE_CACHE_LIMIT_BYTES } from '../constants/offline'
 
 export class OfflineCacheService {
@@ -45,6 +45,10 @@ export class OfflineCacheService {
 
   async patchSyncedTags(patches: Array<{ expected: CachedNote; tags: string[] }>): Promise<string[]> {
     return this.storage.patchSyncedTags?.(patches) ?? []
+  }
+
+  async patchSyncedNote(expected: CachedNote, changes: SyncedNoteChanges): Promise<boolean> {
+    return this.storage.patchSyncedNote?.(expected, changes) ?? false
   }
 
   async markSynced(noteId: string, updatedAt: string, expectedUpdatedAt?: string): Promise<void> {

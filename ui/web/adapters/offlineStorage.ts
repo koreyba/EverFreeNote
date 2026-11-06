@@ -1,4 +1,4 @@
-import type { CachedNote, MutationQueueItem, MutationStatus, OfflineStorageAdapter } from '@core/types/offline'
+import type { CachedNote, MutationQueueItem, MutationStatus, OfflineStorageAdapter, SyncedNoteChanges } from '@core/types/offline'
 import { OFFLINE_CACHE_LIMIT_BYTES } from '@core/constants/offline'
 import { matchesQueuedSnapshot, queueOwners } from '@ui/web/lib/offlineOwnership'
 
@@ -82,6 +82,38 @@ const matchesSyncedSnapshot = (expected: CachedNote, current?: CachedNote) => (
   // mismatch only retains the snapshot for a later reconciliation.
   JSON.stringify(current) === JSON.stringify(expected)
 )
+
+type SyncedCachePatch = {
+  expected: CachedNote
+  changes: Partial<SyncedNoteChanges> & Pick<CachedNote, 'content'>
+}
+
+async function patchIndexedSyncedNotes(patches: SyncedCachePatch[]): Promise<string[]> {
+  if (!patches.length) return []
+  const db = await getDB()
+  return new Promise<string[]>((resolve, reject) => {
+    const tx = db.transaction([NOTES_STORE, QUEUE_STORE], 'readwrite')
+    const store = tx.objectStore(NOTES_STORE)
+    const updated: string[] = []
+    tx.oncomplete = () => { db.close(); resolve(updated) }
+    tx.onerror = tx.onabort = () => { db.close(); reject(tx.error ?? new Error('Cache reconciliation failed')) }
+    const queue = tx.objectStore(QUEUE_STORE).getAll()
+    queue.onsuccess = () => {
+      const queued = new Set((queue.result as MutationQueueItem[]).map(item => item.noteId))
+      for (const { expected, changes } of patches) {
+        if (queued.has(expected.id)) continue
+        const request = store.get(expected.id)
+        request.onsuccess = () => {
+          if (matchesSyncedSnapshot(expected, request.result)) {
+            store.put({ ...request.result, ...changes })
+            updated.push(expected.id)
+          }
+        }
+      }
+    }
+  })
+}
+
 const matchesSyncedTombstone = (expected: CachedNote, current?: CachedNote) => (
   Boolean(expected.user_id) && expected.deleted === true && expected.status === 'synced' &&
   current?.deleted === true && current.status === 'synced' && !current.pendingOps?.length &&
@@ -444,29 +476,17 @@ export const webOfflineStorageAdapter: OfflineStorageAdapter = hasIndexedDB
       async getLegacyClaims() { return [] },
 
       async patchSyncedTags(patches) {
-        if (!patches.length) return []
-        const db = await getDB()
-        return new Promise<string[]>((resolve, reject) => {
-          const tx = db.transaction([NOTES_STORE, QUEUE_STORE], 'readwrite')
-          const store = tx.objectStore(NOTES_STORE)
-          const updated: string[] = []
-          tx.oncomplete = () => { db.close(); resolve(updated) }
-          tx.onerror = tx.onabort = () => { db.close(); reject(tx.error ?? new Error('Cache reconciliation failed')) }
-          const queue = tx.objectStore(QUEUE_STORE).getAll()
-          queue.onsuccess = () => {
-            const queued = new Set((queue.result as MutationQueueItem[]).map(item => item.noteId))
-            for (const patch of patches) {
-              if (queued.has(patch.expected.id)) continue
-              const request = store.get(patch.expected.id)
-              request.onsuccess = () => {
-                if (matchesSyncedSnapshot(patch.expected, request.result)) {
-                  store.put({ ...request.result, tags: patch.tags })
-                  updated.push(patch.expected.id)
-                }
-              }
-            }
-          }
-        })
+        return patchIndexedSyncedNotes(patches.map(({ expected, tags }) => ({ expected, changes: { tags } })))
+      },
+
+      async patchSyncedNote(expected, { title, description, tags, updatedAt }) {
+        if (!expected.user_id) return false
+        const updated = await patchIndexedSyncedNotes([{
+          expected,
+          // Retire the legacy body alias so an empty restore cannot display stale content.
+          changes: { title, description, tags, updatedAt, content: undefined },
+        }])
+        return updated.length > 0
       },
 
       async getQueue() {

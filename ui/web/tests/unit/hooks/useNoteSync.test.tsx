@@ -70,6 +70,7 @@ function renderSyncHook(mutations: {
   update?: jest.Mock
   delete?: jest.Mock
   verify?:jest.Mock
+  onVerifiedCreateRetry?: jest.Mock
 } = {}) {
   return renderHook(() =>
     useNoteSync({
@@ -79,6 +80,7 @@ function renderSyncHook(mutations: {
       updateNoteMutation: { mutateAsync: mutations.update ?? jest.fn() },
       deleteNoteMutation: { mutateAsync: mutations.delete ?? jest.fn() },
       verifyLegacyNotes:mutations.verify,
+      onVerifiedCreateRetry: mutations.onVerifiedCreateRetry,
     }),
   )
 }
@@ -170,9 +172,11 @@ describe('durable create synchronization', () => {
   it('does not overwrite a restored or changed note just because a create ID already exists',async()=>{
     const create=jest.fn().mockRejectedValue({code:'23505'})
     const update=jest.fn()
-    renderSyncHook({create,update})
+    const onVerifiedCreateRetry = jest.fn()
+    renderSyncHook({create,update,onVerifiedCreateRetry})
     await expect(capturedPerformSync!(makeQueueItem({operation:'create'}))).rejects.toThrow(/exists|verify|local/i)
     expect(update).not.toHaveBeenCalled()
+    expect(onVerifiedCreateRetry).not.toHaveBeenCalled()
   })
   it('uses the local ID and suppresses background notifications', async () => {
     const create = jest.fn().mockResolvedValue({})
@@ -181,14 +185,16 @@ describe('durable create synchronization', () => {
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ id: 'note-1', silent: true }))
   })
 
-  it('acknowledges a proven identical create retry without rewriting the server', async () => {
+  it('refreshes history for a proven identical create retry without rewriting the server', async () => {
     const create = jest.fn().mockRejectedValue({ code: '23505' })
     const update = jest.fn().mockResolvedValue({})
     const verify=jest.fn().mockResolvedValue([{id:'note-1',user_id:'user-1',title:'Title',description:'Desc',tags:['t'],updated_at:'2026-11-05'}])
-    renderSyncHook({ create, update,verify })
+    const onVerifiedCreateRetry = jest.fn().mockRejectedValue(new Error('history unavailable'))
+    renderSyncHook({ create, update, verify, onVerifiedCreateRetry })
     await capturedPerformSync!(makeQueueItem({ operation: 'create' }))
     expect(verify).toHaveBeenCalledWith(['note-1'],'user-1')
     expect(update).not.toHaveBeenCalled()
+    expect(onVerifiedCreateRetry).toHaveBeenCalledWith('user-1', 'note-1')
   })
 
   it('keeps a missing remote update queued by propagating its error', async () => {

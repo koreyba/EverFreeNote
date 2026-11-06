@@ -42,6 +42,36 @@ export type Database = {
         }
         Relationships: []
       }
+      note_versions: {
+        Row: {
+          user_id: string
+          note_id: string
+          version: number
+          title: string | null
+          description: string | null
+          tags: string[] | null
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          note_id: string
+          version: number
+          title?: string | null
+          description?: string | null
+          tags?: string[] | null
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          note_id?: string
+          version?: number
+          title?: string | null
+          description?: string | null
+          tags?: string[] | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           id: string
@@ -130,6 +160,28 @@ export type Database = {
           sql: string
         }
         Returns: Json
+      }
+      restore_note_version: {
+        Args: {
+          p_note_id: string
+          p_version: number
+          p_expected_version: number
+        }
+        Returns: {
+          id: string
+          user_id: string
+          title: string | null
+          description: string | null
+          tags: string[] | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'notes'
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       search_notes_fts: {
         Args: {

@@ -143,6 +143,7 @@ localPostgres('Trash lifecycle in PostgreSQL', () => {
       const migration = resolve('supabase/migrations', file)
       if (existsSync(migration)) execute(readFileSync(migration, 'utf8'))
     }
+    execute(readFileSync(resolve('supabase/migrations/20261105193003_add_note_versions.sql'), 'utf8'))
   }, 45000)
 
   afterAll(() => {
@@ -194,12 +195,14 @@ localPostgres('Trash lifecycle in PostgreSQL', () => {
     expect(Date.parse(row.deleted_at)).toBeGreaterThan(Date.now() - 10000)
   })
 
-  it('restores the original ID and content without restoring public sharing', async () => {
+  it('restores the original ID, content, and version history without restoring public sharing', async () => {
     await seed()
+    await sql(`UPDATE public.notes SET title='Latest title' WHERE id='${noteId}'`, owner)
     await sql(
       `INSERT INTO public.note_share_links(note_id,user_id,token) VALUES('${noteId}','${owner}','synthetic-share')`,
     )
     await sql(`DELETE FROM public.notes WHERE id='${noteId}'`, owner)
+    expect(await sql('SELECT count(*) FROM public.note_versions', owner)).toBe('0')
     const id = await sql(
       `SELECT trash_id FROM public.notes_trash WHERE original_note_id='${noteId}'`,
       owner,
@@ -215,6 +218,10 @@ localPostgres('Trash lifecycle in PostgreSQL', () => {
         owner,
       ),
     ).toBe('<p>Recover this</p>')
+    expect(await sql(
+      `SELECT array_agg(title ORDER BY version) FROM public.note_versions WHERE note_id='${noteId}'`,
+      owner,
+    )).toBe('{"Recover me","Latest title"}')
     expect(
       await sql(
         `SELECT count(*) FROM public.note_share_links WHERE note_id='${noteId}'`,
@@ -425,7 +432,7 @@ localPostgres('Trash lifecycle in PostgreSQL', () => {
     ).toBe('100')
   })
 
-  it('retains an imported image while another note still references it', async () => {
+  it('retains an imported image while another note version still references it', async () => {
     const path = `${owner}/${noteId}/image.png`
     const body = `<img src="https://example.supabase.co/storage/v1/object/public/note-images/${path}">`
     await sql(
@@ -435,6 +442,7 @@ localPostgres('Trash lifecycle in PostgreSQL', () => {
     await sql(
       `INSERT INTO public.notes(id,user_id,description) VALUES(gen_random_uuid(),'${owner}','${body}')`,
     )
+    await sql(`UPDATE public.notes SET description='<p>Image removed</p>' WHERE id<>'${noteId}'`, owner)
     await sql(`DELETE FROM public.notes WHERE id='${noteId}'`, owner)
     const id = await sql(
       `SELECT trash_id FROM public.notes_trash WHERE original_note_id='${noteId}'`,
