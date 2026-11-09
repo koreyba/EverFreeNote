@@ -768,11 +768,14 @@ function ListPane({ controller, layout }: { controller: NoteAppController; layou
     handleTagClick,
   } = controller
 
+  // The local overlay may contain only the last edited note, not a complete page.
+  const displayNotes = notesQuery.isLoading && !controller.isOffline ? [] : notes
+
   return (
     <PullToRefresh onRefresh={controller.refreshNotes}>
       <NoteList
         layout={layout}
-        notes={notes as NoteRecord[]}
+        notes={displayNotes as NoteRecord[]}
         isLoading={notesQuery.isLoading}
         selectedNoteId={selectedNote?.id}
         selectionMode={selectionMode}
