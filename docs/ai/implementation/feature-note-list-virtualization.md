@@ -32,6 +32,12 @@ description: Technical implementation notes, patterns, and code guidelines
 - **Style Passing**: The `style` prop passed to `NoteRow` **MUST** be applied to the root element for positioning to work.
 - **Type Safety**: Due to TypeScript caching old react-window v1 types, we use `List as any` with documentation comment.
 
+### Initial loading with a partial local cache
+- The offline overlay may contain only the last edited note. It is not evidence that the first server page has loaded.
+- While the first notes query is loading online, `NotesShell.ListPane` supplies an empty display list so `NoteList` keeps showing its existing loading skeleton. The complete first page appears when the request finishes, in both list and grid layouts.
+- The controller retains the overlay for editing and synchronization. Offline mode and a failed initial request display the available cached notes; background refreshes retain the loaded list.
+- Browser regression coverage: `cypress/component/features/notes/NoteListInitialLoading.cy.tsx`, using the real controller, IndexedDB adapter, query hooks, and shell with a controlled HTTP response.
+
 ## Integration Points
 **How do pieces connect?**
 
