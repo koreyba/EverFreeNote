@@ -1,1 +1,0 @@
-SET ROLE authenticated; SET request.jwt.claim.sub = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; SELECT public.search_notebook_notes('interview', tag_filters => ARRAY['WORK','urgent'], created_after => '2026-10-01Z', created_before => '2026-11-01Z');

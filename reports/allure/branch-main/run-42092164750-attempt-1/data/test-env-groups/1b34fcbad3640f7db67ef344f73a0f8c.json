@@ -1,1 +1,0 @@
-{"id":"1b34fcbad3640f7db67ef344f73a0f8c","fullName":"everfreenote:core/tests/unit/core-mcp-noteHtml.test.ts#core/mcp/noteHtml - sanitizeNoteHtml preserves valid dimensions only on images","name":"preserves valid dimensions only on images","status":"passed","testResultsByEnv":{"default":"b9c8433ce794f823ef1ed47dc9b9cfd8"}}
