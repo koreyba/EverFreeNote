@@ -1,1 +1,0 @@
-{"id":"0cb9d9f371a553e8d2387298213bdcdf","fullName":"everfreenote:core/tests/unit/core-utils-compareNoteVersions.test.ts#compareNoteVersions limits divergent body text while still comparing the other fields","name":"limits divergent body text while still comparing the other fields","status":"passed","testResultsByEnv":{"default":"162eaae4e47f11f5d078ad1ca411148d"}}

@@ -1,1 +1,0 @@
-{"id":"4d509a9cfd4fed2f6723b5219c213b10","fullName":"everfreenote:core/tests/unit/core-mcp-noteEdits.test.ts#MCP HTML block editing rejects missing, ambiguous and nested anchors instead of guessing","name":"rejects missing, ambiguous and nested anchors instead of guessing","status":"passed","testResultsByEnv":{"default":"d33ba3ea3f0fba772a4981cfb98b6022"}}

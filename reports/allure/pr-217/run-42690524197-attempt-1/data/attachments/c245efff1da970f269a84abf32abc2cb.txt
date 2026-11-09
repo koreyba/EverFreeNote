@@ -1,0 +1,5 @@
+INSERT INTO public.notes(user_id,description)
+      SELECT '11111111-1111-4111-8111-111111111111','<img src="https://example.supabase.co/storage/v1/object/public/note-images/11111111-1111-4111-8111-111111111111/legacy-'||g||'.png">'
+      FROM generate_series(1,201) g;
+      TRUNCATE public.note_image_refs;
+      UPDATE note_trash_private.trash_media_inventory SET complete=false,last_id=NULL

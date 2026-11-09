@@ -1,1 +1,0 @@
-{"id":"85685660b7e96e0a57d7d47995b2ead5","fullName":"everfreenote:core/tests/unit/core-mcp-oauthResource.test.ts#core/mcp/oauthResource buildWwwAuthenticateHeader adds error and description, neutralising quotes and newlines","name":"adds error and description, neutralising quotes and newlines","status":"passed","testResultsByEnv":{"default":"bd208f66c5b2a122ae5f71979c5c75b3"}}

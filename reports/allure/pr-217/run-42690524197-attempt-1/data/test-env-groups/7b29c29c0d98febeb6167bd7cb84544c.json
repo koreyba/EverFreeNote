@@ -1,0 +1,1 @@
+{"id":"7b29c29c0d98febeb6167bd7cb84544c","fullName":"everfreenote:core/tests/unit/core-mcp-noteEdits.test.ts#MCP HTML block editing rejects overlapping parser boundaries in malformed stored HTML","name":"rejects overlapping parser boundaries in malformed stored HTML","status":"passed","testResultsByEnv":{"default":"29a27a848e24beacbb91f9cfc4f49e28"}}
