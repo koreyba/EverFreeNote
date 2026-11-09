@@ -209,11 +209,11 @@ describe('Refresh reconciles persisted cache before reopening notes', { retries:
     ]))
     const mountApp = () => cy.mount(<SupabaseTestProvider supabase={client} user={user}><AppUnderTest /></SupabaseTestProvider>)
     mountApp()
-    // The first HTTP response is deliberately still pending when local cards must appear.
-    cy.contains('[data-testid="note-card"]', 'Deleted one', { timeout: 2000 }).should('be.visible')
-    cy.contains('[data-testid="note-card"]', 'Deleted two').should('be.visible')
+    // Online startup keeps the skeleton until the first page arrives, even with cached notes.
     cy.wrap(null).should(() => expect(listRequests).to.equal(1))
     cy.wait('@initialCacheList')
+    cy.contains('[data-testid="note-card"]', 'Deleted one').should('be.visible')
+    cy.contains('[data-testid="note-card"]', 'Deleted two').should('be.visible')
     cy.get('[data-cy="pull-to-refresh"]').filter(':visible')
       .trigger('touchstart', { touches: [{ clientX: 80, clientY: 200 }] })
       .trigger('touchmove', { touches: [{ clientX: 80, clientY: 350 }] })

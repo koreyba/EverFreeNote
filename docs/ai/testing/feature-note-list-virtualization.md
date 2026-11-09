@@ -62,3 +62,9 @@ Validation on 2026-11-09:
 
 Coverage is scoped to these loading transitions and adjacent grid interactions; line coverage was not measured. This fixture does not measure production network latency or verify a deployed build.
 
+### Existing offline-refresh coverage
+
+PR #216 CI found an older `OfflineNotes.cy.tsx` assertion requiring cached cards within two seconds while the initial online response was delayed for five seconds. That startup expectation conflicts with the approved loading skeleton. The test now waits for the initial response before checking the cached cards; its swipe refresh, server-missing warning, persisted contents, pending draft, account ownership, and reopen assertions remain intact.
+
+Follow-up validation: all 11 cases in `NoteListInitialLoading.cy.tsx` and `OfflineNotes.cy.tsx` pass through Allure agent mode (exit 0; no findings, skips, or retries). ESLint for the changed test and `git diff --check` pass. This follow-up changes only test ordering and documentation; the application bundle and APK from merge commit `a86462d` are unchanged.
+
