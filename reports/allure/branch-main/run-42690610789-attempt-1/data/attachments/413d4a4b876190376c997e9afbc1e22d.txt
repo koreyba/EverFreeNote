@@ -1,0 +1,5 @@
+Error: Command failed: docker exec -i everfreenote-trash-test-3527 psql -h 127.0.0.1 -XqAt -v ON_ERROR_STOP=1 -U postgres
+ERROR:  Image cleanup is in progress. Keep your draft and retry.
+CONTEXT:  PL/pgSQL function note_trash_private.record_note_images(uuid,uuid,text) line 20 at RAISE
+SQL statement "SELECT note_trash_private.record_note_images(NEW.id,NEW.user_id,body)"
+PL/pgSQL function note_trash_private.track_note_images() line 9 at PERFORM

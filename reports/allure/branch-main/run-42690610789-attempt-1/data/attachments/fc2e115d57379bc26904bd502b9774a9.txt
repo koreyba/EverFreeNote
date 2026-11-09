@@ -1,0 +1,1 @@
+SELECT public.configure_note_trash_cron()

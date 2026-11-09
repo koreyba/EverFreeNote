@@ -1,0 +1,1 @@
+{"id":"8b5996744af9e608c03591a0c3436bf3","fullName":"everfreenote:core/tests/unit/core-mcp-noteEdits.test.ts#MCP search date ranges compares instants with timezone offsets and rejects inverted ranges","name":"compares instants with timezone offsets and rejects inverted ranges","status":"passed","testResultsByEnv":{"default":"e864fa62b1d38c7fe67a0302af5398df"}}
