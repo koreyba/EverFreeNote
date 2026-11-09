@@ -1,0 +1,1 @@
+{"id":"2e21e50764cb2f62487d9719fdd267b9","fullName":"everfreenote:ui/web/tests/unit/components/ErrorBoundary.test.tsx#ErrorBoundary catches rendering errors, logs to console.error, and displays fallback UI","name":"catches rendering errors, logs to console.error, and displays fallback UI","status":"passed","testResultsByEnv":{"default":"ce1d49a416383cc4a4eea35116c628bf"}}

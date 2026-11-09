@@ -1,0 +1,1 @@
+{"id":"2a68f7dcfb4c3508129120bd99ad9664","fullName":"everfreenote:ui/web/tests/unit/hooks/use-mobile.test.tsx#useIsMobile returns false when innerWidth is 768px or greater","name":"returns false when innerWidth is 768px or greater","status":"passed","testResultsByEnv":{"default":"f7e39d177c2a54d336e0f3d4a93a8984"}}

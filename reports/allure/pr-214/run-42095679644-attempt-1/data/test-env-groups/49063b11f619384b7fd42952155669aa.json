@@ -1,1 +1,0 @@
-{"id":"49063b11f619384b7fd42952155669aa","fullName":"everfreenote:core/tests/services/note-trash.test.ts#Trash service and durable deletion content reads paginated owner-only summaries without downloading note bodies","name":"reads paginated owner-only summaries without downloading note bodies","status":"passed","testResultsByEnv":{"default":"8c8e2ca61a5cc7aa4120049e1ee846a0"}}

@@ -1,3 +1,0 @@
-Error: Command failed: docker exec -i everfreenote-trash-test-3107 psql -h 127.0.0.1 -XqAt -v ON_ERROR_STOP=1 -U postgres
-ERROR:  Note identity cannot be changed.
-CONTEXT:  PL/pgSQL function note_trash_private.guard_trashed_note_id() line 4 at RAISE
