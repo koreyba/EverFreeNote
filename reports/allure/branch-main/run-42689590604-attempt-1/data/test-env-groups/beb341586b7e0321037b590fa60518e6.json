@@ -1,0 +1,1 @@
+{"id":"beb341586b7e0321037b590fa60518e6","fullName":"everfreenote:core/tests/services/trash-media-cleanup.test.ts#Trash media cleanup HTTP boundary rejects unauthenticated deletion without claiming files","name":"rejects unauthenticated deletion without claiming files","status":"passed","testResultsByEnv":{"default":"5e19d49ff28002eba195fe40211be0ab"}}

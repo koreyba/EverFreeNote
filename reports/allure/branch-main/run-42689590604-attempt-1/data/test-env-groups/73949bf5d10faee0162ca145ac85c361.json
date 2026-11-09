@@ -1,0 +1,1 @@
+{"id":"73949bf5d10faee0162ca145ac85c361","fullName":"everfreenote:core/tests/unit/core-mcp-noteContent.test.ts#core/mcp/noteContent htmlToPlainText treats <br> and <hr> as line breaks","name":"treats <br> and <hr> as line breaks","status":"passed","testResultsByEnv":{"default":"89c1a8c3566bfd65276c713f9b8b8ad5"}}

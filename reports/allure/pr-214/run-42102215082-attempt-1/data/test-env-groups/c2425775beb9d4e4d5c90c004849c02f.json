@@ -1,1 +1,0 @@
-{"id":"c2425775beb9d4e4d5c90c004849c02f","fullName":"everfreenote:core/tests/integration/note-trash-postgres.test.ts#Trash lifecycle in PostgreSQL keeps failed file removals queued and rejects stale completion leases","name":"keeps failed file removals queued and rejects stale completion leases","status":"passed","testResultsByEnv":{"default":"ad013a0be68002937f8f749d0ef1446d"}}

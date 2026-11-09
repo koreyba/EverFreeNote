@@ -1,1 +1,0 @@
-SET ROLE authenticated; SET request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111'; SELECT count(*) FROM public.notes_trash WHERE trash_id='b9b09e1b-a6a8-46c4-8327-19c96af37864'

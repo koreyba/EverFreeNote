@@ -1,1 +1,0 @@
-{"id":"e6336a6c6e023b1665f4164224b5a403","fullName":"everfreenote:core/tests/integration/note-trash-postgres.test.ts#Trash lifecycle in PostgreSQL idempotently accepts a never-synced note without making it active","name":"idempotently accepts a never-synced note without making it active","status":"passed","testResultsByEnv":{"default":"057724bf234de860f33765d96646f69c"}}

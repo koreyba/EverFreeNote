@@ -1,1 +1,0 @@
-{"id":"05c12598cba2f3f8d2e7a4e8bddcdc0d","fullName":"everfreenote:core/tests/services/note-trash.test.ts#Trash service and durable deletion content keeps the latest queued draft in the durable delete payload","name":"keeps the latest queued draft in the durable delete payload","status":"passed","testResultsByEnv":{"default":"acffe714a29b6c61e0d0a2b7a5d240c7"}}

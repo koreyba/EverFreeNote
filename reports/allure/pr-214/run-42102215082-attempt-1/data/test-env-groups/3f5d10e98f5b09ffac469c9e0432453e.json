@@ -1,1 +1,0 @@
-{"id":"3f5d10e98f5b09ffac469c9e0432453e","fullName":"everfreenote:ui/web/tests/unit/lib/noteDrag.test.ts#note drag payloads rejects malformed, foreign, or incomplete payload not JSON","name":"rejects malformed, foreign, or incomplete payload not JSON","status":"passed","testResultsByEnv":{"default":"5981d33eaab479c0a256274b0af12d57"}}
