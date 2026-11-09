@@ -1,2 +1,0 @@
-Error: Command failed: docker exec -i everfreenote-trash-test-3130 psql -h 127.0.0.1 -XqAt -v ON_ERROR_STOP=1 -U postgres
-ERROR:  permission denied for function purge_expired_note_trash

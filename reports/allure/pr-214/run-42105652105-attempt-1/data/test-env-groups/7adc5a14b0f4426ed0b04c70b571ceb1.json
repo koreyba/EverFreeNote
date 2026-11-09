@@ -1,1 +1,0 @@
-{"id":"7adc5a14b0f4426ed0b04c70b571ceb1","fullName":"everfreenote:core/tests/services/trash-media-cleanup.test.ts#Trash media cleanup HTTP boundary refuses an oversized claim batch before calling Storage","name":"refuses an oversized claim batch before calling Storage","status":"passed","testResultsByEnv":{"default":"8ff27cb95a0b7c127405d68793ddce42"}}

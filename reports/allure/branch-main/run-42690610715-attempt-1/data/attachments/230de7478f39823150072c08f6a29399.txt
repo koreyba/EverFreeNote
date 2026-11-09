@@ -1,0 +1,1 @@
+SET ROLE authenticated; SET request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111'; SELECT public.restore_notes(ARRAY['4c32f157-7d53-427f-8ff2-4734e76b5e73']::uuid[])

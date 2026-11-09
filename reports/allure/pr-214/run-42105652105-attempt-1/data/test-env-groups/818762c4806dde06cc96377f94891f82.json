@@ -1,1 +1,0 @@
-{"id":"818762c4806dde06cc96377f94891f82","fullName":"everfreenote:ui/web/tests/unit/hooks/useTrashCleanup.test.tsx#Trash activity cleanup starts after readiness and throttles repeated focus events","name":"starts after readiness and throttles repeated focus events","status":"passed","testResultsByEnv":{"default":"3f8e28438b097e946734f85ae8a57c05"}}
