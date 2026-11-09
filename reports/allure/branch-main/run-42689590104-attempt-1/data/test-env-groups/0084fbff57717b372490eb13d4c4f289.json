@@ -1,0 +1,1 @@
+{"id":"0084fbff57717b372490eb13d4c4f289","fullName":"everfreenote:ui/web/tests/unit/hooks/useNoteSync.test.tsx#persists and applies a local deletion before asking the scoped manager to drain","name":"persists and applies a local deletion before asking the scoped manager to drain","status":"passed","testResultsByEnv":{"default":"13ba7288cbeac89c1f4891da8d059983"}}

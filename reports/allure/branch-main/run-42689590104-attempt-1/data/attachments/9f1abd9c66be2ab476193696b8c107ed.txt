@@ -1,0 +1,1 @@
+SELECT public.purge_expired_note_trash()

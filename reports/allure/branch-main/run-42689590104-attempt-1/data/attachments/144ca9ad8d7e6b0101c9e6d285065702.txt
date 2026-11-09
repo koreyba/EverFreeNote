@@ -1,0 +1,1 @@
+SET ROLE anon; SELECT public.restore_notes(ARRAY[]::uuid[])

@@ -1,1 +1,0 @@
-{"id":"e1f7812cd598bb7b93c276f7d8bc25e6","fullName":"everfreenote:ui/web/tests/unit/adapters/oauth.test.ts#web OAuth adapter propagates asynchronous navigation failure to the OAuth caller","name":"propagates asynchronous navigation failure to the OAuth caller","status":"passed","testResultsByEnv":{"default":"ca038c9ac3c2a7220443e114c47edee7"}}
